@@ -3,6 +3,9 @@ import { useState } from 'react'
 import { supabase } from './supabaseClient'
 
 export default function Auth() {
+  const inviteCode = (() => {
+    try { return new URL(window.location.href).searchParams.get('code') || '' } catch { return '' }
+  })()
   const [mode, setMode] = useState('login')
   const [email, setEmail] = useState('')
   const [pw, setPw] = useState('')
@@ -39,7 +42,12 @@ export default function Auth() {
             <div style={S.logoSub}>MOMENT · PIN</div>
           </div>
         </div>
-
+         {inviteCode && (
+          <div style={S.invite}>
+            🎉 <b>모먼핀에 초대됐어요!</b><br/>
+            <span style={{ fontSize: 13, opacity: .85 }}>가입하면 <b>{inviteCode}</b> 그룹에 바로 참여돼요</span>
+          </div>
+        )}
         <p style={S.tagline}>정해진 순간, 다 같이 찰칵.<br/>지금 가족이 어디에 있는지 지도로.</p>
 
         <input style={S.input} type="email" placeholder="이메일"
@@ -83,4 +91,5 @@ const S = {
     background: 'linear-gradient(135deg,#ff7a45,#ff4d5e)', boxShadow: '0 8px 20px rgba(255,77,94,.3)' },
   switch: { width: '100%', border: 'none', background: 'none', color: '#9b9ba3',
     fontFamily: 'inherit', fontSize: 13, fontWeight: 600, marginTop: 14, cursor: 'pointer' },
+  invite: { background: 'linear-gradient(135deg,#fff1ed,#ffe9e0)', border: '1.5px solid #ffd9cc', borderRadius: 14, padding: '13px 15px', marginBottom: 16, color: '#16161a', fontSize: 15, lineHeight: 1.4 },
 }
