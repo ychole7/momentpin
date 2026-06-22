@@ -176,13 +176,49 @@ useEffect(() => {
     setBusy(false)
   }
 
-  async function testNotify() {
-    if (typeof Notification === 'undefined') { flash('이 브라우저는 알림을 지원하지 않아요'); return }
-    let perm = Notification.permission
-    if (perm === 'default') perm = await Notification.requestPermission()
-    if (perm !== 'granted') { flash('알림이 차단됐어요. 브라우저 설정에서 허용해 주세요.'); return }
-    new Notification('📸 모먼 시간!', { body: group.name + ' · 지금 다 같이 찍어요' })
-    flash('알림을 보냈어요! ✨')
+  function urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4)
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/')
+    const raw = window.atob(base64)
+    const arr = new Uint8Array(raw.length)
+    for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i)
+    return arr
+  }
+
+  async function enablePush() {
+    try {
+      if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+        flash('이 브라우저는 푸시를 지원하지 않아요'); return
+      }
+      let perm = Notification.permission
+      if (perm === 'default') perm = await Notification.requestPermission()
+      if (perm !== 'granted') { flash('알림이 차단됐어요. 설정에서 허용해 주세요.'); return }
+
+      const reg = await navigator.serviceWorker.register('/sw.js')
+      await navigator.serviceWorker.ready
+
+      const vapid = import.meta.env.VITE_VAPID_PUBLIC_KEY
+      if (!vapid) { flash('VAPID 키가 없어요 (.env 확인)'); return }
+
+      const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(vapid),
+      })
+
+      const json = sub.toJSON()
+      let res = await supabase.from('push_subscriptions').upsert({
+        user_id: user.id,
+        group_id: group.id,
+        endpoint: json.endpoint,
+        p256dh: json.keys.p256dh,
+        auth: json.keys.auth,
+      }, { onConflict: 'user_id,group_id,endpoint' })
+      if (res.error) { flash('구독 저장 실패: ' + res.error.message); return }
+
+      flash('알림 켜짐! 이제 모먼 알림을 받아요 🔔')
+    } catch (e) {
+      flash('알림 설정 실패: ' + (e.message || e))
+    }
   }
 
   function flash(m) { setToast(m); setTimeout(() => setToast(''), 2600) }
@@ -296,7 +332,7 @@ useEffect(() => {
           {busy ? '올리는 중…' : '📸 모먼 찍기'}
         </button>
         <div style={S.subBtns}>
-          <button style={S.subBtn} onClick={testNotify}>🔔 알림</button>
+          <button style={S.subBtn} onClick={enablePush}>🔔 알림 켜기</button>
           <button style={S.subBtn} onClick={copyInviteLink}>🔗 초대 링크</button>
         </div>
 
