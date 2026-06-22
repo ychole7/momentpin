@@ -20,7 +20,7 @@ const fmtKm = (d) => d < 1 ? Math.round(d * 1000) + 'm' : d.toFixed(1) + 'km'
 function hhmm(ts) { const d = new Date(ts); return d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0') }
 function ago(ts) { const d = (Date.now() - new Date(ts).getTime()) / 1000; if (d < 60) return '방금'; if (d < 3600) return Math.floor(d / 60) + '분 전'; return Math.floor(d / 3600) + '시간 전' }
 
-export default function Home({ user, group, onLeaveGroup, onSignOut }) {
+export default function Home({ user, group, onOpenSettings, onLeaveGroup, onSignOut }) {
   const [members, setMembers] = useState([])
   const [posts, setPosts] = useState([])
   const [loading, setLoading] = useState(true)
@@ -244,7 +244,10 @@ useEffect(() => {
       {/* 상단바 */}
       <div style={S.top}>
         <div style={S.logoRow}><div style={S.logoDot} /><div style={S.logoName}>모먼핀</div></div>
-        <button style={S.codeBtn} onClick={copyInviteLink}>🔗 초대</button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button style={S.codeBtn} onClick={copyInviteLink}>🔗 초대</button>
+          <button style={S.codeBtn} onClick={onOpenSettings}>⚙️</button>
+        </div>
       </div>
 
       {/* 모먼 배너 */}

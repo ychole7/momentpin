@@ -4,11 +4,13 @@ import { supabase } from './supabaseClient'
 import Auth from './Auth'
 import GroupGate from './GroupGate'
 import Home from './Home'
+import Settings from './Settings'
 
 export default function App() {
   const [session, setSession] = useState(null)
   const [group, setGroup] = useState(null)
   const [booting, setBooting] = useState(true)
+  const [showSettings, setShowSettings] = useState(false)
 
   useEffect(() => {
     let mounted = true
@@ -19,7 +21,7 @@ export default function App() {
     })
     const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
       setSession(s)
-      if (!s) setGroup(null)
+      if (!s) { setGroup(null); setShowSettings(false) }
     })
     return () => { mounted = false; sub.subscription.unsubscribe() }
   }, [])
@@ -32,13 +34,32 @@ export default function App() {
     await supabase.auth.signOut()
     localStorage.removeItem('mp_group')
     setGroup(null)
+    setShowSettings(false)
   }
 
   if (booting) return <div style={center}>모먼핀 여는 중…</div>
   if (!session) return <Auth />
   if (!group) return <GroupGate user={session.user} onReady={setGroup} />
 
-  return <Home user={session.user} group={group} onLeaveGroup={() => setGroup(null)} onSignOut={signOut} />
+  if (showSettings) return (
+    <Settings
+      user={session.user}
+      group={group}
+      onClose={() => setShowSettings(false)}
+      onGroupUpdate={(g) => setGroup(g)}
+      onLeaveGroup={() => { setShowSettings(false); setGroup(null) }}
+    />
+  )
+
+  return (
+    <Home
+      user={session.user}
+      group={group}
+      onOpenSettings={() => setShowSettings(true)}
+      onLeaveGroup={() => setGroup(null)}
+      onSignOut={signOut}
+    />
+  )
 }
 
 const center = {
