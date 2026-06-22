@@ -1,10 +1,13 @@
 // src/GroupGate.jsx
+// 로그인 후 첫 관문: 그룹 만들기 or 초대코드로 들어가기.
+// 이미 속한 그룹이 있으면 onReady(group) 로 넘어감.
 import { useEffect, useState } from 'react'
 import { supabase } from './supabaseClient'
 
 const COLORS = ['#ff4d5e', '#13bca4', '#e0972e', '#5b8def', '#9c4dcc', '#2a9d5a']
 const randColor = () => COLORS[Math.floor(Math.random() * COLORS.length)]
 
+// MP-XXXX 형태 초대코드 생성 (혼동 문자 제외)
 function makeCode() {
   const ch = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
   let s = ''
@@ -15,14 +18,10 @@ function makeCode() {
 export default function GroupGate({ user, onReady }) {
   const [loading, setLoading] = useState(true)
   const [myGroups, setMyGroups] = useState([])
-  const [tab, setTab] = useState(() => {
-    try { return new URL(window.location.href).searchParams.get('code') ? 'join' : 'create' } catch { return 'create' }
-  })
-  const [name, setName] = useState('')
+  const [tab, setTab] = useState('create') // 'create' | 'join'
+  const [name, setName] = useState('')       // 그룹 이름 / 내 표시 이름
   const [displayName, setDisplayName] = useState('')
-  const [code, setCode] = useState(() => {
-    try { return new URL(window.location.href).searchParams.get('code') || '' } catch { return '' }
-  })
+  const [code, setCode] = useState('')
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
 
@@ -32,7 +31,7 @@ export default function GroupGate({ user, onReady }) {
     setLoading(true)
     let res = await supabase
       .from('members')
-      .select('group_id, display_name, groups(id,name,invite_code)')
+      .select('group_id, display_name, groups(id,name,invite_code,created_by,alarm_mode,fixed_times,random_start,random_end,window_min)')
       .eq('user_id', user.id)
     const error = res.error
     if (error) { setMsg(error.message); setLoading(false); return }
@@ -44,6 +43,7 @@ export default function GroupGate({ user, onReady }) {
     if (!name.trim() || !displayName.trim()) { setMsg('그룹 이름과 내 이름을 입력해 주세요.'); return }
     setBusy(true); setMsg('')
 
+    // 1) 그룹 생성 (초대코드 충돌 시 한 번 더 시도)
     let group = null
     for (let attempt = 0; attempt < 3 && !group; attempt++) {
       let res = await supabase.from('groups')
@@ -54,6 +54,7 @@ export default function GroupGate({ user, onReady }) {
     }
     if (!group) { setMsg('초대코드 생성에 실패했어요. 다시 시도해 주세요.'); setBusy(false); return }
 
+    // 2) 본인을 멤버로 추가
     let res2 = await supabase.from('members')
       .insert({ group_id: group.id, user_id: user.id, display_name: displayName.trim(), color: randColor() })
     const e2 = res2.error
@@ -67,13 +68,15 @@ export default function GroupGate({ user, onReady }) {
     if (!code.trim() || !displayName.trim()) { setMsg('초대코드와 내 이름을 입력해 주세요.'); return }
     setBusy(true); setMsg('')
 
+    // 1) 코드로 그룹 찾기
     let res = await supabase.from('groups')
-      .select('id,name,invite_code')
+      .select('id,name,invite_code,created_by,alarm_mode,fixed_times,random_start,random_end,window_min')
       .eq('invite_code', code.trim().toUpperCase())
       .single()
     if (res.error || !res.data) { setMsg('그 코드의 그룹을 찾을 수 없어요.'); setBusy(false); return }
     const group = res.data
 
+    // 2) 멤버로 추가 (이미 있으면 무시하고 통과)
     let res2 = await supabase.from('members')
       .insert({ group_id: group.id, user_id: user.id, display_name: displayName.trim(), color: randColor() })
     const e2 = res2.error
@@ -90,6 +93,7 @@ export default function GroupGate({ user, onReady }) {
       <div style={S.card}>
         <div style={S.h}>모먼핀 그룹</div>
 
+        {/* 이미 속한 그룹이 있으면 바로 선택 */}
         {myGroups.length > 0 && (
           <div style={{ marginBottom: 20 }}>
             <div style={S.label}>내 그룹</div>
