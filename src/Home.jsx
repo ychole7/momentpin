@@ -1,4 +1,4 @@
-// src/Home.jsx (디자인 풀버전: 배너+토글+카드+네비, 기능 전부 유지)
+// src/Home.jsx (위치 숨김 관점3 + members 실시간 포함 완성본)
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from './supabaseClient'
 
@@ -26,10 +26,10 @@ export default function Home({ user, group, onOpenSettings, onLeaveGroup, onSign
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [toast, setToast] = useState('')
-  const [tab, setTab] = useState('map')        // map | grid | feed
+  const [tab, setTab] = useState('map')
   const [viewPost, setViewPost] = useState(null)
   const [bigUrl, setBigUrl] = useState('')
-  const [signed, setSigned] = useState({})     // postId -> 서명URL (카드/격자용)
+  const [signed, setSigned] = useState({})
 
   const mapBoxRef = useRef(null)
   const mapRef = useRef(null)
@@ -39,49 +39,46 @@ export default function Home({ user, group, onOpenSettings, onLeaveGroup, onSign
   const membersRef = useRef([])
 
   useEffect(() => { loadMembers(); loadPosts() }, [group.id])
-useEffect(() => {
-    if (tab === 'map') setTimeout(() => { mapRef.current = null; initMap() }, 50)
-  }, [tab])
+  useEffect(() => { if (tab === 'map') setTimeout(() => { mapRef.current = null; initMap() }, 50) }, [tab])
   useEffect(() => { drawPins() }, [posts, members])
   useEffect(() => { resolveSigned() }, [posts])
 
+  // posts 실시간
   useEffect(() => {
-    const channel = supabase
-      .channel('posts-' + group.id)
-      .on('postgres_changes',
-        { event: '*', schema: 'public', table: 'posts', filter: 'group_id=eq.' + group.id },
-        () => { loadPosts() })
+    const ch = supabase.channel('posts-' + group.id)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'posts', filter: 'group_id=eq.' + group.id }, () => loadPosts())
       .subscribe()
-    return () => { supabase.removeChannel(channel) }
+    return () => { supabase.removeChannel(ch) }
   }, [group.id])
 
-  // 팝업용 큰 이미지
+  // members 실시간 (위치 on/off 즉시 반영)
+  useEffect(() => {
+    const ch = supabase.channel('members-' + group.id)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'members', filter: 'group_id=eq.' + group.id }, () => loadMembers())
+      .subscribe()
+    return () => { supabase.removeChannel(ch) }
+  }, [group.id])
+
   useEffect(() => {
     let alive = true
     if (viewPost && viewPost.img_back) {
-      supabase.storage.from('moments').createSignedUrl(viewPost.img_back, 3600).then(s => {
-        if (alive && !s.error && s.data) setBigUrl(s.data.signedUrl)
-      })
+      supabase.storage.from('moments').createSignedUrl(viewPost.img_back, 3600).then(s => { if (alive && !s.error && s.data) setBigUrl(s.data.signedUrl) })
     } else setBigUrl('')
     return () => { alive = false }
   }, [viewPost])
 
   async function loadMembers() {
     setLoading(true)
-    let res = await supabase.from('members')
-      .select('id,user_id,display_name,color,share_location')
-      .eq('group_id', group.id).order('joined_at', { ascending: true })
-    const error = res.error
-    if (error) { flash(error.message); setLoading(false); return }
+    let res = await supabase.from('members').select('id,user_id,display_name,color,share_location').eq('group_id', group.id).order('joined_at', { ascending: true })
+    if (res.error) { flash(res.error.message); setLoading(false); return }
     const list = res.data || []
     setMembers(list); membersRef.current = list
     setLoading(false)
+    drawPins()
   }
 
   async function loadPosts() {
-    let res = await supabase.from('posts')
-      .select('id,user_id,img_back,img_front,lat,lng,place_label,created_at,is_late')
-      .eq('group_id', group.id).order('created_at', { ascending: false })
+    let res = await supabase.from('posts').select('id,user_id,img_back,img_front,lat,lng,place_label,created_at,is_late').eq('group_id', group.id).order('created_at', { ascending: false })
     if (res.error) { flash(res.error.message); return }
     const seen = {}, latest = []
     for (const p of (res.data || [])) { if (seen[p.user_id]) continue; seen[p.user_id] = true; latest.push(p) }
@@ -91,10 +88,7 @@ useEffect(() => {
   async function resolveSigned() {
     const map = {}
     for (const p of posts) {
-      if (p.img_back) {
-        let s = await supabase.storage.from('moments').createSignedUrl(p.img_back, 3600)
-        if (!s.error && s.data) map[p.id] = s.data.signedUrl
-      }
+      if (p.img_back) { let s = await supabase.storage.from('moments').createSignedUrl(p.img_back, 3600); if (!s.error && s.data) map[p.id] = s.data.signedUrl }
     }
     setSigned(map)
   }
@@ -126,7 +120,7 @@ useEffect(() => {
     markersRef.current = []
     for (const p of posts) {
       if (p.lat == null || p.lng == null) continue
-      if (!sharesLoc(p.user_id)) continue
+      if (!sharesLoc(p.user_id)) continue   // 위치 숨긴 사람은 지도에 안 뜸
       let imgUrl = signed[p.id] || ''
       if (!imgUrl && p.img_back) { let s = await supabase.storage.from('moments').createSignedUrl(p.img_back, 3600); if (!s.error && s.data) imgUrl = s.data.signedUrl }
       const color = colorOf(p.user_id)
@@ -144,9 +138,7 @@ useEffect(() => {
     return new Promise(resolve => {
       if (myPosRef.current) return resolve(myPosRef.current)
       if (!navigator.geolocation) return resolve(null)
-      navigator.geolocation.getCurrentPosition(
-        p => { myPosRef.current = { lat: p.coords.latitude, lng: p.coords.longitude }; resolve(myPosRef.current) },
-        () => resolve(null), { timeout: 5000 })
+      navigator.geolocation.getCurrentPosition(p => { myPosRef.current = { lat: p.coords.latitude, lng: p.coords.longitude }; resolve(myPosRef.current) }, () => resolve(null), { timeout: 5000 })
     })
   }
 
@@ -178,6 +170,26 @@ useEffect(() => {
     setBusy(false)
   }
 
+  async function enablePush() {
+    try {
+      if (!('serviceWorker' in navigator) || !('PushManager' in window)) { flash('이 브라우저는 푸시를 지원하지 않아요 (폰은 홈화면 추가 후)'); return }
+      let perm = Notification.permission
+      if (perm === 'default') perm = await Notification.requestPermission()
+      if (perm !== 'granted') { flash('알림이 차단됐어요. 설정에서 허용해 주세요.'); return }
+      const reg = await navigator.serviceWorker.register('/sw.js')
+      await navigator.serviceWorker.ready
+      const vapid = import.meta.env.VITE_VAPID_PUBLIC_KEY
+      if (!vapid) { flash('VAPID 키가 없어요 (.env 확인)'); return }
+      const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(vapid) })
+      const json = sub.toJSON()
+      let res = await supabase.from('push_subscriptions').upsert({
+        user_id: user.id, group_id: group.id,
+        endpoint: json.endpoint, p256dh: json.keys.p256dh, auth: json.keys.auth,
+      }, { onConflict: 'user_id,group_id,endpoint' })
+      if (res.error) { flash('구독 저장 실패: ' + res.error.message); return }
+      flash('알림 켜짐! 이제 모먼 알림을 받아요 🔔')
+    } catch (e) { flash('알림 설정 실패: ' + (e.message || e)) }
+  }
   function urlBase64ToUint8Array(base64String) {
     const padding = '='.repeat((4 - base64String.length % 4) % 4)
     const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/')
@@ -185,42 +197,6 @@ useEffect(() => {
     const arr = new Uint8Array(raw.length)
     for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i)
     return arr
-  }
-
-  async function enablePush() {
-    try {
-      if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-        flash('이 브라우저는 푸시를 지원하지 않아요'); return
-      }
-      let perm = Notification.permission
-      if (perm === 'default') perm = await Notification.requestPermission()
-      if (perm !== 'granted') { flash('알림이 차단됐어요. 설정에서 허용해 주세요.'); return }
-
-      const reg = await navigator.serviceWorker.register('/sw.js')
-      await navigator.serviceWorker.ready
-
-      const vapid = import.meta.env.VITE_VAPID_PUBLIC_KEY
-      if (!vapid) { flash('VAPID 키가 없어요 (.env 확인)'); return }
-
-      const sub = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(vapid),
-      })
-
-      const json = sub.toJSON()
-      let res = await supabase.from('push_subscriptions').upsert({
-        user_id: user.id,
-        group_id: group.id,
-        endpoint: json.endpoint,
-        p256dh: json.keys.p256dh,
-        auth: json.keys.auth,
-      }, { onConflict: 'user_id,group_id,endpoint' })
-      if (res.error) { flash('구독 저장 실패: ' + res.error.message); return }
-
-      flash('알림 켜짐! 이제 모먼 알림을 받아요 🔔')
-    } catch (e) {
-      flash('알림 설정 실패: ' + (e.message || e))
-    }
   }
 
   function flash(m) { setToast(m); setTimeout(() => setToast(''), 2600) }
@@ -234,16 +210,15 @@ useEffect(() => {
   const postByUser = {}
   posts.forEach(p => { if (!postByUser[p.user_id]) postByUser[p.user_id] = p })
 
-  // 요약
+  // 요약 (위치 공유한 사람만 거리 계산)
   const others = members.filter(m => m.user_id !== user.id)
   let farMember = null, farD = -1, sum = 0, cnt = 0
-  others.forEach(m => { const p = postByUser[m.user_id]; if (!p) return; const d = distKm(myPosRef.current, p); if (d == null) return; sum += d; cnt++; if (d > farD) { farD = d; farMember = m } })
+  others.forEach(m => { if (!sharesLoc(m.user_id)) return; const p = postByUser[m.user_id]; if (!p) return; const d = distKm(myPosRef.current, p); if (d == null) return; sum += d; cnt++; if (d > farD) { farD = d; farMember = m } })
   const avgD = cnt ? sum / cnt : 0
-  const allHere = cnt > 0 && others.every(m => { const p = postByUser[m.user_id]; const d = p ? distKm(myPosRef.current, p) : 9; return d != null && d < 0.3 })
+  const allHere = cnt > 0 && others.every(m => { if (!sharesLoc(m.user_id)) return true; const p = postByUser[m.user_id]; const d = p ? distKm(myPosRef.current, p) : 9; return d != null && d < 0.3 })
 
   return (
     <div style={S.app}>
-      {/* 상단바 */}
       <div style={S.top}>
         <div style={S.logoRow}><div style={S.logoDot} /><div style={S.logoName}>모먼핀</div></div>
         <div style={{ display: 'flex', gap: 8 }}>
@@ -252,7 +227,6 @@ useEffect(() => {
         </div>
       </div>
 
-      {/* 모먼 배너 */}
       <div style={S.banner}>
         <div style={S.bannerGlow} />
         <div style={{ position: 'relative', zIndex: 2 }}>
@@ -262,7 +236,6 @@ useEffect(() => {
         </div>
       </div>
 
-      {/* 3분할 토글 */}
       <div style={S.toggle}>
         {[['map', '📍 지도'], ['grid', '▦ 한눈에'], ['feed', '☰ 피드']].map(([k, label]) => (
           <button key={k} style={{ ...S.tBtn, ...(tab === k ? S.tBtnOn : {}) }} onClick={() => setTab(k)}>{label}</button>
@@ -270,7 +243,6 @@ useEffect(() => {
       </div>
 
       <div style={S.body}>
-        {/* ===== 지도 ===== */}
         {tab === 'map' && (
           <>
             <div style={S.mapWrap}><div ref={mapBoxRef} style={S.map} /></div>
@@ -287,18 +259,18 @@ useEffect(() => {
           </>
         )}
 
-        {/* ===== 한눈에(격자) ===== */}
         {tab === 'grid' && (
           <div style={{ ...S.grid, gridTemplateColumns: members.length <= 1 ? '1fr' : members.length <= 4 ? '1fr 1fr' : '1fr 1fr 1fr' }}>
             {members.map(m => {
               const p = postByUser[m.user_id]
               const url = p ? signed[p.id] : ''
+              const hidden = !sharesLoc(m.user_id)
               return (
                 <div key={m.id} style={S.gcell} onClick={() => p && setViewPost(p)}>
-                  {url ? <img src={url} style={S.gimg} alt="" /> : <div style={{ ...S.gwait }}>📷</div>}
+                  {url ? <img src={url} style={S.gimg} alt="" /> : <div style={S.gwait}>📷</div>}
                   <div style={S.gname}>
                     <span style={{ ...S.gdot, background: m.color }} />
-                    {m.display_name}{m.user_id !== user.id && p ? ' · ' + distLabel(myPosRef.current, p) : ''}
+                    {m.display_name}{hidden ? ' · 🔒' : (m.user_id !== user.id && p ? ' · ' + distLabel(myPosRef.current, p) : '')}
                   </div>
                   {p && <div style={S.gtime}>{hhmm(p.created_at)}</div>}
                 </div>
@@ -307,17 +279,17 @@ useEffect(() => {
           </div>
         )}
 
-        {/* ===== 피드 ===== */}
         {tab === 'feed' && (
           <div style={S.feed}>
             {posts.length === 0 ? <div style={S.empty}>아직 모먼이 없어요 🌅<br/>📸 버튼으로 첫 모먼을 남겨보세요</div> :
               posts.map(p => {
                 const url = signed[p.id]
+                const hidden = !sharesLoc(p.user_id)
                 return (
                   <div key={p.id} style={S.card} onClick={() => setViewPost(p)}>
                     <div style={S.cardPhoto}>
                       {url ? <img src={url} style={S.cardImg} alt="" /> : <div style={S.cardNo}>📷</div>}
-                      <div style={S.cardLoc}>📍 {p.place_label || '위치'}{p.user_id !== user.id ? ' · ' + distLabel(myPosRef.current, p) : ''}</div>
+                      <div style={S.cardLoc}>{hidden ? '🔒 위치 숨김' : '📍 ' + (p.place_label || '위치') + (p.user_id !== user.id ? ' · ' + distLabel(myPosRef.current, p) : '')}</div>
                       <div style={S.cardTime}>{hhmm(p.created_at)}</div>
                     </div>
                     <div style={S.cardFoot}>
@@ -331,21 +303,18 @@ useEffect(() => {
           </div>
         )}
 
-        {/* 모먼 찍기 */}
         <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={onPickFile} />
-        <button style={{ ...S.shoot, opacity: busy ? .6 : 1 }} disabled={busy} onClick={() => fileRef.current && fileRef.current.click()}>
-          {busy ? '올리는 중…' : '📸 모먼 찍기'}
-        </button>
+        <button style={{ ...S.shoot, opacity: busy ? .6 : 1 }} disabled={busy} onClick={() => fileRef.current && fileRef.current.click()}>{busy ? '올리는 중…' : '📸 모먼 찍기'}</button>
         <div style={S.subBtns}>
           <button style={S.subBtn} onClick={enablePush}>🔔 알림 켜기</button>
           <button style={S.subBtn} onClick={copyInviteLink}>🔗 초대 링크</button>
         </div>
 
-        {/* 멤버 */}
         <div style={S.label}>멤버</div>
         {loading ? <div style={S.muted}>불러오는 중…</div> : members.map(m => {
           const p = postByUser[m.user_id]
-          const dist = p && m.user_id !== user.id ? distLabel(myPosRef.current, p) : ''
+          const hidden = !sharesLoc(m.user_id)
+          const dist = p && m.user_id !== user.id && !hidden ? distLabel(myPosRef.current, p) : ''
           return (
             <div key={m.id} style={S.memberRow}>
               <div style={{ ...S.avatar, background: m.color }}>{m.display_name[0]}</div>
@@ -353,18 +322,17 @@ useEffect(() => {
                 {m.display_name}{m.user_id === user.id && <span style={S.meTag}>나</span>}
                 {dist && <span style={S.distTag}>{dist}</span>}
               </div>
-              <span style={S.shareTag}>{p ? '📍 ' + (p.place_label || '위치') : '대기 중'}</span>
+              <span style={S.shareTag}>{hidden ? '🔒 위치 숨김' : (p ? '📍 ' + (p.place_label || '위치') : '대기 중')}</span>
             </div>
           )
         })}
 
         <div style={S.actions}>
-          <button style={S.ghost} onClick={onLeaveGroup}>다른 그룹</button>
+          <button style={S.ghost} onClick={onOpenSettings}>⚙️ 설정</button>
           <button style={S.ghost} onClick={onSignOut}>로그아웃</button>
         </div>
       </div>
 
-      {/* 사진 팝업 */}
       {viewPost && (
         <div style={S.pop} onClick={() => setViewPost(null)}>
           <div style={S.popCard} onClick={e => e.stopPropagation()}>
@@ -373,7 +341,7 @@ useEffect(() => {
               <div style={{ ...S.avatar, background: colorOf(viewPost.user_id) }}>{nameOf(viewPost.user_id)[0]}</div>
               <div style={{ flex: 1 }}>
                 <div style={{ fontWeight: 700 }}>{nameOf(viewPost.user_id)}</div>
-                <div style={{ fontSize: 12, color: '#9b9ba3' }}>📍 {viewPost.place_label || '위치'}{viewPost.user_id !== user.id ? ' · ' + distLabel(myPosRef.current, viewPost) : ''} · {hhmm(viewPost.created_at)}</div>
+                <div style={{ fontSize: 12, color: '#9b9ba3' }}>{!sharesLoc(viewPost.user_id) ? '🔒 위치 숨김' : '📍 ' + (viewPost.place_label || '위치') + (viewPost.user_id !== user.id ? ' · ' + distLabel(myPosRef.current, viewPost) : '')} · {hhmm(viewPost.created_at)}</div>
               </div>
               <button style={S.popX} onClick={() => setViewPost(null)}>✕</button>
             </div>
@@ -392,7 +360,7 @@ const S = {
   logoRow: { display: 'flex', alignItems: 'center', gap: 8 },
   logoDot: { width: 24, height: 24, borderRadius: '8px 8px 8px 3px', background: 'linear-gradient(135deg,#ff7a45,#ff4d5e)' },
   logoName: { fontSize: 18, fontWeight: 700, letterSpacing: '-.4px' },
-  codeBtn: { border: 'none', background: 'linear-gradient(135deg,#ff7a45,#ff4d5e)', color: '#fff', fontFamily: 'inherit', fontSize: 12, fontWeight: 700, padding: '8px 14px', borderRadius: 20, cursor: 'pointer', boxShadow: '0 4px 12px rgba(255,77,94,.3)' },
+  codeBtn: { border: 'none', background: 'linear-gradient(135deg,#ff7a45,#ff4d5e)', color: '#fff', fontFamily: 'inherit', fontSize: 12, fontWeight: 700, padding: '8px 13px', borderRadius: 20, cursor: 'pointer', boxShadow: '0 4px 12px rgba(255,77,94,.3)' },
   banner: { position: 'relative', margin: '14px 14px 0', borderRadius: 22, overflow: 'hidden', background: 'linear-gradient(120deg,#16161a,#2a2030)', color: '#fff', boxShadow: '0 12px 40px rgba(20,20,30,.18)' },
   bannerGlow: { position: 'absolute', width: 160, height: 160, borderRadius: '50%', background: 'rgba(255,255,255,.1)', right: -40, top: -40, filter: 'blur(10px)' },
   bTag: { fontSize: 11, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase', opacity: .8, padding: '18px 20px 0' },
