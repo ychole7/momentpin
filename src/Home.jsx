@@ -17,6 +17,20 @@ function distLabel(myPos, loc) {
   return d.toFixed(1) + 'km'
 }
 const fmtKm = (d) => d < 1 ? Math.round(d * 1000) + 'm' : d.toFixed(1) + 'km'
+async function reverseGeocode(lat, lng) {
+  try {
+    const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=14&accept-language=ko`
+    const r = await fetch(url, { headers: { 'Accept': 'application/json' } })
+    const j = await r.json()
+    const a = j.address || {}
+    const dong = a.quarter || a.neighbourhood || a.suburb || a.village || a.town
+    const gu = a.city_district || a.borough || a.county
+    if (dong && gu) return gu + ' ' + dong
+    if (dong) return dong
+    if (gu) return gu
+    return a.city || a.state || '위치'
+  } catch { return '위치' }
+}
 function hhmm(ts) { const d = new Date(ts); return d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0') }
 function ago(ts) { const d = (Date.now() - new Date(ts).getTime()) / 1000; if (d < 60) return '방금'; if (d < 3600) return Math.floor(d / 60) + '분 전'; return Math.floor(d / 3600) + '시간 전' }
 
@@ -151,6 +165,8 @@ export default function Home({ user, group, onOpenSettings, onLeaveGroup, onSign
     setBusy(true); flash('사진 올리는 중…')
     try {
       const loc = includeLoc ? await getLoc() : null
+      let dongLabel = '위치 없이'
+      if (includeLoc) dongLabel = loc ? await reverseGeocode(loc.lat, loc.lng) : '위치 없음'
       const postId = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()))
       const path = `${group.id}/${postId}_back.jpg`
       let up = await supabase.storage.from('moments').upload(path, file, { upsert: true })
@@ -162,7 +178,7 @@ export default function Home({ user, group, onOpenSettings, onLeaveGroup, onSign
       let pres = await supabase.from('posts').insert({
         moment_id: mres.data.id, group_id: group.id, user_id: user.id,
         img_back: path, lat: loc ? loc.lat : null, lng: loc ? loc.lng : null,
-        place_label: includeLoc ? (loc ? '현재 위치' : '위치 없음') : '위치 없이', is_late: false,
+        place_label: dongLabel, is_late: false,
       })
       if (pres.error) { flash('기록 실패: ' + pres.error.message); setBusy(false); return }
       flash('모먼 공유 완료! ✨')
@@ -271,8 +287,11 @@ export default function Home({ user, group, onOpenSettings, onLeaveGroup, onSign
                 <div key={m.id} style={S.gcell} onClick={() => p && setViewPost(p)}>
                   {url ? <img src={url} style={S.gimg} alt="" /> : <div style={S.gwait}>📷</div>}
                   <div style={S.gname}>
-                    <span style={{ ...S.gdot, background: m.color }} />
-                    {m.display_name}{hidden ? ' · 🔒' : (m.user_id !== user.id && p ? ' · ' + distLabel(myPosRef.current, p) : '')}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <span style={{ ...S.gdot, background: m.color }} />
+                      {m.display_name}{hidden ? '' : (m.user_id !== user.id && p ? ' · ' + distLabel(myPosRef.current, p) : '')}
+                    </div>
+                    <div style={S.gloc}>{hidden ? '🔒 위치 숨김' : (p ? (p.place_label || '위치') : '대기 중')}</div>
                   </div>
                   {p && <div style={S.gtime}>{hhmm(p.created_at)}</div>}
                 </div>
@@ -305,7 +324,7 @@ export default function Home({ user, group, onOpenSettings, onLeaveGroup, onSign
           </div>
         )}
 
-        <input ref={fileRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={onPickFile} />
+        <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={onPickFile} />
         <button style={{ ...S.shoot, opacity: busy ? .6 : 1 }} disabled={busy} onClick={() => { includeLocRef.current = true; fileRef.current && fileRef.current.click() }}>{busy ? '올리는 중…' : '📸 모먼 찍기'}</button>
         <button style={{ ...S.shootGhost, opacity: busy ? .6 : 1 }} disabled={busy} onClick={() => { includeLocRef.current = false; fileRef.current && fileRef.current.click() }}>🔒 위치 없이 찍기</button>
         <div style={S.subBtns}>
@@ -383,7 +402,8 @@ const S = {
   gcell: { position: 'relative', aspectRatio: '3/4', borderRadius: 16, overflow: 'hidden', background: '#f0f0f3', cursor: 'pointer', boxShadow: '0 4px 16px rgba(20,20,30,.08)' },
   gimg: { width: '100%', height: '100%', objectFit: 'cover' },
   gwait: { width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, color: '#c4c4cc' },
-  gname: { position: 'absolute', left: 7, bottom: 7, right: 7, display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: '#fff', textShadow: '0 1px 4px rgba(0,0,0,.7)' },
+  gname: { position: 'absolute', left: 7, bottom: 7, right: 7, display: 'flex', flexDirection: 'column', gap: 2, fontSize: 11, fontWeight: 700, color: '#fff', textShadow: '0 1px 4px rgba(0,0,0,.7)' },
+  gloc: { fontSize: 10, fontWeight: 600, opacity: .92 },
   gdot: { width: 7, height: 7, borderRadius: '50%', flex: 'none' },
   gtime: { position: 'absolute', right: 7, top: 7, background: 'rgba(0,0,0,.5)', color: '#fff', fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 12 },
   feed: { display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 16 },
