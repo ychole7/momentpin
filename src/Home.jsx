@@ -39,7 +39,9 @@ export default function Home({ user, group, onLeaveGroup, onSignOut }) {
   const membersRef = useRef([])
 
   useEffect(() => { loadMembers(); loadPosts() }, [group.id])
-  useEffect(() => { if (tab === 'map') setTimeout(initMap, 0) }, [tab])
+useEffect(() => {
+    if (tab === 'map') setTimeout(() => { mapRef.current = null; initMap() }, 50)
+  }, [tab])
   useEffect(() => { drawPins() }, [posts, members])
   useEffect(() => { resolveSigned() }, [posts])
 
