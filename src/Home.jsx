@@ -185,6 +185,12 @@ export default function Home({ user, group, onLeaveGroup, onSignOut }) {
     try { await navigator.clipboard.writeText(group.invite_code) } catch {}
     flash('초대코드 복사됨 · ' + group.invite_code)
   }
+  async function copyInviteLink() {
+    const link = window.location.origin + '/?code=' + encodeURIComponent(group.invite_code)
+    const text = `우리 ${group.name} 모먼핀 같이 쓰자! 📸\n이 링크 누르고 가입하면 끝:\n${link}`
+    try { await navigator.clipboard.writeText(text) } catch {}
+    flash('초대 링크 복사됨! 카톡에 붙여넣기 ✨')
+  }
   const [bigUrl, setBigUrl] = useState('')
   useEffect(() => {
     let alive = true
@@ -246,6 +252,7 @@ export default function Home({ user, group, onLeaveGroup, onSignOut }) {
           {busy ? '올리는 중…' : '📸 모먼 찍기 (사진 선택)'}
         </button>
         <button style={S.notifyBtn} onClick={testNotify}>🔔 알림 테스트 (지금 울려보기)</button>
+        <button style={S.notifyBtn} onClick={copyInviteLink}>🔗 초대 링크 복사 (카톡으로 보내기)</button>
         <div style={S.label}>멤버</div>
         {loading ? <div style={S.muted}>불러오는 중…</div> : members.map(m => {
           const p = postByUser[m.user_id]

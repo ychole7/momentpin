@@ -15,10 +15,14 @@ function makeCode() {
 export default function GroupGate({ user, onReady }) {
   const [loading, setLoading] = useState(true)
   const [myGroups, setMyGroups] = useState([])
-  const [tab, setTab] = useState('create')
+  const [tab, setTab] = useState(() => {
+    try { return new URL(window.location.href).searchParams.get('code') ? 'join' : 'create' } catch { return 'create' }
+  })
   const [name, setName] = useState('')
   const [displayName, setDisplayName] = useState('')
-  const [code, setCode] = useState('')
+  const [code, setCode] = useState(() => {
+    try { return new URL(window.location.href).searchParams.get('code') || '' } catch { return '' }
+  })
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
 
