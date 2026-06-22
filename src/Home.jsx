@@ -117,6 +117,7 @@ useEffect(() => {
 
   function nameOf(uid) { const m = membersRef.current.find(x => x.user_id === uid); return m ? m.display_name : '?' }
   function colorOf(uid) { const m = membersRef.current.find(x => x.user_id === uid); return m ? m.color : '#888' }
+  function sharesLoc(uid) { const m = membersRef.current.find(x => x.user_id === uid); return m ? m.share_location !== false : true }
 
   async function drawPins() {
     const L = window.L, map = mapRef.current
@@ -125,6 +126,7 @@ useEffect(() => {
     markersRef.current = []
     for (const p of posts) {
       if (p.lat == null || p.lng == null) continue
+      if (!sharesLoc(p.user_id)) continue
       let imgUrl = signed[p.id] || ''
       if (!imgUrl && p.img_back) { let s = await supabase.storage.from('moments').createSignedUrl(p.img_back, 3600); if (!s.error && s.data) imgUrl = s.data.signedUrl }
       const color = colorOf(p.user_id)
