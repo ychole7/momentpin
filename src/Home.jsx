@@ -37,6 +37,7 @@ export default function Home({ user, group, onOpenSettings, onLeaveGroup, onSign
   const fileRef = useRef(null)
   const myPosRef = useRef(null)
   const membersRef = useRef([])
+  const includeLocRef = useRef(true)
 
   useEffect(() => { loadMembers(); loadPosts() }, [group.id])
   useEffect(() => { if (tab === 'map') setTimeout(() => { mapRef.current = null; initMap() }, 50) }, [tab])
@@ -146,9 +147,10 @@ export default function Home({ user, group, onOpenSettings, onLeaveGroup, onSign
     const file = e.target.files && e.target.files[0]
     e.target.value = ''
     if (!file) return
+    const includeLoc = includeLocRef.current
     setBusy(true); flash('사진 올리는 중…')
     try {
-      const loc = await getLoc()
+      const loc = includeLoc ? await getLoc() : null
       const postId = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()))
       const path = `${group.id}/${postId}_back.jpg`
       let up = await supabase.storage.from('moments').upload(path, file, { upsert: true })
@@ -160,7 +162,7 @@ export default function Home({ user, group, onOpenSettings, onLeaveGroup, onSign
       let pres = await supabase.from('posts').insert({
         moment_id: mres.data.id, group_id: group.id, user_id: user.id,
         img_back: path, lat: loc ? loc.lat : null, lng: loc ? loc.lng : null,
-        place_label: loc ? '현재 위치' : '위치 없음', is_late: false,
+        place_label: includeLoc ? (loc ? '현재 위치' : '위치 없음') : '위치 없이', is_late: false,
       })
       if (pres.error) { flash('기록 실패: ' + pres.error.message); setBusy(false); return }
       flash('모먼 공유 완료! ✨')
@@ -304,7 +306,8 @@ export default function Home({ user, group, onOpenSettings, onLeaveGroup, onSign
         )}
 
         <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={onPickFile} />
-        <button style={{ ...S.shoot, opacity: busy ? .6 : 1 }} disabled={busy} onClick={() => fileRef.current && fileRef.current.click()}>{busy ? '올리는 중…' : '📸 모먼 찍기'}</button>
+        <button style={{ ...S.shoot, opacity: busy ? .6 : 1 }} disabled={busy} onClick={() => { includeLocRef.current = true; fileRef.current && fileRef.current.click() }}>{busy ? '올리는 중…' : '📸 모먼 찍기'}</button>
+        <button style={{ ...S.shootGhost, opacity: busy ? .6 : 1 }} disabled={busy} onClick={() => { includeLocRef.current = false; fileRef.current && fileRef.current.click() }}>🔒 위치 없이 찍기</button>
         <div style={S.subBtns}>
           <button style={S.subBtn} onClick={enablePush}>🔔 알림 켜기</button>
           <button style={S.subBtn} onClick={copyInviteLink}>🔗 초대 링크</button>
@@ -393,6 +396,7 @@ const S = {
   cardTime: { position: 'absolute', right: 12, bottom: 12, background: 'rgba(0,0,0,.45)', backdropFilter: 'blur(8px)', color: '#fff', fontSize: 12.5, fontWeight: 600, padding: '7px 12px', borderRadius: 30 },
   cardFoot: { display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px' },
   shoot: { width: '100%', border: 'none', borderRadius: 16, padding: 16, fontFamily: 'inherit', fontSize: 16, fontWeight: 700, cursor: 'pointer', color: '#fff', background: 'linear-gradient(135deg,#ff7a45,#ff4d5e)', boxShadow: '0 8px 20px rgba(255,77,94,.3)', marginBottom: 10 },
+  shootGhost: { width: '100%', border: '1.5px solid #efeff2', borderRadius: 14, padding: 13, fontFamily: 'inherit', fontSize: 14, fontWeight: 600, cursor: 'pointer', color: '#6b6b73', background: '#fff', marginBottom: 14 },
   subBtns: { display: 'flex', gap: 10, marginBottom: 22 },
   subBtn: { flex: 1, border: '1.5px solid #efeff2', background: '#fff', color: '#16161a', borderRadius: 14, padding: 12, fontFamily: 'inherit', fontSize: 13, fontWeight: 600, cursor: 'pointer' },
   label: { fontSize: 12, fontWeight: 600, color: '#9b9ba3', textTransform: 'uppercase', letterSpacing: .4, marginBottom: 10 },

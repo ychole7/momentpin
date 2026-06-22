@@ -63,7 +63,7 @@ export default function Settings({ user, group, onClose, onGroupUpdate, onLeaveG
     if (!myName.trim()) { flash('이름을 입력해 주세요'); return }
     setBusy(true)
     let res = await supabase.from('members').update({
-      display_name: myName.trim(), color: myColor, share_location: shareLoc,
+      display_name: myName.trim(), color: myColor, share_location: true,
     }).eq('id', myMemberId)
     setBusy(false)
     if (res.error) { flash('저장 실패: ' + res.error.message); return }
@@ -149,14 +149,9 @@ export default function Settings({ user, group, onClose, onGroupUpdate, onLeaveG
             ))}
           </div>
 
-          <div style={S.toggleRow}>
-            <div>
-              <div style={{ fontWeight: 600 }}>위치 공유</div>
-              <div style={{ fontSize: 12, color: '#9b9ba3' }}>끄면 내 위치가 지도에 안 보여요</div>
-            </div>
-            <button onClick={() => setShareLoc(!shareLoc)} style={{ ...S.switch, background: shareLoc ? '#13bca4' : '#d8d8de' }}>
-              <span style={{ ...S.knob, transform: shareLoc ? 'translateX(20px)' : 'translateX(0)' }} />
-            </button>
+          <div style={S.infoBox}>
+            📍 위치는 <b>모먼을 찍는 순간에만</b> 공유돼요.<br/>
+            위치를 빼고 싶을 땐 홈에서 <b>'🔒 위치 없이 찍기'</b>를 누르면 돼요.
           </div>
 
           <button style={{ ...S.save, opacity: busy ? .6 : 1 }} disabled={busy} onClick={saveMe}>내 설정 저장</button>
@@ -198,6 +193,7 @@ const S = {
   input: { border: '1.5px solid #efeff2', background: '#fff', borderRadius: 10, padding: '11px 13px', fontFamily: 'inherit', fontSize: 14, fontWeight: 600, color: '#16161a', outline: 'none', textAlign: 'center', boxSizing: 'border-box' },
   hint: { fontSize: 12, color: '#9b9ba3', marginTop: 8 },
   toggleRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 0 14px' },
+  infoBox: { background: '#f4faf9', border: '1.5px solid #d7f3ee', borderRadius: 12, padding: '13px 15px', fontSize: 13, color: '#16161a', lineHeight: 1.6, marginBottom: 4 },
   switch: { width: 46, height: 26, borderRadius: 20, border: 'none', cursor: 'pointer', position: 'relative', padding: 0, transition: 'background .2s' },
   knob: { position: 'absolute', top: 3, left: 3, width: 20, height: 20, borderRadius: '50%', background: '#fff', boxShadow: '0 2px 4px rgba(0,0,0,.2)', transition: 'transform .2s' },
   save: { width: '100%', border: 'none', borderRadius: 12, padding: 13, marginTop: 16, fontFamily: 'inherit', fontSize: 14, fontWeight: 700, cursor: 'pointer', color: '#fff', background: 'linear-gradient(135deg,#ff7a45,#ff4d5e)', boxShadow: '0 6px 16px rgba(255,77,94,.28)' },
