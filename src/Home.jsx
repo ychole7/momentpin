@@ -185,9 +185,12 @@ export default function Home({ user, group, onOpenSettings, onLeaveGroup, onSign
     if (!L || !map) return
     markersRef.current.forEach(mk => map.removeLayer(mk))
     markersRef.current = []
-    const activeId = (moments.filter(m => new Date(m.fired_at) <= new Date() && new Date() <= new Date(m.deadline)).sort((a,b)=>new Date(b.fired_at)-new Date(a.fired_at))[0] || moments.slice().sort((a,b)=>new Date(b.fired_at)-new Date(a.fired_at))[0] || {}).id
+    const _n = new Date()
+    const _open = moments.filter(m => new Date(m.fired_at) <= _n && _n <= new Date(m.deadline))
+    const _recent = moments.slice().sort((a,b)=>new Date(b.fired_at)-new Date(a.fired_at))[0]
+    const activeIds = _open.length ? _open.map(m=>m.id) : (_recent ? [_recent.id] : [])
     for (const p of posts) {
-      if (p.moment_id !== activeId) continue
+      if (!activeIds.includes(p.moment_id)) continue
       if (p.lat == null || p.lng == null) continue
       // 위치 포함 모먼만 핀 표시 (lat/lng 없으면 이미 위에서 skip)
       let imgUrl = signed[p.id] || ''
@@ -218,13 +221,25 @@ export default function Home({ user, group, onOpenSettings, onLeaveGroup, onSign
     if (!isOwner) { flash('그룹을 만든 사람만 모먼을 시작할 수 있어요'); return }
     setBusy(true)
     const now = new Date()
+    // 이미 열린 모먼이 있으면 새로 만들지 않고 재사용 (중복 방지)
+    let openRes = await supabase.from('moments').select('id')
+      .eq('group_id', group.id)
+      .lte('fired_at', now.toISOString())
+      .gte('deadline', now.toISOString())
+      .limit(1)
+    if (openRes.data && openRes.data.length > 0) {
+      setBusy(false)
+      await loadMoments()
+      flash('이미 모먼이 진행 중이에요 📸')
+      try { fetch(window.location.origin + '/api/send-moment?groupId=' + group.id) } catch {}
+      return
+    }
     const deadline = new Date(now.getTime() + (group.window_min || 3) * 60000)
     let res = await supabase.from('moments').insert({ group_id: group.id, fired_at: now.toISOString(), deadline: deadline.toISOString() }).select().single()
     setBusy(false)
     if (res.error) { flash('모먼 시작 실패: ' + res.error.message); return }
     await loadMoments()
-    flash('📸 모먼 시작! 다 같이 찍어요 (' + (group.window_min||5) + '분)')
-    // 푸시도 보내기 (서버 함수 호출)
+    flash('📸 모먼 시작! 다 같이 찍어요 (' + (group.window_min||3) + '분)')
     try { fetch(window.location.origin + '/api/send-moment?groupId=' + group.id) } catch {}
   }
 
@@ -319,13 +334,17 @@ export default function Home({ user, group, onOpenSettings, onLeaveGroup, onSign
 
   // 열린 모먼 판정
   const _now = new Date(nowTick)
-  const openMoment = moments.filter(m => new Date(m.fired_at) <= _now && _now <= new Date(m.deadline)).sort((a,b)=>new Date(b.fired_at)-new Date(a.fired_at))[0] || null
-  // 현재 기준 모먼 = 열린 모먼이 있으면 그것, 없으면 가장 최근 모먼
-  const activeMoment = openMoment || moments.slice().sort((a,b)=>new Date(b.fired_at)-new Date(a.fired_at))[0] || null
-  const activeMomentId = activeMoment ? activeMoment.id : null
-  // 참여 판정: '현재 모먼'에 속한 post만 (옛날 기록 제외)
-  const activePosts = posts.filter(p => p.moment_id === activeMomentId)
-  if (typeof window !== 'undefined') console.log('[모먼핀] 판정 → moments:', moments.length, '/ activeMomentId:', activeMomentId, '/ posts:', posts.length, '/ posts의 moment_id들:', posts.map(p=>p.moment_id), '/ 매칭된 activePosts:', activePosts.length)
+  const openMoments = moments.filter(m => new Date(m.fired_at) <= _now && _now <= new Date(m.deadline))
+  // 사진 찍기용: 가장 먼저 시작된 열린 모먼으로 통일 (모두 같은 곳에 모이게)
+  const openMoment = openMoments.slice().sort((a,b)=>new Date(a.fired_at)-new Date(b.fired_at))[0] || null
+  // 현재 기준 모먼 = 열린 모먼들 or 가장 최근 모먼
+  const recentMoment = moments.slice().sort((a,b)=>new Date(b.fired_at)-new Date(a.fired_at))[0] || null
+  // 참여 집계 대상 모먼 id들 (열린 모먼 전체, 없으면 최근 1개)
+  const activeMomentIds = openMoments.length ? openMoments.map(m=>m.id) : (recentMoment ? [recentMoment.id] : [])
+  const activeMomentId = activeMomentIds[0] || null
+  // 참여 판정: 활성 모먼들에 속한 post (갈라져도 합산)
+  const activePosts = posts.filter(p => activeMomentIds.includes(p.moment_id))
+  if (typeof window !== 'undefined') console.log('[모먼핀] 판정 → moments:', moments.length, '/ 열린:', openMoments.length, '/ activeIds:', activeMomentIds, '/ posts:', posts.length, '/ moment_id들:', posts.map(p=>p.moment_id), '/ 매칭:', activePosts.length)
   const postByUser = {}
   activePosts.forEach(p => { if (!postByUser[p.user_id]) postByUser[p.user_id] = p })
   const remainSec = openMoment ? Math.max(0, Math.floor((new Date(openMoment.deadline) - _now)/1000)) : 0
