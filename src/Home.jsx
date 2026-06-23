@@ -217,7 +217,7 @@ export default function Home({ user, group, onOpenSettings, onLeaveGroup, onSign
     if (!isOwner) { flash('그룹을 만든 사람만 모먼을 시작할 수 있어요'); return }
     setBusy(true)
     const now = new Date()
-    const deadline = new Date(now.getTime() + (group.window_min || 5) * 60000)
+    const deadline = new Date(now.getTime() + (group.window_min || 3) * 60000)
     let res = await supabase.from('moments').insert({ group_id: group.id, fired_at: now.toISOString(), deadline: deadline.toISOString() }).select().single()
     setBusy(false)
     if (res.error) { flash('모먼 시작 실패: ' + res.error.message); return }
