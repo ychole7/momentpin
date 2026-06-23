@@ -281,6 +281,12 @@ export default function Home({ user, group, onOpenSettings, onLeaveGroup, onSign
   const avgD = cnt ? sum / cnt : 0
   const allHere = cnt > 0 && others.every(m => { if (!sharesLoc(m.user_id)) return true; const p = postByUser[m.user_id]; const d = p ? distKm(myPosRef.current, p) : 9; return d != null && d < 0.3 })
 
+  // 참여 현황 (전원 도착)
+  const joinedCount = members.filter(m => postByUser[m.user_id]).length
+  const allJoined = members.length > 0 && joinedCount === members.length
+  const waiting = members.filter(m => !postByUser[m.user_id])
+  const iJoined = !!postByUser[user.id]
+
   return (
     <div style={S.app}>
       <div style={S.top}>
@@ -295,8 +301,22 @@ export default function Home({ user, group, onOpenSettings, onLeaveGroup, onSign
         <div style={S.bannerGlow} />
         <div style={{ position: 'relative', zIndex: 2 }}>
           <div style={S.bTag}>{group.name}</div>
-          <div style={S.bBig}>📸 지금 이 순간</div>
-          <div style={S.bSmall}>{members.length}명 함께 · 모먼 {posts.length}개 · 🟢 실시간</div>
+          {allJoined ? (
+            <>
+              <div style={S.bBig}>✨ 전원 도착!</div>
+              <div style={S.bSmall}>{members.length}명 모두 이 순간을 남겼어요 🎉</div>
+            </>
+          ) : !iJoined ? (
+            <>
+              <div style={S.bBig}>📸 아직 안 찍었어요!</div>
+              <div style={S.bSmall}>지금 모먼을 남겨보세요 · {joinedCount}/{members.length} 참여</div>
+            </>
+          ) : (
+            <>
+              <div style={S.bBig}>📸 지금 이 순간</div>
+              <div style={S.bSmall}>{joinedCount}/{members.length} 참여{waiting.length ? ' · ' + waiting.slice(0,2).map(m=>m.display_name).join(', ') + (waiting.length>2?' 외':'') + ' 대기 중' : ''}</div>
+            </>
+          )}
         </div>
       </div>
 
@@ -311,7 +331,7 @@ export default function Home({ user, group, onOpenSettings, onLeaveGroup, onSign
           <>
             <div style={S.mapWrap}><div ref={mapBoxRef} style={S.map} /></div>
             <div style={S.summary}>
-              <span style={S.sChip}><span style={S.sKey}>참여</span> <b>{posts.length}/{members.length}</b></span>
+              <span style={S.sChip}><span style={S.sKey}>참여</span> <b>{joinedCount}/{members.length}</b></span>
               {allHere ? <span style={S.sChip}>✨ <b>모두 같은 곳에!</b></span> : (
                 <>
                   <span style={S.sSep} />
@@ -384,12 +404,15 @@ export default function Home({ user, group, onOpenSettings, onLeaveGroup, onSign
           const dist = p && m.user_id !== user.id && !hidden ? distLabel(myPosRef.current, p) : ''
           return (
             <div key={m.id} style={S.memberRow}>
-              <div style={{ ...S.avatar, background: m.color }}>{m.display_name[0]}</div>
+              <div style={{ position: 'relative' }}>
+                <div style={{ ...S.avatar, background: m.color, opacity: p ? 1 : 0.4 }}>{m.display_name[0]}</div>
+                <span style={{ ...S.statusDot, background: p ? '#13bca4' : '#d8d8de' }}>{p ? '✓' : ''}</span>
+              </div>
               <div style={{ flex: 1, fontWeight: 600 }}>
                 {m.display_name}{m.user_id === user.id && <span style={S.meTag}>나</span>}
                 {dist && <span style={S.distTag}>{dist}</span>}
               </div>
-              <span style={S.shareTag}>{hidden ? '🔒 위치 숨김' : (p ? '📍 ' + (p.place_label || '위치') : '대기 중')}</span>
+              <span style={S.shareTag}>{!p ? '⏳ 대기 중' : (hidden ? '🔒 위치 숨김' : '📍 ' + (p.place_label || '위치'))}</span>
             </div>
           )
         })}
@@ -470,6 +493,7 @@ const S = {
   memberRow: { display: 'flex', alignItems: 'center', gap: 11, padding: '10px 0', borderBottom: '1px solid #f4f4f6' },
   avatar: { width: 36, height: 36, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, flex: 'none', fontSize: 14 },
   meTag: { fontSize: 11, color: '#9b9ba3', fontWeight: 600, marginLeft: 7 },
+  statusDot: { position: 'absolute', right: -2, bottom: -2, width: 16, height: 16, borderRadius: '50%', border: '2px solid #fafafa', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: '#fff', fontWeight: 700 },
   distTag: { fontSize: 12, color: '#13bca4', fontWeight: 700, marginLeft: 7 },
   shareTag: { fontSize: 12, color: '#9b9ba3', fontWeight: 500 },
   actions: { display: 'flex', gap: 10, marginTop: 24 },
