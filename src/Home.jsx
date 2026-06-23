@@ -54,7 +54,14 @@ export default function Home({ user, group, onOpenSettings, onLeaveGroup, onSign
   const includeLocRef = useRef(true)
 
   useEffect(() => { loadMembers(); loadPosts() }, [group.id])
-  useEffect(() => { if (tab === 'map') setTimeout(() => { mapRef.current = null; initMap() }, 50) }, [tab])
+  useEffect(() => {
+    if (tab === 'map') {
+      const t = setTimeout(initMap, 50)
+      return () => clearTimeout(t)
+    }
+    // 지도 탭을 떠나면 기존 지도 인스턴스를 깨끗이 제거
+    if (mapRef.current) { try { mapRef.current.remove() } catch {} mapRef.current = null; markersRef.current = [] }
+  }, [tab])
   useEffect(() => { drawPins() }, [posts, members])
   useEffect(() => { resolveSigned() }, [posts])
 
@@ -110,7 +117,10 @@ export default function Home({ user, group, onOpenSettings, onLeaveGroup, onSign
 
   function initMap() {
     const L = window.L
-    if (!L || !mapBoxRef.current || mapRef.current) return
+    if (!L || !mapBoxRef.current) return
+    if (mapRef.current) return  // 이미 떠 있으면 중복 생성 안 함
+    // 컨테이너에 이전 Leaflet 흔적이 남아있으면 초기화
+    if (mapBoxRef.current._leaflet_id) { mapBoxRef.current._leaflet_id = null }
     const map = L.map(mapBoxRef.current).setView([37.5665, 126.9780], 13)
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' }).addTo(map)
     mapRef.current = map
