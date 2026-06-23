@@ -135,7 +135,7 @@ export default function Home({ user, group, onOpenSettings, onLeaveGroup, onSign
   }
 
   async function loadPosts() {
-    let res = await supabase.from('posts').select('id,user_id,img_back,img_front,lat,lng,place_label,created_at,is_late').eq('group_id', group.id).order('created_at', { ascending: false })
+    let res = await supabase.from('posts').select('id,moment_id,user_id,img_back,img_front,lat,lng,place_label,created_at,is_late').eq('group_id', group.id).order('created_at', { ascending: false })
     if (res.error) { flash(res.error.message); return }
     const seen = {}, latest = []
     for (const p of (res.data || [])) { if (seen[p.user_id]) continue; seen[p.user_id] = true; latest.push(p) }
