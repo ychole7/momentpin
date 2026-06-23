@@ -38,6 +38,7 @@ export default async function handler(req, res) {
     } else {
       let g = await supabase.from('groups').select('id,name,alarm_mode,fixed_times,random_start,random_end,random_today_hm,random_picked_date,last_fired_date')
       const groups = g.data || []
+      var randomDebug = []
       for (const grp of groups) {
         if (grp.alarm_mode === 'fixed') {
           const times = Array.isArray(grp.fixed_times) ? grp.fixed_times : []
@@ -56,6 +57,7 @@ export default async function handler(req, res) {
             grp.random_today_hm = pickedHM
             grp.random_picked_date = today
           }
+          randomDebug.push({ name: grp.name, todayHM: grp.random_today_hm, pickedDate: grp.random_picked_date, lastFired: grp.last_fired_date, nowHM, match: grp.random_today_hm === nowHM })
           // (b) 지금이 뽑힌 시각이고 + 오늘 아직 안 보냈으면 발송
           if (grp.random_today_hm === nowHM && grp.last_fired_date !== today) {
             targetGroupIds.push(grp.id)
@@ -66,12 +68,16 @@ export default async function handler(req, res) {
     }
 
     if (targetGroupIds.length === 0) {
-      return res.status(200).json({ sent: 0, message: '보낼 그룹 없음', nowHM, today })
+      return res.status(200).json({ sent: 0, message: '보낼 그룹 없음', nowHM, today, randomDebug: typeof randomDebug !== 'undefined' ? randomDebug : [] })
     }
 
     // 5) 각 그룹의 구독자에게 푸시 발송
     let sent = 0, failed = 0
     for (const gid of targetGroupIds) {
+      // 그룹 정보 (이름, 마감시간)
+      let grpInfo = await supabase.from('groups').select('name,window_min').eq('id', gid).single()
+      const gname = grpInfo.data ? grpInfo.data.name : '모먼핀'
+      const winMin = (grpInfo.data && grpInfo.data.window_min) ? grpInfo.data.window_min : 3
       // 이미 열린 모먼이 있으면 새로 만들지 않음 (중복 방지)
       const nowISO = now.toISOString()
       let openCheck = await supabase.from('moments')
@@ -80,8 +86,8 @@ export default async function handler(req, res) {
         .limit(1)
       const hasOpen = openCheck.data && openCheck.data.length > 0
       if (!hasOpen) {
-        // 열린 모먼이 없을 때만 새로 생성 (예: 자동 Cron 발송)
-        const deadline = new Date(now.getTime() + 5 * 60000)
+        // 열린 모먼이 없을 때만 새로 생성 (그룹이 정한 window_min 사용)
+        const deadline = new Date(now.getTime() + winMin * 60000)
         await supabase.from('moments').insert({
           group_id: gid, fired_at: now.toISOString(), deadline: deadline.toISOString()
         })
@@ -89,8 +95,6 @@ export default async function handler(req, res) {
 
       let subs = await supabase.from('push_subscriptions').select('*').eq('group_id', gid)
       const list = subs.data || []
-      let grpInfo = await supabase.from('groups').select('name').eq('id', gid).single()
-      const gname = grpInfo.data ? grpInfo.data.name : '모먼핀'
 
       const payload = JSON.stringify({
         title: '📸 모먼 시간!',
