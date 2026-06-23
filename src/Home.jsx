@@ -144,7 +144,6 @@ export default function Home({ user, group, onOpenSettings, onLeaveGroup, onSign
 
   async function loadMoments() {
     let res = await supabase.from('moments').select('id,fired_at,deadline').eq('group_id', group.id).order('fired_at', { ascending: false }).limit(20)
-    console.log('[모먼핀] loadMoments:', res.error ? ('에러:' + res.error.message) : (res.data || []).length + '개', res.data)
     if (!res.error) setMoments(res.data || [])
   }
 
@@ -344,7 +343,6 @@ export default function Home({ user, group, onOpenSettings, onLeaveGroup, onSign
   const activeMomentId = activeMomentIds[0] || null
   // 참여 판정: 활성 모먼들에 속한 post (갈라져도 합산)
   const activePosts = posts.filter(p => activeMomentIds.includes(p.moment_id))
-  if (typeof window !== 'undefined') console.log('[모먼핀] 판정 → moments:', moments.length, '/ 열린:', openMoments.length, '/ activeIds:', activeMomentIds, '/ posts:', posts.length, '/ moment_id들:', posts.map(p=>p.moment_id), '/ 매칭:', activePosts.length)
   const postByUser = {}
   activePosts.forEach(p => { if (!postByUser[p.user_id]) postByUser[p.user_id] = p })
   const remainSec = openMoment ? Math.max(0, Math.floor((new Date(openMoment.deadline) - _now)/1000)) : 0
