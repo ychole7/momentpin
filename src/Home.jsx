@@ -61,6 +61,7 @@ export default function Home({ user, group, onOpenSettings, onLeaveGroup, onSign
   const myPosRef = useRef(null)
   const membersRef = useRef([])
   const includeLocRef = useRef(true)
+  const openMomentRef = useRef(null)
   const isOwner = group.created_by === user.id
 
   useEffect(() => { loadMembers(); loadPosts() }, [group.id])
@@ -240,18 +241,11 @@ export default function Home({ user, group, onOpenSettings, onLeaveGroup, onSign
       const path = `${group.id}/${postId}_back.jpg`
       let up = await supabase.storage.from('moments').upload(path, file, { upsert: true })
       if (up.error) { flash('업로드 실패: ' + up.error.message); setBusy(false); return }
-      // 열린 모먼이 있으면 거기에 제출, 없으면(예외) 즉석 생성
-      let momentId, late = false
-      if (openMoment) {
-        momentId = openMoment.id
-        late = new Date() > new Date(openMoment.deadline)
-      } else {
-        const now = new Date()
-        const deadline = new Date(now.getTime() + (group.window_min || 5) * 60000)
-        let mres = await supabase.from('moments').insert({ group_id: group.id, fired_at: now.toISOString(), deadline: deadline.toISOString() }).select().single()
-        if (mres.error) { flash('모먼 생성 실패: ' + mres.error.message); setBusy(false); return }
-        momentId = mres.data.id
-      }
+      // 열린 모먼에만 제출 (열린 모먼 없으면 찍기 자체가 막혀있음)
+      const target = openMomentRef.current
+      if (!target) { flash('지금은 모먼 시간이 아니에요'); setBusy(false); return }
+      const momentId = target.id
+      const late = new Date() > new Date(target.deadline)
       let pres = await supabase.from('posts').upsert({
         moment_id: momentId, group_id: group.id, user_id: user.id,
         img_back: path, lat: loc ? loc.lat : null, lng: loc ? loc.lng : null,
@@ -260,6 +254,7 @@ export default function Home({ user, group, onOpenSettings, onLeaveGroup, onSign
       if (pres.error) { flash('기록 실패: ' + pres.error.message); setBusy(false); return }
       flash('모먼 공유 완료! ✨')
       await loadPosts()
+      await loadMoments()
       if (loc && mapRef.current) mapRef.current.setView([loc.lat, loc.lng], 15)
     } catch (err) { flash('오류: ' + (err.message || err)) }
     setBusy(false)
@@ -334,6 +329,7 @@ export default function Home({ user, group, onOpenSettings, onLeaveGroup, onSign
   const remainSec = openMoment ? Math.max(0, Math.floor((new Date(openMoment.deadline) - _now)/1000)) : 0
   const remainLabel = Math.floor(remainSec/60) + ':' + String(remainSec%60).padStart(2,'0')
   const canShoot = !!openMoment
+  openMomentRef.current = openMoment
 
   // 요약 (위치 공유한 사람만 거리 계산)
   const others = members.filter(m => m.user_id !== user.id)
