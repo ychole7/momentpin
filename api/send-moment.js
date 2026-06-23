@@ -38,7 +38,6 @@ export default async function handler(req, res) {
     } else {
       let g = await supabase.from('groups').select('id,name,alarm_mode,fixed_times,random_start,random_end,random_today_hm,random_picked_date,last_fired_date')
       const groups = g.data || []
-      var randomDebug = []
       for (const grp of groups) {
         if (grp.alarm_mode === 'fixed') {
           const times = Array.isArray(grp.fixed_times) ? grp.fixed_times : []
@@ -57,7 +56,6 @@ export default async function handler(req, res) {
             grp.random_today_hm = pickedHM
             grp.random_picked_date = today
           }
-          randomDebug.push({ name: grp.name, todayHM: grp.random_today_hm, pickedDate: grp.random_picked_date, lastFired: grp.last_fired_date, nowHM, match: grp.random_today_hm === nowHM })
           // (b) 지금이 뽑힌 시각이고 + 오늘 아직 안 보냈으면 발송
           if (grp.random_today_hm === nowHM && grp.last_fired_date !== today) {
             targetGroupIds.push(grp.id)
@@ -68,7 +66,7 @@ export default async function handler(req, res) {
     }
 
     if (targetGroupIds.length === 0) {
-      return res.status(200).json({ sent: 0, message: '보낼 그룹 없음', nowHM, today, randomDebug: typeof randomDebug !== 'undefined' ? randomDebug : [] })
+      return res.status(200).json({ sent: 0, message: '보낼 그룹 없음', nowHM, today })
     }
 
     // 5) 각 그룹의 구독자에게 푸시 발송
