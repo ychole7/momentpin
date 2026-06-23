@@ -1,0 +1,14 @@
+{
+  "name": "모먼핀",
+  "short_name": "모먼핀",
+  "description": "정해진 순간, 다 같이 찰칵. 지금 어디 있는지 지도로.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fafafa",
+  "theme_color": "#ff4d5e",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
