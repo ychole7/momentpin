@@ -44,6 +44,7 @@ export default function Home({ user, group, onOpenSettings, onLeaveGroup, onSign
   const [viewPost, setViewPost] = useState(null)
   const [bigUrl, setBigUrl] = useState('')
   const [signed, setSigned] = useState({})
+  const [pushOn, setPushOn] = useState(false)
 
   const mapBoxRef = useRef(null)
   const mapRef = useRef(null)
@@ -64,6 +65,19 @@ export default function Home({ user, group, onOpenSettings, onLeaveGroup, onSign
   }, [tab])
   useEffect(() => { drawPins() }, [posts, members])
   useEffect(() => { resolveSigned() }, [posts])
+
+  // 현재 푸시 구독 상태 확인
+  useEffect(() => {
+    (async () => {
+      try {
+        if (!('serviceWorker' in navigator) || !('PushManager' in window)) return
+        const reg = await navigator.serviceWorker.getRegistration()
+        if (!reg) { setPushOn(false); return }
+        const sub = await reg.pushManager.getSubscription()
+        setPushOn(!!sub)
+      } catch { setPushOn(false) }
+    })()
+  }, [])
 
   // posts 실시간
   useEffect(() => {
@@ -149,10 +163,13 @@ export default function Home({ user, group, onOpenSettings, onLeaveGroup, onSign
       let imgUrl = signed[p.id] || ''
       if (!imgUrl && p.img_back) { let s = await supabase.storage.from('moments').createSignedUrl(p.img_back, 3600); if (!s.error && s.data) imgUrl = s.data.signedUrl }
       const color = colorOf(p.user_id)
-      const html = imgUrl
+      const nm = nameOf(p.user_id)
+      const inner = imgUrl
         ? `<div style="width:48px;height:48px;border-radius:50%;border:3px solid #fff;box-shadow:0 4px 12px rgba(0,0,0,.3);background-image:url('${imgUrl}');background-size:cover;background-position:center;"></div>`
-        : `<div style="width:44px;height:44px;border-radius:50%;border:3px solid #fff;background:${color};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.3);">${nameOf(p.user_id)[0]}</div>`
-      const icon = L.divIcon({ html, className: '', iconSize: [48, 48], iconAnchor: [24, 24] })
+        : `<div style="width:44px;height:44px;border-radius:50%;border:3px solid #fff;background:${color};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.3);">${nm[0]}</div>`
+      const label = `<div style="margin-top:3px;background:#16161a;color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.3);">${nm}</div>`
+      const html = `<div style="display:flex;flex-direction:column;align-items:center;">${inner}${label}</div>`
+      const icon = L.divIcon({ html, className: '', iconSize: [60, 70], iconAnchor: [30, 30] })
       const mk = L.marker([p.lat, p.lng], { icon }).addTo(map)
       mk.on('click', () => setViewPost(p))
       markersRef.current.push(mk)
@@ -215,9 +232,28 @@ export default function Home({ user, group, onOpenSettings, onLeaveGroup, onSign
         endpoint: json.endpoint, p256dh: json.keys.p256dh, auth: json.keys.auth,
       }, { onConflict: 'user_id,group_id,endpoint' })
       if (res.error) { flash('구독 저장 실패: ' + res.error.message); return }
+      setPushOn(true)
       flash('알림 켜짐! 이제 모먼 알림을 받아요 🔔')
     } catch (e) { flash('알림 설정 실패: ' + (e.message || e)) }
   }
+  async function disablePush() {
+    try {
+      const reg = await navigator.serviceWorker.getRegistration()
+      if (reg) {
+        const sub = await reg.pushManager.getSubscription()
+        if (sub) {
+          const ep = sub.endpoint
+          await sub.unsubscribe()
+          await supabase.from('push_subscriptions').delete().eq('user_id', user.id).eq('group_id', group.id).eq('endpoint', ep)
+        }
+      }
+      setPushOn(false)
+      flash('알림을 껐어요 🔕')
+    } catch (e) { flash('알림 끄기 실패: ' + (e.message || e)) }
+  }
+
+  function togglePush() { pushOn ? disablePush() : enablePush() }
+
   function urlBase64ToUint8Array(base64String) {
     const padding = '='.repeat((4 - base64String.length % 4) % 4)
     const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/')
@@ -337,10 +373,9 @@ export default function Home({ user, group, onOpenSettings, onLeaveGroup, onSign
         <input ref={fileRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={onPickFile} />
         <button style={{ ...S.shoot, opacity: busy ? .6 : 1 }} disabled={busy} onClick={() => { includeLocRef.current = true; fileRef.current && fileRef.current.click() }}>{busy ? '올리는 중…' : '📸 모먼 찍기'}</button>
         <button style={{ ...S.shootGhost, opacity: busy ? .6 : 1 }} disabled={busy} onClick={() => { includeLocRef.current = false; fileRef.current && fileRef.current.click() }}>🔒 위치 없이 찍기</button>
-        <div style={S.subBtns}>
-          <button style={S.subBtn} onClick={enablePush}>🔔 알림 켜기</button>
-          <button style={S.subBtn} onClick={copyInviteLink}>🔗 초대 링크</button>
-        </div>
+        <button style={{ ...S.subBtn, ...(pushOn ? S.subBtnOn : {}), width: '100%', marginBottom: 22 }} onClick={togglePush}>
+          {pushOn ? '🔔 알림 켜짐 (탭하면 끄기)' : '🔕 알림 꺼짐 (탭하면 켜기)'}
+        </button>
 
         <div style={S.label}>멤버</div>
         {loading ? <div style={S.muted}>불러오는 중…</div> : members.map(m => {
@@ -360,7 +395,7 @@ export default function Home({ user, group, onOpenSettings, onLeaveGroup, onSign
         })}
 
         <div style={S.actions}>
-          <button style={S.ghost} onClick={onOpenSettings}>⚙️ 설정</button>
+          <button style={S.ghost} onClick={onLeaveGroup}>다른 그룹</button>
           <button style={S.ghost} onClick={onSignOut}>로그아웃</button>
         </div>
       </div>
@@ -402,7 +437,7 @@ const S = {
   tBtn: { flex: 1, border: 'none', background: 'none', fontFamily: 'inherit', fontSize: 13, fontWeight: 600, color: '#9b9ba3', padding: 9, borderRadius: 20, cursor: 'pointer' },
   tBtnOn: { background: '#fff', color: '#16161a', boxShadow: '0 2px 8px rgba(0,0,0,.08)' },
   body: { padding: 14 },
-  mapWrap: { position: 'relative', borderRadius: 20, overflow: 'hidden', boxShadow: '0 4px 24px rgba(20,20,30,.07)', marginBottom: 12 },
+  mapWrap: { position: 'relative', borderRadius: 20, overflow: 'hidden', boxShadow: '0 4px 24px rgba(20,20,30,.07)', marginBottom: 12, zIndex: 0, isolation: 'isolate' },
   map: { width: '100%', height: 300 },
   summary: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, flexWrap: 'wrap', background: '#fff', borderRadius: 14, padding: '11px 14px', boxShadow: '0 4px 24px rgba(20,20,30,.07)', marginBottom: 16, fontSize: 13 },
   sChip: { display: 'inline-flex', alignItems: 'center', gap: 5 },
@@ -428,6 +463,7 @@ const S = {
   shoot: { width: '100%', border: 'none', borderRadius: 16, padding: 16, fontFamily: 'inherit', fontSize: 16, fontWeight: 700, cursor: 'pointer', color: '#fff', background: 'linear-gradient(135deg,#ff7a45,#ff4d5e)', boxShadow: '0 8px 20px rgba(255,77,94,.3)', marginBottom: 10 },
   shootGhost: { width: '100%', border: '1.5px solid #efeff2', borderRadius: 14, padding: 13, fontFamily: 'inherit', fontSize: 14, fontWeight: 600, cursor: 'pointer', color: '#6b6b73', background: '#fff', marginBottom: 14 },
   subBtns: { display: 'flex', gap: 10, marginBottom: 22 },
+  subBtnOn: { background: '#eafaf6', borderColor: '#13bca4', color: '#0e9d88' },
   subBtn: { flex: 1, border: '1.5px solid #efeff2', background: '#fff', color: '#16161a', borderRadius: 14, padding: 12, fontFamily: 'inherit', fontSize: 13, fontWeight: 600, cursor: 'pointer' },
   label: { fontSize: 12, fontWeight: 600, color: '#9b9ba3', textTransform: 'uppercase', letterSpacing: .4, marginBottom: 10 },
   muted: { color: '#9b9ba3', fontSize: 14 },
