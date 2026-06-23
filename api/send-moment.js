@@ -53,11 +53,20 @@ export default async function handler(req, res) {
     // 5) 각 그룹의 구독자에게 푸시 발송
     let sent = 0, failed = 0
     for (const gid of targetGroupIds) {
-      // 모먼 하나 생성 (찍을 시간 기준)
-      const deadline = new Date(now.getTime() + 5 * 60000)
-      await supabase.from('moments').insert({
-        group_id: gid, fired_at: now.toISOString(), deadline: deadline.toISOString()
-      })
+      // 이미 열린 모먼이 있으면 새로 만들지 않음 (중복 방지)
+      const nowISO = now.toISOString()
+      let openCheck = await supabase.from('moments')
+        .select('id').eq('group_id', gid)
+        .lte('fired_at', nowISO).gte('deadline', nowISO)
+        .limit(1)
+      const hasOpen = openCheck.data && openCheck.data.length > 0
+      if (!hasOpen) {
+        // 열린 모먼이 없을 때만 새로 생성 (예: 자동 Cron 발송)
+        const deadline = new Date(now.getTime() + 5 * 60000)
+        await supabase.from('moments').insert({
+          group_id: gid, fired_at: now.toISOString(), deadline: deadline.toISOString()
+        })
+      }
 
       let subs = await supabase.from('push_subscriptions').select('*').eq('group_id', gid)
       const list = subs.data || []
