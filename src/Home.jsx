@@ -45,6 +45,8 @@ export default function Home({ user, group, onOpenSettings, onLeaveGroup, onSign
   const [bigUrl, setBigUrl] = useState('')
   const [signed, setSigned] = useState({})
   const [pushOn, setPushOn] = useState(false)
+  const [moments, setMoments] = useState([])
+  const [nowTick, setNowTick] = useState(Date.now())
 
   const mapBoxRef = useRef(null)
   const mapRef = useRef(null)
@@ -53,8 +55,20 @@ export default function Home({ user, group, onOpenSettings, onLeaveGroup, onSign
   const myPosRef = useRef(null)
   const membersRef = useRef([])
   const includeLocRef = useRef(true)
+  const isOwner = group.created_by === user.id
 
   useEffect(() => { loadMembers(); loadPosts() }, [group.id])
+  useEffect(() => { loadMoments() }, [group.id])
+  useEffect(() => {
+    const t = setInterval(() => setNowTick(Date.now()), 1000)
+    return () => clearInterval(t)
+  }, [])
+  useEffect(() => {
+    const ch = supabase.channel('moments-' + group.id)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'moments', filter: 'group_id=eq.' + group.id }, () => { loadMoments(); loadPosts() })
+      .subscribe()
+    return () => { supabase.removeChannel(ch) }
+  }, [group.id])
   useEffect(() => {
     if (tab === 'map') {
       const t = setTimeout(initMap, 50)
@@ -121,7 +135,12 @@ export default function Home({ user, group, onOpenSettings, onLeaveGroup, onSign
     setPosts(latest)
   }
 
-  async function resolveSigned() {
+  async function loadMoments() {
+    let res = await supabase.from('moments').select('id,fired_at,deadline').eq('group_id', group.id).order('fired_at', { ascending: false }).limit(20)
+    if (!res.error) setMoments(res.data || [])
+  }
+
+    async function resolveSigned() {
     const map = {}
     for (const p of posts) {
       if (p.img_back) { let s = await supabase.storage.from('moments').createSignedUrl(p.img_back, 3600); if (!s.error && s.data) map[p.id] = s.data.signedUrl }
@@ -184,7 +203,21 @@ export default function Home({ user, group, onOpenSettings, onLeaveGroup, onSign
     })
   }
 
-  async function onPickFile(e) {
+  async function startMoment() {
+    if (!isOwner) { flash('그룹을 만든 사람만 모먼을 시작할 수 있어요'); return }
+    setBusy(true)
+    const now = new Date()
+    const deadline = new Date(now.getTime() + (group.window_min || 5) * 60000)
+    let res = await supabase.from('moments').insert({ group_id: group.id, fired_at: now.toISOString(), deadline: deadline.toISOString() }).select().single()
+    setBusy(false)
+    if (res.error) { flash('모먼 시작 실패: ' + res.error.message); return }
+    await loadMoments()
+    flash('📸 모먼 시작! 다 같이 찍어요 (' + (group.window_min||5) + '분)')
+    // 푸시도 보내기 (서버 함수 호출)
+    try { fetch(window.location.origin + '/api/send-moment?groupId=' + group.id) } catch {}
+  }
+
+    async function onPickFile(e) {
     const file = e.target.files && e.target.files[0]
     e.target.value = ''
     if (!file) return
@@ -198,14 +231,22 @@ export default function Home({ user, group, onOpenSettings, onLeaveGroup, onSign
       const path = `${group.id}/${postId}_back.jpg`
       let up = await supabase.storage.from('moments').upload(path, file, { upsert: true })
       if (up.error) { flash('업로드 실패: ' + up.error.message); setBusy(false); return }
-      const now = new Date()
-      const deadline = new Date(now.getTime() + (group.window_min || 5) * 60000)
-      let mres = await supabase.from('moments').insert({ group_id: group.id, fired_at: now.toISOString(), deadline: deadline.toISOString() }).select().single()
-      if (mres.error) { flash('모먼 생성 실패: ' + mres.error.message); setBusy(false); return }
+      // 열린 모먼이 있으면 거기에 제출, 없으면(예외) 즉석 생성
+      let momentId, late = false
+      if (openMoment) {
+        momentId = openMoment.id
+        late = new Date() > new Date(openMoment.deadline)
+      } else {
+        const now = new Date()
+        const deadline = new Date(now.getTime() + (group.window_min || 5) * 60000)
+        let mres = await supabase.from('moments').insert({ group_id: group.id, fired_at: now.toISOString(), deadline: deadline.toISOString() }).select().single()
+        if (mres.error) { flash('모먼 생성 실패: ' + mres.error.message); setBusy(false); return }
+        momentId = mres.data.id
+      }
       let pres = await supabase.from('posts').insert({
-        moment_id: mres.data.id, group_id: group.id, user_id: user.id,
+        moment_id: momentId, group_id: group.id, user_id: user.id,
         img_back: path, lat: loc ? loc.lat : null, lng: loc ? loc.lng : null,
-        place_label: dongLabel, is_late: false,
+        place_label: dongLabel, is_late: late,
       })
       if (pres.error) { flash('기록 실패: ' + pres.error.message); setBusy(false); return }
       flash('모먼 공유 완료! ✨')
@@ -273,6 +314,13 @@ export default function Home({ user, group, onOpenSettings, onLeaveGroup, onSign
 
   const postByUser = {}
   posts.forEach(p => { if (!postByUser[p.user_id]) postByUser[p.user_id] = p })
+
+  // 열린 모먼 판정
+  const _now = new Date(nowTick)
+  const openMoment = moments.filter(m => new Date(m.fired_at) <= _now && _now <= new Date(m.deadline)).sort((a,b)=>new Date(b.fired_at)-new Date(a.fired_at))[0] || null
+  const remainSec = openMoment ? Math.max(0, Math.floor((new Date(openMoment.deadline) - _now)/1000)) : 0
+  const remainLabel = Math.floor(remainSec/60) + ':' + String(remainSec%60).padStart(2,'0')
+  const canShoot = !!openMoment
 
   // 요약 (위치 공유한 사람만 거리 계산)
   const others = members.filter(m => m.user_id !== user.id)
@@ -377,7 +425,7 @@ export default function Home({ user, group, onOpenSettings, onLeaveGroup, onSign
                     <div style={S.cardPhoto}>
                       {url ? <img src={url} style={S.cardImg} alt="" /> : <div style={S.cardNo}>📷</div>}
                       <div style={S.cardLoc}>{hidden ? '🔒 위치 숨김' : '📍 ' + (p.place_label || '위치') + (p.user_id !== user.id ? ' · ' + distLabel(myPosRef.current, p) : '')}</div>
-                      <div style={S.cardTime}>{hhmm(p.created_at)}</div>
+                      <div style={S.cardTime}>{p.is_late ? '⏰ 늦참 · ' : ''}{hhmm(p.created_at)}</div>
                     </div>
                     <div style={S.cardFoot}>
                       <div style={{ ...S.avatar, width: 30, height: 30, background: colorOf(p.user_id) }}>{nameOf(p.user_id)[0]}</div>
@@ -391,9 +439,20 @@ export default function Home({ user, group, onOpenSettings, onLeaveGroup, onSign
         )}
 
         <input ref={fileRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={onPickFile} />
-        <button style={{ ...S.shoot, opacity: busy ? .6 : 1 }} disabled={busy} onClick={() => { includeLocRef.current = true; fileRef.current && fileRef.current.click() }}>{busy ? '올리는 중…' : '📸 모먼 찍기'}</button>
-        <button style={{ ...S.shootGhost, opacity: busy ? .6 : 1 }} disabled={busy} onClick={() => { includeLocRef.current = false; fileRef.current && fileRef.current.click() }}>🔒 위치 없이 찍기</button>
-        <button style={{ ...S.subBtn, ...(pushOn ? S.subBtnOn : {}), width: '100%', marginBottom: 22 }} onClick={togglePush}>
+        {canShoot ? (
+          <>
+            <div style={S.countdown}>📸 지금 찍어요! · ⏱️ <b>{remainLabel}</b> 남음</div>
+            <button style={{ ...S.shoot, opacity: busy ? .6 : 1 }} disabled={busy} onClick={() => { includeLocRef.current = true; fileRef.current && fileRef.current.click() }}>{busy ? '올리는 중…' : '📸 모먼 찍기'}</button>
+            <button style={{ ...S.shootGhost, opacity: busy ? .6 : 1 }} disabled={busy} onClick={() => { includeLocRef.current = false; fileRef.current && fileRef.current.click() }}>🔒 위치 없이 찍기</button>
+          </>
+        ) : (
+          <div style={S.waitBox}>
+            <div style={S.waitTitle}>⏳ 지금은 모먼 시간이 아니에요</div>
+            <div style={S.waitSub}>알림이 오면 다 같이 찍어요</div>
+            {isOwner && <button style={{ ...S.startBtn, opacity: busy ? .6 : 1 }} disabled={busy} onClick={startMoment}>📸 지금 모먼 시작하기</button>}
+          </div>
+        )}
+        <button style={{ ...S.subBtn, ...(pushOn ? S.subBtnOn : {}), width: '100%', marginBottom: 22, marginTop: 12 }} onClick={togglePush}>
           {pushOn ? '🔔 알림 켜짐 (탭하면 끄기)' : '🔕 알림 꺼짐 (탭하면 켜기)'}
         </button>
 
@@ -484,6 +543,11 @@ const S = {
   cardTime: { position: 'absolute', right: 12, bottom: 12, background: 'rgba(0,0,0,.45)', backdropFilter: 'blur(8px)', color: '#fff', fontSize: 12.5, fontWeight: 600, padding: '7px 12px', borderRadius: 30 },
   cardFoot: { display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px' },
   shoot: { width: '100%', border: 'none', borderRadius: 16, padding: 16, fontFamily: 'inherit', fontSize: 16, fontWeight: 700, cursor: 'pointer', color: '#fff', background: 'linear-gradient(135deg,#ff7a45,#ff4d5e)', boxShadow: '0 8px 20px rgba(255,77,94,.3)', marginBottom: 10 },
+  countdown: { textAlign: 'center', background: '#fff1ed', border: '1.5px solid #ffd9cc', color: '#e0593c', borderRadius: 14, padding: '11px 14px', fontSize: 14, fontWeight: 600, marginBottom: 10 },
+  waitBox: { textAlign: 'center', background: '#fff', borderRadius: 18, padding: '22px 18px', boxShadow: '0 4px 24px rgba(20,20,30,.06)' },
+  waitTitle: { fontSize: 15, fontWeight: 700, color: '#16161a', marginBottom: 4 },
+  waitSub: { fontSize: 13, color: '#9b9ba3', marginBottom: 14 },
+  startBtn: { border: 'none', borderRadius: 14, padding: '13px 20px', fontFamily: 'inherit', fontSize: 14, fontWeight: 700, cursor: 'pointer', color: '#fff', background: 'linear-gradient(135deg,#ff7a45,#ff4d5e)', boxShadow: '0 6px 16px rgba(255,77,94,.28)' },
   shootGhost: { width: '100%', border: '1.5px solid #efeff2', borderRadius: 14, padding: 13, fontFamily: 'inherit', fontSize: 14, fontWeight: 600, cursor: 'pointer', color: '#6b6b73', background: '#fff', marginBottom: 14 },
   subBtns: { display: 'flex', gap: 10, marginBottom: 22 },
   subBtnOn: { background: '#eafaf6', borderColor: '#13bca4', color: '#0e9d88' },
