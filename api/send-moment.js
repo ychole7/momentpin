@@ -24,30 +24,49 @@ export default async function handler(req, res) {
     )
 
     // 4) 보낼 대상 결정
-    //    - groupId 지정되면 그 그룹만, 없으면 "지금 시각에 모먼 울릴 그룹" 자동 탐색
+    //    - groupId 지정되면 그 그룹만, 없으면 자동 탐색 (fixed + random)
     const now = new Date()
     let targetGroupIds = []
+
+    // KST 기준 현재 시각/날짜
+    const kst = new Date(now.getTime() + 9 * 3600 * 1000)
+    const nowHM = String(kst.getUTCHours()).padStart(2, '0') + ':' + String(kst.getUTCMinutes()).padStart(2, '0')
+    const today = kst.toISOString().slice(0, 10)
 
     if (req.query.groupId) {
       targetGroupIds = [req.query.groupId]
     } else {
-      // 고정 모드: fixed_times에 현재 시:분이 포함된 그룹
-      const hh = String(now.getHours()).padStart(2, '0')
-      const mm = String(now.getMinutes()).padStart(2, '0')
-      const nowHM = `${hh}:${mm}`
-      let g = await supabase.from('groups').select('id,name,alarm_mode,fixed_times,random_start,random_end')
+      let g = await supabase.from('groups').select('id,name,alarm_mode,fixed_times,random_start,random_end,random_today_hm,random_picked_date,last_fired_date')
       const groups = g.data || []
       for (const grp of groups) {
         if (grp.alarm_mode === 'fixed') {
           const times = Array.isArray(grp.fixed_times) ? grp.fixed_times : []
           if (times.includes(nowHM)) targetGroupIds.push(grp.id)
+        } else if (grp.alarm_mode === 'random') {
+          // (a) 오늘 시각 아직 안 뽑았으면 뽑아서 저장
+          if (grp.random_picked_date !== today) {
+            const startHM = (grp.random_start || '09:00').slice(0, 5)
+            const endHM = (grp.random_end || '21:00').slice(0, 5)
+            const [sh, sm] = startHM.split(':').map(Number)
+            const [eh, em] = endHM.split(':').map(Number)
+            const startMin = sh * 60 + sm, endMin = eh * 60 + em
+            const pick = startMin + Math.floor(Math.random() * Math.max(1, endMin - startMin))
+            const pickedHM = String(Math.floor(pick / 60)).padStart(2, '0') + ':' + String(pick % 60).padStart(2, '0')
+            await supabase.from('groups').update({ random_today_hm: pickedHM, random_picked_date: today }).eq('id', grp.id)
+            grp.random_today_hm = pickedHM
+            grp.random_picked_date = today
+          }
+          // (b) 지금이 뽑힌 시각이고 + 오늘 아직 안 보냈으면 발송
+          if (grp.random_today_hm === nowHM && grp.last_fired_date !== today) {
+            targetGroupIds.push(grp.id)
+            await supabase.from('groups').update({ last_fired_date: today }).eq('id', grp.id)
+          }
         }
-        // random 모드는 B단계에서 별도 처리 (지금은 fixed만)
       }
     }
 
     if (targetGroupIds.length === 0) {
-      return res.status(200).json({ sent: 0, message: '보낼 그룹 없음' })
+      return res.status(200).json({ sent: 0, message: '보낼 그룹 없음', nowHM, today })
     }
 
     // 5) 각 그룹의 구독자에게 푸시 발송
