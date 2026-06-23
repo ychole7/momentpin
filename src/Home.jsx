@@ -170,6 +170,7 @@ export default function Home({ user, group, onOpenSettings, onLeaveGroup, onSign
   function nameOf(uid) { const m = membersRef.current.find(x => x.user_id === uid); return m ? m.display_name : '?' }
   function colorOf(uid) { const m = membersRef.current.find(x => x.user_id === uid); return m ? m.color : '#888' }
   function sharesLoc(uid) { const m = membersRef.current.find(x => x.user_id === uid); return m ? m.share_location !== false : true }
+  function hasLoc(p) { return !!(p && p.lat != null && p.lng != null) }  // 그 모먼에 위치가 포함됐는지
 
   async function drawPins() {
     const L = window.L, map = mapRef.current
@@ -178,7 +179,7 @@ export default function Home({ user, group, onOpenSettings, onLeaveGroup, onSign
     markersRef.current = []
     for (const p of posts) {
       if (p.lat == null || p.lng == null) continue
-      if (!sharesLoc(p.user_id)) continue   // 위치 숨긴 사람은 지도에 안 뜸
+      // 위치 포함 모먼만 핀 표시 (lat/lng 없으면 이미 위에서 skip)
       let imgUrl = signed[p.id] || ''
       if (!imgUrl && p.img_back) { let s = await supabase.storage.from('moments').createSignedUrl(p.img_back, 3600); if (!s.error && s.data) imgUrl = s.data.signedUrl }
       const color = colorOf(p.user_id)
@@ -325,9 +326,9 @@ export default function Home({ user, group, onOpenSettings, onLeaveGroup, onSign
   // 요약 (위치 공유한 사람만 거리 계산)
   const others = members.filter(m => m.user_id !== user.id)
   let farMember = null, farD = -1, sum = 0, cnt = 0
-  others.forEach(m => { if (!sharesLoc(m.user_id)) return; const p = postByUser[m.user_id]; if (!p) return; const d = distKm(myPosRef.current, p); if (d == null) return; sum += d; cnt++; if (d > farD) { farD = d; farMember = m } })
+  others.forEach(m => { const p = postByUser[m.user_id]; if (!hasLoc(p)) return; const d = distKm(myPosRef.current, p); if (d == null) return; sum += d; cnt++; if (d > farD) { farD = d; farMember = m } })
   const avgD = cnt ? sum / cnt : 0
-  const allHere = cnt > 0 && others.every(m => { if (!sharesLoc(m.user_id)) return true; const p = postByUser[m.user_id]; const d = p ? distKm(myPosRef.current, p) : 9; return d != null && d < 0.3 })
+  const allHere = cnt > 0 && others.every(m => { const p = postByUser[m.user_id]; if (!hasLoc(p)) return true; const d = distKm(myPosRef.current, p); return d != null && d < 0.3 })
 
   // 참여 현황 (전원 도착)
   const joinedCount = members.filter(m => postByUser[m.user_id]).length
@@ -396,7 +397,7 @@ export default function Home({ user, group, onOpenSettings, onLeaveGroup, onSign
             {members.map(m => {
               const p = postByUser[m.user_id]
               const url = p ? signed[p.id] : ''
-              const hidden = !sharesLoc(m.user_id)
+              const hidden = p && !hasLoc(p)
               return (
                 <div key={m.id} style={S.gcell} onClick={() => p && setViewPost(p)}>
                   {url ? <img src={url} style={S.gimg} alt="" /> : <div style={S.gwait}>📷</div>}
@@ -405,7 +406,7 @@ export default function Home({ user, group, onOpenSettings, onLeaveGroup, onSign
                       <span style={{ ...S.gdot, background: m.color }} />
                       {m.display_name}{hidden ? '' : (m.user_id !== user.id && p ? ' · ' + distLabel(myPosRef.current, p) : '')}
                     </div>
-                    <div style={S.gloc}>{hidden ? '🔒 위치 숨김' : (p ? (p.place_label || '위치') : '대기 중')}</div>
+                    <div style={S.gloc}>{!p ? '대기 중' : (hasLoc(p) ? (p.place_label || '위치') : '🔒 위치 없이')}</div>
                   </div>
                   {p && <div style={S.gtime}>{hhmm(p.created_at)}</div>}
                 </div>
@@ -419,12 +420,12 @@ export default function Home({ user, group, onOpenSettings, onLeaveGroup, onSign
             {posts.length === 0 ? <div style={S.empty}>아직 모먼이 없어요 🌅<br/>📸 버튼으로 첫 모먼을 남겨보세요</div> :
               posts.map(p => {
                 const url = signed[p.id]
-                const hidden = !sharesLoc(p.user_id)
+                const hidden = !hasLoc(p)
                 return (
                   <div key={p.id} style={S.card} onClick={() => setViewPost(p)}>
                     <div style={S.cardPhoto}>
                       {url ? <img src={url} style={S.cardImg} alt="" /> : <div style={S.cardNo}>📷</div>}
-                      <div style={S.cardLoc}>{hidden ? '🔒 위치 숨김' : '📍 ' + (p.place_label || '위치') + (p.user_id !== user.id ? ' · ' + distLabel(myPosRef.current, p) : '')}</div>
+                      <div style={S.cardLoc}>{!hasLoc(p) ? '🔒 위치 없이' : '📍 ' + (p.place_label || '위치') + (p.user_id !== user.id ? ' · ' + distLabel(myPosRef.current, p) : '')}</div>
                       <div style={S.cardTime}>{p.is_late ? '⏰ 늦참 · ' : ''}{hhmm(p.created_at)}</div>
                     </div>
                     <div style={S.cardFoot}>
@@ -459,8 +460,8 @@ export default function Home({ user, group, onOpenSettings, onLeaveGroup, onSign
         <div style={S.label}>멤버</div>
         {loading ? <div style={S.muted}>불러오는 중…</div> : members.map(m => {
           const p = postByUser[m.user_id]
-          const hidden = !sharesLoc(m.user_id)
-          const dist = p && m.user_id !== user.id && !hidden ? distLabel(myPosRef.current, p) : ''
+          const hidden = p && !hasLoc(p)
+          const dist = p && m.user_id !== user.id && hasLoc(p) ? distLabel(myPosRef.current, p) : ''
           return (
             <div key={m.id} style={S.memberRow}>
               <div style={{ position: 'relative' }}>
@@ -471,7 +472,7 @@ export default function Home({ user, group, onOpenSettings, onLeaveGroup, onSign
                 {m.display_name}{m.user_id === user.id && <span style={S.meTag}>나</span>}
                 {dist && <span style={S.distTag}>{dist}</span>}
               </div>
-              <span style={S.shareTag}>{!p ? '⏳ 대기 중' : (hidden ? '🔒 위치 숨김' : '📍 ' + (p.place_label || '위치'))}</span>
+              <span style={S.shareTag}>{!p ? '⏳ 대기 중' : (hasLoc(p) ? '📍 ' + (p.place_label || '위치') : '🔒 위치 없이')}</span>
             </div>
           )
         })}
@@ -490,7 +491,7 @@ export default function Home({ user, group, onOpenSettings, onLeaveGroup, onSign
               <div style={{ ...S.avatar, background: colorOf(viewPost.user_id) }}>{nameOf(viewPost.user_id)[0]}</div>
               <div style={{ flex: 1 }}>
                 <div style={{ fontWeight: 700 }}>{nameOf(viewPost.user_id)}</div>
-                <div style={{ fontSize: 12, color: '#9b9ba3' }}>{!sharesLoc(viewPost.user_id) ? '🔒 위치 숨김' : '📍 ' + (viewPost.place_label || '위치') + (viewPost.user_id !== user.id ? ' · ' + distLabel(myPosRef.current, viewPost) : '')} · {hhmm(viewPost.created_at)}</div>
+                <div style={{ fontSize: 12, color: '#9b9ba3' }}>{!hasLoc(viewPost) ? '🔒 위치 없이' : '📍 ' + (viewPost.place_label || '위치') + (viewPost.user_id !== user.id ? ' · ' + distLabel(myPosRef.current, viewPost) : '')} · {hhmm(viewPost.created_at)}</div>
               </div>
               <button style={S.popX} onClick={() => setViewPost(null)}>✕</button>
             </div>
