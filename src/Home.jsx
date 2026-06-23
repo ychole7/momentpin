@@ -17,18 +17,24 @@ function distLabel(myPos, loc) {
   return d.toFixed(1) + 'km'
 }
 const fmtKm = (d) => d < 1 ? Math.round(d * 1000) + 'm' : d.toFixed(1) + 'km'
+const SIDO_SHORT = {
+  '서울특별시':'서울','부산광역시':'부산','대구광역시':'대구','인천광역시':'인천',
+  '광주광역시':'광주','대전광역시':'대전','울산광역시':'울산','세종특별자치시':'세종',
+  '경기도':'경기','강원특별자치도':'강원','강원도':'강원','충청북도':'충북','충청남도':'충남',
+  '전북특별자치도':'전북','전라북도':'전북','전라남도':'전남','경상북도':'경북','경상남도':'경남',
+  '제주특별자치도':'제주'
+}
 async function reverseGeocode(lat, lng) {
   try {
     const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=14&accept-language=ko`
     const r = await fetch(url, { headers: { 'Accept': 'application/json' } })
     const j = await r.json()
     const a = j.address || {}
-    const dong = a.quarter || a.neighbourhood || a.suburb || a.village || a.town
-    const gu = a.city_district || a.borough || a.county
-    if (dong && gu) return gu + ' ' + dong
-    if (dong) return dong
-    if (gu) return gu
-    return a.city || a.state || '위치'
+    const sido = SIDO_SHORT[a.state] || a.state || ''
+    const gu = a.city_district || a.borough || a.county || ''
+    const dong = a.quarter || a.neighbourhood || a.suburb || a.village || a.town || ''
+    const label = [sido, gu, dong].filter(Boolean).join(' ')
+    return label || a.city || '위치'
   } catch { return '위치' }
 }
 function hhmm(ts) { const d = new Date(ts); return d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0') }
@@ -177,7 +183,9 @@ export default function Home({ user, group, onOpenSettings, onLeaveGroup, onSign
     if (!L || !map) return
     markersRef.current.forEach(mk => map.removeLayer(mk))
     markersRef.current = []
+    const activeId = (moments.filter(m => new Date(m.fired_at) <= new Date() && new Date() <= new Date(m.deadline)).sort((a,b)=>new Date(b.fired_at)-new Date(a.fired_at))[0] || moments.slice().sort((a,b)=>new Date(b.fired_at)-new Date(a.fired_at))[0] || {}).id
     for (const p of posts) {
+      if (p.moment_id !== activeId) continue
       if (p.lat == null || p.lng == null) continue
       // 위치 포함 모먼만 핀 표시 (lat/lng 없으면 이미 위에서 skip)
       let imgUrl = signed[p.id] || ''
@@ -244,11 +252,11 @@ export default function Home({ user, group, onOpenSettings, onLeaveGroup, onSign
         if (mres.error) { flash('모먼 생성 실패: ' + mres.error.message); setBusy(false); return }
         momentId = mres.data.id
       }
-      let pres = await supabase.from('posts').insert({
+      let pres = await supabase.from('posts').upsert({
         moment_id: momentId, group_id: group.id, user_id: user.id,
         img_back: path, lat: loc ? loc.lat : null, lng: loc ? loc.lng : null,
         place_label: dongLabel, is_late: late,
-      })
+      }, { onConflict: 'moment_id,user_id' })
       if (pres.error) { flash('기록 실패: ' + pres.error.message); setBusy(false); return }
       flash('모먼 공유 완료! ✨')
       await loadPosts()
@@ -313,12 +321,16 @@ export default function Home({ user, group, onOpenSettings, onLeaveGroup, onSign
     flash('초대 링크 복사됨! 카톡에 붙여넣기 ✨')
   }
 
-  const postByUser = {}
-  posts.forEach(p => { if (!postByUser[p.user_id]) postByUser[p.user_id] = p })
-
   // 열린 모먼 판정
   const _now = new Date(nowTick)
   const openMoment = moments.filter(m => new Date(m.fired_at) <= _now && _now <= new Date(m.deadline)).sort((a,b)=>new Date(b.fired_at)-new Date(a.fired_at))[0] || null
+  // 현재 기준 모먼 = 열린 모먼이 있으면 그것, 없으면 가장 최근 모먼
+  const activeMoment = openMoment || moments.slice().sort((a,b)=>new Date(b.fired_at)-new Date(a.fired_at))[0] || null
+  const activeMomentId = activeMoment ? activeMoment.id : null
+  // 참여 판정: '현재 모먼'에 속한 post만 (옛날 기록 제외)
+  const activePosts = posts.filter(p => p.moment_id === activeMomentId)
+  const postByUser = {}
+  activePosts.forEach(p => { if (!postByUser[p.user_id]) postByUser[p.user_id] = p })
   const remainSec = openMoment ? Math.max(0, Math.floor((new Date(openMoment.deadline) - _now)/1000)) : 0
   const remainLabel = Math.floor(remainSec/60) + ':' + String(remainSec%60).padStart(2,'0')
   const canShoot = !!openMoment
