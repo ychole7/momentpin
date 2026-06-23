@@ -40,7 +40,7 @@ async function reverseGeocode(lat, lng) {
 function hhmm(ts) { const d = new Date(ts); return d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0') }
 function ago(ts) { const d = (Date.now() - new Date(ts).getTime()) / 1000; if (d < 60) return '방금'; if (d < 3600) return Math.floor(d / 60) + '분 전'; return Math.floor(d / 3600) + '시간 전' }
 
-export default function Home({ user, group, onOpenSettings, onLeaveGroup, onSignOut }) {
+export default function Home({ user, group, onOpenSettings, onOpenStats, onLeaveGroup, onSignOut }) {
   const [members, setMembers] = useState([])
   const [posts, setPosts] = useState([])
   const [loading, setLoading] = useState(true)
@@ -508,6 +508,7 @@ export default function Home({ user, group, onOpenSettings, onLeaveGroup, onSign
           )
         })}
 
+        <button style={S.statsBtn} onClick={() => onOpenStats && onOpenStats(members)}>🎁 우리의 순간들 보기</button>
         <div style={S.actions}>
           <button style={S.ghost} onClick={onLeaveGroup}>다른 그룹</button>
           <button style={S.ghost} onClick={onSignOut}>로그아웃</button>
@@ -592,6 +593,7 @@ const S = {
   statusDot: { position: 'absolute', right: -2, bottom: -2, width: 16, height: 16, borderRadius: '50%', border: '2px solid #fafafa', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: '#fff', fontWeight: 700 },
   distTag: { fontSize: 12, color: '#13bca4', fontWeight: 700, marginLeft: 7 },
   shareTag: { fontSize: 12, color: '#9b9ba3', fontWeight: 500 },
+  statsBtn: { width: '100%', border: 'none', borderRadius: 14, padding: 14, fontFamily: 'inherit', fontSize: 14, fontWeight: 700, cursor: 'pointer', color: '#16161a', background: 'linear-gradient(135deg,#fff1ed,#ffe9e0)', border: '1.5px solid #ffd9cc', marginTop: 24 },
   actions: { display: 'flex', gap: 10, marginTop: 24 },
   ghost: { flex: 1, border: '1.5px solid #efeff2', background: '#fff', color: '#16161a', borderRadius: 14, padding: 13, fontFamily: 'inherit', fontSize: 14, fontWeight: 600, cursor: 'pointer' },
   pop: { position: 'fixed', inset: 0, zIndex: 3000, background: 'rgba(10,10,14,.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 },

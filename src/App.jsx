@@ -5,12 +5,15 @@ import Auth from './Auth'
 import GroupGate from './GroupGate'
 import Home from './Home'
 import Settings from './Settings'
+import Stats from './Stats'
 
 export default function App() {
   const [session, setSession] = useState(null)
   const [group, setGroup] = useState(null)
   const [booting, setBooting] = useState(true)
   const [showSettings, setShowSettings] = useState(false)
+  const [showStats, setShowStats] = useState(false)
+  const [statsMembers, setStatsMembers] = useState([])
 
   useEffect(() => {
     let mounted = true
@@ -41,7 +44,16 @@ export default function App() {
   if (!session) return <Auth />
   if (!group) return <GroupGate user={session.user} onReady={setGroup} />
 
-  if (showSettings) return (
+  if (showStats) return (
+    <Stats
+      user={session.user}
+      group={group}
+      members={statsMembers}
+      onClose={() => setShowStats(false)}
+    />
+  )
+
+    if (showSettings) return (
     <Settings
       user={session.user}
       group={group}
@@ -56,6 +68,7 @@ export default function App() {
       user={session.user}
       group={group}
       onOpenSettings={() => setShowSettings(true)}
+      onOpenStats={(m) => { setStatsMembers(m || []); setShowStats(true) }}
       onLeaveGroup={() => setGroup(null)}
       onSignOut={signOut}
     />
