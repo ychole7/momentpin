@@ -18,6 +18,8 @@ export default function MyPage({ user, group, members, onClose, onOpenStats, onG
   const [mode, setMode] = useState(group.alarm_mode || 'fixed')
   const [times, setTimes] = useState(Array.isArray(group.fixed_times) ? group.fixed_times : ['08:00', '21:00'])
   const [windowMin, setWindowMin] = useState(group.window_min || 3)
+  const [rStart, setRStart] = useState((group.random_start || '09:00').slice(0,5))
+  const [rEnd, setREnd] = useState((group.random_end || '21:00').slice(0,5))
 
   const [busy, setBusy] = useState(false)
   const [toast, setToast] = useState('')
@@ -110,11 +112,11 @@ export default function MyPage({ user, group, members, onClose, onOpenStats, onG
 
   async function saveGroup() {
     setBusy(true)
-    let res = await supabase.from('groups').update({ alarm_mode: mode, fixed_times: times, window_min: windowMin }).eq('id', group.id)
+    let res = await supabase.from('groups').update({ alarm_mode: mode, fixed_times: times, window_min: windowMin, random_start: rStart, random_end: rEnd }).eq('id', group.id)
     setBusy(false)
     if (res.error) { flash('저장 실패: ' + res.error.message); return }
     flash('그룹 설정 저장됨 ✨')
-    if (onGroupUpdate) onGroupUpdate({ ...group, alarm_mode: mode, fixed_times: times, window_min: windowMin })
+    if (onGroupUpdate) onGroupUpdate({ ...group, alarm_mode: mode, fixed_times: times, window_min: windowMin, random_start: rStart, random_end: rEnd })
   }
 
   async function copyInvite() {
@@ -216,12 +218,34 @@ export default function MyPage({ user, group, members, onClose, onOpenStats, onG
                 <div style={S.ownerNote}>🔒 그룹 알림 설정은 <b>그룹장</b>만 바꿀 수 있어요</div>
               ) : (
                 <>
-                  <div style={S.rowLabel}>찍는 시간 (하루 1~3회)</div>
+                  <div style={S.rowLabel}>언제 다 같이 찍을까요?</div>
                   <div style={S.pills}>
-                    {times.map(t => <button key={t} style={S.timePill} onClick={() => removeTime(t)}>{t} ✕</button>)}
-                    {times.length < 3 && <button style={S.addPill} onClick={addTime}>＋ 추가</button>}
+                    <button style={{ ...S.pill, ...(mode === 'fixed' ? S.pillOn : {}) }} onClick={() => setMode('fixed')}>⏰ 정해진 시간</button>
+                    <button style={{ ...S.pill, ...(mode === 'random' ? S.pillOn : {}) }} onClick={() => setMode('random')}>⚡ 랜덤</button>
                   </div>
-                  <div style={{ ...S.rowLabel, marginTop: 16 }}>찍을 수 있는 시간</div>
+
+                  {mode === 'fixed' ? (
+                    <>
+                      <div style={{ ...S.rowLabel, marginTop: 16 }}>찍는 시간 (하루 1~3회)</div>
+                      <div style={S.pills}>
+                        {times.map(t => <button key={t} style={S.timePill} onClick={() => removeTime(t)}>{t} ✕</button>)}
+                        {times.length < 3 && <button style={S.addPill} onClick={addTime}>＋ 추가</button>}
+                      </div>
+                      <div style={S.hint}>시간을 탭하면 삭제돼요</div>
+                    </>
+                  ) : (
+                    <>
+                      <div style={{ ...S.rowLabel, marginTop: 16 }}>랜덤 시간대</div>
+                      <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                        <input style={{ ...S.input, textAlign: 'center', width: 90 }} value={rStart} onChange={e => setRStart(e.target.value)} placeholder="09:00" />
+                        <span style={{ color: '#9b9ba3' }}>~</span>
+                        <input style={{ ...S.input, textAlign: 'center', width: 90 }} value={rEnd} onChange={e => setREnd(e.target.value)} placeholder="21:00" />
+                      </div>
+                      <div style={S.hint}>이 시간대 안에서 매일 한 번, 아무도 모르는 시각에 깜짝 알림 ⚡</div>
+                    </>
+                  )}
+
+                  <div style={{ ...S.rowLabel, marginTop: 16 }}>찍을 수 있는 시간 (마감)</div>
                   <div style={S.pills}>
                     {[2, 3, 5, 10].map(w => <button key={w} style={{ ...S.pill, ...(windowMin === w ? S.pillOn : {}) }} onClick={() => setWindowMin(w)}>{w}분</button>)}
                   </div>
@@ -261,6 +285,7 @@ const S = {
   input: { width: '100%', border: '1.5px solid #efeff2', borderRadius: 10, padding: '11px 13px', fontFamily: 'inherit', fontSize: 14, fontWeight: 600, outline: 'none', boxSizing: 'border-box' },
   pills: { display: 'flex', gap: 8, flexWrap: 'wrap' },
   pill: { border: '1.5px solid #efeff2', background: '#fff', color: '#16161a', padding: '9px 15px', borderRadius: 22, fontFamily: 'inherit', fontSize: 13, fontWeight: 600, cursor: 'pointer' },
+  hint: { fontSize: 12, color: '#9b9ba3', marginTop: 8 },
   pillOn: { background: '#16161a', color: '#fff', borderColor: '#16161a' },
   timePill: { border: '1.5px solid #ffd9cc', background: '#fff1ed', color: '#e0593c', padding: '9px 14px', borderRadius: 22, fontFamily: 'inherit', fontSize: 13, fontWeight: 700, cursor: 'pointer' },
   addPill: { border: '1.5px dashed #c4c4cc', background: '#fff', color: '#9b9ba3', padding: '9px 14px', borderRadius: 22, fontFamily: 'inherit', fontSize: 13, fontWeight: 600, cursor: 'pointer' },
