@@ -4,7 +4,7 @@ import { supabase } from './supabaseClient'
 import Auth from './Auth'
 import GroupGate from './GroupGate'
 import Home from './Home'
-import Settings from './Settings'
+import MyPage from './MyPage'
 import Stats from './Stats'
 
 export default function App() {
@@ -49,17 +49,20 @@ export default function App() {
       user={session.user}
       group={group}
       members={statsMembers}
-      onClose={() => setShowStats(false)}
+      onClose={() => { setShowStats(false); setShowSettings(true) }}
     />
   )
 
     if (showSettings) return (
-    <Settings
+    <MyPage
       user={session.user}
       group={group}
+      members={statsMembers}
       onClose={() => setShowSettings(false)}
+      onOpenStats={(m) => { setStatsMembers(m || []); setShowStats(true); setShowSettings(false) }}
       onGroupUpdate={(g) => setGroup(g)}
       onLeaveGroup={() => { setShowSettings(false); setGroup(null) }}
+      onSignOut={signOut}
     />
   )
 
@@ -68,9 +71,7 @@ export default function App() {
       user={session.user}
       group={group}
       onOpenSettings={() => setShowSettings(true)}
-      onOpenStats={(m) => { setStatsMembers(m || []); setShowStats(true) }}
-      onLeaveGroup={() => setGroup(null)}
-      onSignOut={signOut}
+      onMembersLoaded={(m) => setStatsMembers(m || [])}
     />
   )
 }

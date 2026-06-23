@@ -40,7 +40,7 @@ async function reverseGeocode(lat, lng) {
 function hhmm(ts) { const d = new Date(ts); return d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0') }
 function ago(ts) { const d = (Date.now() - new Date(ts).getTime()) / 1000; if (d < 60) return '방금'; if (d < 3600) return Math.floor(d / 60) + '분 전'; return Math.floor(d / 3600) + '시간 전' }
 
-export default function Home({ user, group, onOpenSettings, onOpenStats, onLeaveGroup, onSignOut }) {
+export default function Home({ user, group, onOpenSettings, onMembersLoaded }) {
   const [members, setMembers] = useState([])
   const [posts, setPosts] = useState([])
   const [loading, setLoading] = useState(true)
@@ -132,6 +132,7 @@ export default function Home({ user, group, onOpenSettings, onOpenStats, onLeave
     setMembers(list); membersRef.current = list
     setLoading(false)
     drawPins()
+    if (onMembersLoaded) onMembersLoaded(list)
   }
 
   async function loadPosts() {
@@ -484,9 +485,6 @@ export default function Home({ user, group, onOpenSettings, onOpenStats, onLeave
             {isOwner && <button style={{ ...S.startBtn, opacity: busy ? .6 : 1 }} disabled={busy} onClick={startMoment}>📸 지금 모먼 시작하기</button>}
           </div>
         )}
-        <button style={{ ...S.subBtn, ...(pushOn ? S.subBtnOn : {}), width: '100%', marginBottom: 22, marginTop: 12 }} onClick={togglePush}>
-          {pushOn ? '🔔 알림 켜짐 (탭하면 끄기)' : '🔕 알림 꺼짐 (탭하면 켜기)'}
-        </button>
 
         <div style={S.label}>멤버</div>
         {loading ? <div style={S.muted}>불러오는 중…</div> : members.map(m => {
@@ -507,12 +505,6 @@ export default function Home({ user, group, onOpenSettings, onOpenStats, onLeave
             </div>
           )
         })}
-
-        <button style={S.statsBtn} onClick={() => onOpenStats && onOpenStats(members)}>🎁 우리의 순간들 보기</button>
-        <div style={S.actions}>
-          <button style={S.ghost} onClick={onLeaveGroup}>다른 그룹</button>
-          <button style={S.ghost} onClick={onSignOut}>로그아웃</button>
-        </div>
       </div>
 
       {viewPost && (

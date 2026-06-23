@@ -82,9 +82,6 @@ export default function Stats({ user, group, members, onClose }) {
             ))}
           </div>
 
-          <div style={S.giftNote}>
-            🎁 매년 12월, 한 해 동안 모은 순간들이<br/>특별한 선물로 찾아올 거예요
-          </div>
         </div>
       )}
     </div>
@@ -114,5 +111,4 @@ const S = {
   rankDot: { width: 12, height: 12, borderRadius: '50%', flex: 'none' },
   rankCount: { fontSize: 14, fontWeight: 700, color: '#16161a' },
   meTag: { fontSize: 11, color: '#9b9ba3', fontWeight: 600, marginLeft: 7 },
-  giftNote: { textAlign: 'center', background: 'linear-gradient(135deg,#fff1ed,#ffe9e0)', border: '1.5px solid #ffd9cc', borderRadius: 16, padding: '18px 16px', fontSize: 13.5, color: '#16161a', lineHeight: 1.7, fontWeight: 500 },
 }
