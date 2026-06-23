@@ -444,8 +444,12 @@ export default function Home({ user, group, onOpenSettings, onLeaveGroup, onSign
 
         {tab === 'feed' && (
           <div style={S.feed}>
-            {posts.length === 0 ? <div style={S.empty}>아직 모먼이 없어요 🌅<br/>📸 버튼으로 첫 모먼을 남겨보세요</div> :
-              posts.map(p => {
+            {activePosts.length === 0 ? (
+              openMoments.length
+                ? <div style={S.empty}>아직 아무도 안 찍었어요 📸<br/>이번 모먼의 첫 순간을 남겨보세요</div>
+                : <div style={S.empty}>지금은 모먼 시간이 아니에요 🌙<br/>알림이 오면 다 같이 찍어요</div>
+            ) :
+              activePosts.map(p => {
                 const url = signed[p.id]
                 const hidden = !hasLoc(p)
                 return (
