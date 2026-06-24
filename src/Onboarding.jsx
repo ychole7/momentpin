@@ -93,7 +93,7 @@ function Art({ kind }) {
 
 const S = {
   wrap: { position: 'fixed', inset: 0, background: '#fff', zIndex: 9000, display: 'flex', flexDirection: 'column', fontFamily: "'Outfit','Gowun Dodum',sans-serif", color: '#16161a', maxWidth: 480, margin: '0 auto' },
-  skipRow: { display: 'flex', justifyContent: 'flex-end', padding: 'calc(env(safe-area-inset-top, 0px) + 14px) 18px 0', minHeight: 44 },
+  skipRow: { display: 'flex', justifyContent: 'flex-end', padding: 'max(calc(env(safe-area-inset-top, 0px) + 16px), 56px) 18px 0', minHeight: 44 },
   skip: { border: 'none', background: '#f4f4f6', color: '#6b6b73', fontFamily: 'inherit', fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: '7px 14px', borderRadius: 16 },
   body: { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '0 32px', textAlign: 'center' },
   art: { marginBottom: 32 },
