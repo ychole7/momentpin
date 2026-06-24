@@ -109,6 +109,15 @@ export default function MyPage({ user, group, members, onClose, onOpenStats, onG
   function removeTime(t) { setTimes(times.filter(x => x !== t)) }
 
   async function saveGroup() {
+    // 유효성 검사
+    if (mode === 'fixed') {
+      if (!times.length) { flash('모먼 시간을 1개 이상 추가해 주세요'); return }
+    } else {
+      const toMin = (t) => { const [h, m] = t.split(':').map(Number); return h * 60 + m }
+      const s = toMin(rStart), e = toMin(rEnd)
+      if (e <= s) { flash('끝 시간이 시작 시간보다 늦어야 해요'); return }
+      if (e - s < 10) { flash('랜덤 시간대는 최소 10분 이상으로 정해 주세요'); return }
+    }
     setBusy(true)
     let res = await supabase.from('groups').update({ alarm_mode: mode, fixed_times: times, window_min: windowMin, random_start: rStart, random_end: rEnd }).eq('id', group.id)
     setBusy(false)
