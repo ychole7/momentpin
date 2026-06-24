@@ -549,8 +549,7 @@ export default function Home({ user, group, onOpenSettings, onMembersLoaded, onO
         ) : (
           <div style={S.waitBox}>
             <div style={S.waitTitle}>⏳ 지금은 모먼 시간이 아니에요</div>
-            <div style={S.waitSub}>{isOwner ? '아래 버튼으로 지금 바로 시작할 수 있어요' : '모먼 시간이 되면 알림으로 알려드려요'}</div>
-            {isOwner && <button style={{ ...S.startBtn, opacity: busy ? .6 : 1 }} disabled={busy} onClick={startMoment}>📍 지금 모먼 시작하기</button>}
+            <div style={S.waitSub}>모먼 시간이 되면 알림으로 알려드려요</div>
           </div>
         )}
 
@@ -566,7 +565,7 @@ export default function Home({ user, group, onOpenSettings, onMembersLoaded, onO
                 {hasOpen && <span style={{ ...S.statusDot, background: pActive ? '#13bca4' : '#d8d8de' }}>{pActive ? '✓' : ''}</span>}
               </div>
               <div style={{ flex: 1, fontWeight: 600 }}>
-                {m.display_name}{m.user_id === user.id && <span style={S.meTag}>나</span>}
+                {m.display_name}{m.user_id === group.created_by && <span style={S.crown} title="그룹장">👑</span>}{m.user_id === user.id && <span style={S.meTag}>나</span>}
                 {dist && <span style={S.distTag}>{dist}</span>}
               </div>
               <span style={S.shareTag}>{hasOpen && !pActive ? '⏳ 대기 중' : (!pDisp ? '·' : (hasLoc(pDisp) ? '📍 ' + (pDisp.place_label || '위치') : '🔒 위치 없이'))}</span>
@@ -683,6 +682,7 @@ const S = {
   muted: { color: '#9b9ba3', fontSize: 14 },
   memberRow: { display: 'flex', alignItems: 'center', gap: 11, padding: '10px 0', borderBottom: '1px solid #f4f4f6' },
   avatar: { width: 36, height: 36, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, flex: 'none', fontSize: 14 },
+  crown: { fontSize: 13, marginLeft: 5 },
   meTag: { fontSize: 11, color: '#9b9ba3', fontWeight: 600, marginLeft: 7 },
   statusDot: { position: 'absolute', right: -2, bottom: -2, width: 16, height: 16, borderRadius: '50%', border: '2px solid #fafafa', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: '#fff', fontWeight: 700 },
   distTag: { fontSize: 12, color: '#13bca4', fontWeight: 700, marginLeft: 7 },
