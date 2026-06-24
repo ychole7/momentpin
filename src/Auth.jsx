@@ -1,9 +1,11 @@
 // src/Auth.jsx
 import { useState } from 'react'
 import { supabase } from './supabaseClient'
+import Privacy from './Privacy'
 
 export default function Auth() {
   const [mode, setMode] = useState('login') // 'login' | 'signup'
+  const [showPrivacy, setShowPrivacy] = useState(false)
   const [email, setEmail] = useState('')
   const [pw, setPw] = useState('')
   const [busy, setBusy] = useState(false)
@@ -34,6 +36,8 @@ export default function Auth() {
     setBusy(false)
   }
 
+  if (showPrivacy) return <Privacy onClose={() => setShowPrivacy(false)} />
+
   return (
     <div style={S.wrap}>
       <div style={S.card}>
@@ -57,7 +61,7 @@ export default function Auth() {
         {mode === 'signup' && (
           <label style={S.ageRow}>
             <input type="checkbox" checked={age} onChange={e => setAge(e.target.checked)} style={S.checkbox} />
-            <span>만 14세 이상이며, <a href="/privacy" onClick={e => e.preventDefault()} style={S.link}>개인정보처리방침</a>에 동의합니다.</span>
+            <span>만 14세 이상이며, <button type="button" onClick={() => setShowPrivacy(true)} style={S.linkBtn}>개인정보처리방침</button>에 동의합니다.</span>
           </label>
         )}
 
@@ -91,6 +95,7 @@ const S = {
   ageRow: { display: 'flex', alignItems: 'flex-start', gap: 9, fontSize: 12.5, color: '#6b6b73', lineHeight: 1.5, margin: '2px 2px 4px', cursor: 'pointer', textAlign: 'left' },
   checkbox: { width: 17, height: 17, marginTop: 1, accentColor: '#ff4d5e', flex: 'none', cursor: 'pointer' },
   link: { color: '#ff4d5e', textDecoration: 'underline', fontWeight: 600 },
+  linkBtn: { color: '#ff4d5e', textDecoration: 'underline', fontWeight: 600, border: 'none', background: 'none', padding: 0, font: 'inherit', cursor: 'pointer' },
   msg: { fontSize: 13, color: '#e0593c', background: '#fff1ed', padding: '10px 12px',
     borderRadius: 10, margin: '4px 0 12px' },
   primary: { width: '100%', border: 'none', borderRadius: 14, padding: 15, fontSize: 15, fontWeight: 700,
