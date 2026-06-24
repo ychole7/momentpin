@@ -554,7 +554,7 @@ export default function Home({ user, group, onOpenSettings, onMembersLoaded, onO
         )}
 
         <div style={S.label}>멤버</div>
-        {loading ? <div style={S.muted}>불러오는 중…</div> : members.map(m => {
+        {loading ? <MemberSkeleton /> : members.map(m => {
           const pActive = postByUser[m.user_id]   // 열린 모먼 참여 여부 (✓/대기)
           const pDisp = displayByUser[m.user_id]   // 표시용 (지난 결과 포함)
           const dist = pDisp && m.user_id !== user.id && hasLoc(pDisp) ? distLabel(myPosRef.current, pDisp) : ''
@@ -597,6 +597,22 @@ export default function Home({ user, group, onOpenSettings, onMembersLoaded, onO
 
       {toast && <div style={S.toast}>{toast}</div>}
     </div>
+  )
+}
+
+function MemberSkeleton() {
+  return (
+    <>
+      {[0,1,2].map(i => (
+        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '12px 0', borderBottom: '1px solid #f4f4f6' }}>
+          <div className="skel" style={{ width: 44, height: 44, borderRadius: '50%' }} />
+          <div style={{ flex: 1 }}>
+            <div className="skel" style={{ width: '40%', height: 13, marginBottom: 7 }} />
+            <div className="skel" style={{ width: '25%', height: 11 }} />
+          </div>
+        </div>
+      ))}
+    </>
   )
 }
 
