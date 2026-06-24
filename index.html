@@ -1,21 +1,529 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>momentpin</title>
-    <link rel="manifest" href="/manifest.json" />
-    <meta name="theme-color" content="#ff4d5e" />
-    <link rel="apple-touch-icon" href="/icon-192.png" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <meta name="apple-mobile-web-app-title" content="모먼핀" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>모먼핀 · 지금 이 순간</title>
+<style>
+  :root{
+    --ink:#1a1d24;
+    --paper:#f3ede2;
+    --paper2:#ece3d4;
+    --flash:#ff5a3c;
+    --flash2:#ff8a4c;
+    --teal:#0f6e6a;
+    --muted:#8a8170;
+    --line:#d8cdb8;
+    --good:#0f6e6a;
+    --late:#c47a2a;
+    --shadow:0 8px 28px rgba(26,29,36,.13);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:'Gowun Dodum',-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo',sans-serif;
+    background:var(--paper);
+    color:var(--ink);
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+    overscroll-behavior-y:contain;
+  }
+  @import url('https://fonts.googleapis.com/css2?family=Gowun+Dodum&display=swap');
+
+  #app{max-width:480px;margin:0 auto;min-height:100vh;position:relative;padding-bottom:84px;background:var(--paper)}
+
+  /* ---------- top bar ---------- */
+  .topbar{
+    position:sticky;top:0;z-index:40;
+    background:var(--paper);
+    border-bottom:1px solid var(--line);
+    padding:14px 18px 12px;
+    display:flex;align-items:center;justify-content:space-between;
+  }
+  .brand{display:flex;align-items:center;gap:9px;font-weight:400}
+  .brand .pin{
+    width:26px;height:26px;border-radius:50% 50% 50% 2px;
+    background:var(--flash);transform:rotate(-45deg);
+    box-shadow:0 3px 8px rgba(255,90,60,.4);position:relative;flex:none;
+  }
+  .brand .pin::after{content:"";position:absolute;inset:8px;background:var(--paper);border-radius:50%}
+  .brand h1{font-size:18px;margin:0;letter-spacing:-.3px}
+  .brand small{display:block;font-size:10px;color:var(--muted);letter-spacing:2px;margin-top:-2px;transform:translateX(1px)}
+  .gcode{font-size:11px;color:var(--muted);background:var(--paper2);border:1px solid var(--line);padding:4px 9px;border-radius:20px}
+
+  /* ---------- countdown hero ---------- */
+  .hero{padding:22px 18px 8px;text-align:center}
+  .hero .eyebrow{font-size:11px;letter-spacing:3px;color:var(--teal);text-transform:uppercase}
+  .clock{
+    font-size:64px;line-height:1;margin:8px 0 2px;font-weight:400;
+    font-variant-numeric:tabular-nums;letter-spacing:1px;
+  }
+  .clock.urgent{color:var(--flash);animation:beat .9s ease-in-out infinite}
+  @keyframes beat{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
+  @keyframes heartPop{0%{transform:scale(1)}35%{transform:scale(1.5)}60%{transform:scale(.9)}100%{transform:scale(1)}}
+  .heart-pop{animation:heartPop .42s ease-out}
+  @keyframes confettiFall{0%{transform:translateY(-10px) rotate(0);opacity:1}100%{transform:translateY(110vh) rotate(720deg);opacity:0}}
+  .confetti-piece{position:fixed;top:-10px;width:10px;height:14px;z-index:9999;pointer-events:none;animation:confettiFall linear forwards}
+  @keyframes popIn{0%{transform:scale(.6);opacity:0}60%{transform:scale(1.05)}100%{transform:scale(1);opacity:1}}
+  .pop-in{animation:popIn .35s ease-out}
+  .hero .sub{font-size:13px;color:var(--muted)}
+  .hero .next{font-size:13px;color:var(--ink)}
+  .hero .next b{color:var(--teal)}
+
+  .shutter-wrap{padding:14px 18px 4px;text-align:center}
+  .shutter{
+    width:120px;height:120px;border-radius:50%;border:none;cursor:pointer;
+    background:radial-gradient(circle at 50% 40%,var(--flash2),var(--flash));
+    box-shadow:0 10px 30px rgba(255,90,60,.45),inset 0 0 0 6px rgba(255,255,255,.25);
+    color:#fff;font-family:inherit;font-size:15px;position:relative;
+    display:inline-flex;align-items:center;justify-content:center;flex-direction:column;gap:2px;
+    transition:transform .12s;
+  }
+  .shutter:active{transform:scale(.93)}
+  .shutter .cam{font-size:34px;line-height:1}
+  .shutter.dim{background:var(--paper2);color:var(--muted);box-shadow:none;border:2px solid var(--line);cursor:default}
+  .shutter.dim .cam{filter:grayscale(1);opacity:.5}
+  .window-note{font-size:12px;color:var(--late);margin-top:10px;min-height:16px}
+
+  /* ---------- feed ---------- */
+  .feed-h{display:flex;align-items:baseline;justify-content:space-between;padding:18px 18px 6px}
+  .feed-h h2{font-size:15px;margin:0;letter-spacing:-.2px}
+  .feed-h span{font-size:12px;color:var(--muted)}
+  .feed{padding:4px 14px 10px;display:flex;flex-direction:column;gap:14px}
+
+  .card{background:#fff;border-radius:18px;overflow:hidden;box-shadow:var(--shadow);border:1px solid #efe7d8}
+  .card .ph{position:relative;aspect-ratio:4/5;background:#222;overflow:hidden}
+  .card .ph img{width:100%;height:100%;object-fit:cover;display:block}
+  .card .ph .stamp{
+    position:absolute;left:12px;top:12px;background:rgba(0,0,0,.55);color:#fff;
+    font-size:11px;padding:4px 9px;border-radius:20px;backdrop-filter:blur(4px)
+  }
+  .card .ph .late{
+    position:absolute;right:12px;top:12px;background:var(--late);color:#fff;
+    font-size:11px;padding:4px 9px;border-radius:20px
+  }
+  .card .meta{padding:11px 14px 13px;display:flex;align-items:center;gap:10px}
+  .avatar{width:32px;height:32px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px}
+  .meta .who{flex:1;min-width:0}
+  .meta .who .name{font-size:14px}
+  .meta .who .loc{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:4px;margin-top:1px}
+  .meta .who .loc .dot{width:6px;height:6px;border-radius:50%;background:var(--teal);flex:none}
+  .meta .map{font-size:12px;color:var(--teal);border:1px solid var(--line);background:var(--paper);padding:6px 11px;border-radius:20px;cursor:pointer;flex:none;font-family:inherit}
+
+  .empty{text-align:center;color:var(--muted);padding:40px 24px;font-size:14px}
+  .empty .big{font-size:34px;display:block;margin-bottom:8px;opacity:.6}
+
+  /* ---------- mini map (members) ---------- */
+  .mapview{padding:6px 18px 0}
+  .mapbox{
+    position:relative;height:200px;border-radius:18px;overflow:hidden;border:1px solid var(--line);
+    background:
+      linear-gradient(0deg,rgba(15,110,106,.06),rgba(15,110,106,.06)),
+      repeating-linear-gradient(0deg,transparent 0 28px,rgba(0,0,0,.04) 28px 29px),
+      repeating-linear-gradient(90deg,transparent 0 28px,rgba(0,0,0,.04) 28px 29px),
+      var(--paper2);
+  }
+  .mapbox .river{position:absolute;left:-10%;top:55%;width:130%;height:26px;background:rgba(15,110,106,.18);transform:rotate(-8deg);border-radius:20px}
+  .mpin{position:absolute;transform:translate(-50%,-100%);text-align:center}
+  .mpin .b{width:30px;height:30px;border-radius:50% 50% 50% 2px;transform:rotate(-45deg);display:inline-flex;box-shadow:0 4px 10px rgba(0,0,0,.25)}
+  .mpin .b span{transform:rotate(45deg);margin:auto;color:#fff;font-size:13px}
+  .mpin .lbl{font-size:10px;background:#fff;padding:1px 6px;border-radius:10px;box-shadow:0 2px 6px rgba(0,0,0,.15);margin-top:3px;white-space:nowrap}
+
+  /* ---------- bottom nav ---------- */
+  .nav{
+    position:fixed;left:50%;transform:translateX(-50%);bottom:0;width:100%;max-width:480px;
+    background:rgba(243,237,226,.94);backdrop-filter:blur(10px);border-top:1px solid var(--line);
+    display:flex;z-index:50;padding:8px 0 max(8px,env(safe-area-inset-bottom))
+  }
+  .nav button{flex:1;background:none;border:none;font-family:inherit;color:var(--muted);font-size:11px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;padding:4px 0}
+  .nav button .ic{font-size:20px;line-height:1}
+  .nav button.on{color:var(--flash)}
+
+  .view{display:none}.view.on{display:block}
+
+  /* ---------- settings ---------- */
+  .sec{padding:16px 18px}
+  .sec h3{font-size:13px;color:var(--muted);letter-spacing:.5px;margin:0 0 10px;font-weight:400}
+  .row{background:#fff;border:1px solid #efe7d8;border-radius:14px;padding:14px;margin-bottom:10px;box-shadow:0 2px 8px rgba(26,29,36,.05)}
+  .row label{font-size:14px;display:block;margin-bottom:8px}
+  .pills{display:flex;gap:8px;flex-wrap:wrap}
+  .pill{border:1px solid var(--line);background:var(--paper);color:var(--ink);padding:8px 14px;border-radius:22px;font-family:inherit;font-size:13px;cursor:pointer}
+  .pill.on{background:var(--flash);color:#fff;border-color:var(--flash)}
+  .input{width:100%;border:1px solid var(--line);background:var(--paper);border-radius:10px;padding:10px 12px;font-family:inherit;font-size:14px;color:var(--ink)}
+  .timegrid{display:flex;gap:8px;flex-wrap:wrap}
+  .member-li{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px dashed var(--line)}
+  .member-li:last-child{border-bottom:none}
+  .btn{width:100%;border:none;border-radius:12px;padding:14px;font-family:inherit;font-size:15px;cursor:pointer;background:var(--ink);color:var(--paper)}
+  .btn.ghost{background:var(--paper);color:var(--ink);border:1px solid var(--line)}
+  .hint{font-size:12px;color:var(--muted);margin-top:6px}
+
+  /* ---------- capture modal ---------- */
+  .modal{position:fixed;inset:0;z-index:90;background:rgba(20,18,15,.86);display:none;align-items:center;justify-content:center;padding:18px}
+  .modal.on{display:flex}
+  .sheet{background:var(--paper);width:100%;max-width:420px;border-radius:22px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+  .sheet .camview{aspect-ratio:4/5;background:#000;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center}
+  .sheet .camview canvas{width:100%;height:100%;object-fit:cover}
+  .sheet .camview .ph-emoji{font-size:90px}
+  .sheet .camview .live{position:absolute;top:12px;left:12px;background:var(--flash);color:#fff;font-size:11px;padding:4px 10px;border-radius:20px}
+  .sheet .ctr{padding:16px;text-align:center}
+  .sheet .ctr .q{font-size:14px;color:var(--muted);margin-bottom:12px}
+  .snapbtn{width:74px;height:74px;border-radius:50%;border:5px solid var(--flash);background:#fff;cursor:pointer;font-size:26px}
+  .sheet .actions{display:flex;gap:10px;padding:0 16px 16px}
+  .sheet .actions .btn{flex:1}
+  .loc-chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--teal);background:rgba(15,110,106,.1);padding:6px 12px;border-radius:20px;margin-bottom:12px}
+
+  .toast{position:fixed;bottom:96px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--ink);color:var(--paper);padding:11px 18px;border-radius:24px;font-size:13px;z-index:100;opacity:0;transition:.3s;pointer-events:none}
+  .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="topbar">
+    <div class="brand">
+      <div class="pin"></div>
+      <div><h1>모먼핀</h1><small>MOMENT · PIN</small></div>
+    </div>
+    <div class="gcode" id="gcode">우리가족 · 4명</div>
+  </div>
+
+  <!-- ============ NOW (홈) ============ -->
+  <div class="view on" id="v-now">
+    <div class="hero">
+      <div class="eyebrow" id="heroEyebrow">다음 모먼까지</div>
+      <div class="clock" id="clock">--:--</div>
+      <div class="sub" id="heroSub">곧 다 같이 찍어요</div>
+    </div>
+
+    <div class="shutter-wrap">
+      <button class="shutter dim" id="shutter">
+        <span class="cam">📸</span>
+        <span id="shutterLabel">대기 중</span>
+      </button>
+      <div class="window-note" id="windowNote"></div>
+    </div>
+
+    <div class="feed-h">
+      <h2>오늘의 모먼</h2>
+      <span id="feedCount">0명 참여</span>
+    </div>
+    <div class="feed" id="feed"></div>
+  </div>
+
+  <!-- ============ MAP ============ -->
+  <div class="view" id="v-map">
+    <div class="feed-h"><h2>지금 어디에</h2><span>마지막 모먼 기준</span></div>
+    <div class="mapview">
+      <div class="mapbox" id="mapbox"><div class="river"></div></div>
+      <p class="hint" style="text-align:center">실제 앱에서는 카카오맵 위에 가족 핀이 표시됩니다.</p>
+    </div>
+  </div>
+
+  <!-- ============ SETTINGS ============ -->
+  <div class="view" id="v-set">
+    <div class="sec">
+      <h3>알림 방식</h3>
+      <div class="row">
+        <label>언제 다 같이 찍을까요?</label>
+        <div class="pills" id="modePills">
+          <button class="pill on" data-mode="fixed">정해진 시간</button>
+          <button class="pill" data-mode="random">랜덤 깜짝</button>
+        </div>
+      </div>
+
+      <div class="row" id="fixedRow">
+        <label>찍는 시간 (하루 1~3회)</label>
+        <div class="timegrid" id="fixedTimes"></div>
+        <div class="hint">탭해서 켜고 끄기 · 그룹원 모두에게 같은 시간에 알림이 갑니다.</div>
+      </div>
+
+      <div class="row" id="randomRow" style="display:none">
+        <label>랜덤 시간대</label>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input class="input" id="rStart" value="09:00" style="text-align:center">
+          <span style="color:var(--muted)">~</span>
+          <input class="input" id="rEnd" value="21:00" style="text-align:center">
+        </div>
+        <div class="hint">이 시간대 안에서 매일 한 번, 깜짝 알림이 갑니다.</div>
+      </div>
+
+      <div class="row">
+        <label>찍을 수 있는 시간 (마감)</label>
+        <div class="pills" id="windowPills">
+          <button class="pill" data-w="2">2분</button>
+          <button class="pill on" data-w="5">5분</button>
+          <button class="pill" data-w="10">10분</button>
+        </div>
+        <div class="hint">알림 후 이 시간이 지나면 "늦게 올림"으로 표시돼요.</div>
+      </div>
+    </div>
+
+    <div class="sec">
+      <h3>그룹</h3>
+      <div class="row">
+        <div id="memberList"></div>
+      </div>
+      <button class="btn ghost" id="inviteBtn">초대 코드 복사 · MP-4F2K</button>
+    </div>
+
+    <div class="sec">
+      <button class="btn ghost" id="demoBtn">데모: 지금 모먼 울리기 🔔</button>
+      <p class="hint" style="text-align:center">프로토타입이라 실제 푸시 대신 버튼으로 체험합니다.</p>
+    </div>
+  </div>
+
+  <!-- bottom nav -->
+  <div class="nav">
+    <button class="on" data-view="now"><span class="ic">📸</span>지금</button>
+    <button data-view="map"><span class="ic">📍</span>지도</button>
+    <button data-view="set"><span class="ic">⚙️</span>설정</button>
+  </div>
+</div>
+
+<!-- capture modal -->
+<div class="modal" id="modal">
+  <div class="sheet">
+    <div class="camview">
+      <div class="ph-emoji" id="camEmoji">🤳</div>
+      <canvas id="snapCanvas" style="display:none"></canvas>
+      <div class="live" id="liveTag">● LIVE</div>
+    </div>
+    <div class="ctr">
+      <div class="loc-chip" id="locChip">📍 위치 확인 중…</div>
+      <div class="q" id="camQ">지금 이 순간을 찍어요</div>
+      <button class="snapbtn" id="snapBtn">⚪</button>
+    </div>
+    <div class="actions" id="postActions" style="display:none">
+      <button class="btn ghost" id="retakeBtn">다시</button>
+      <button class="btn" id="postBtn">올리기</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const LS='momentpin_v1';
+const COLORS=['#ff5a3c','#0f6e6a','#c47a2a','#5b6cff','#9c4dcc','#2a9d5a'];
+
+// ---- state ----
+let st=load()||{
+  mode:'fixed',
+  fixedTimes:{'08:00':true,'12:30':false,'21:00':true},
+  window:5,
+  members:[
+    {id:'me',name:'나',color:'#ff5a3c'},
+    {id:'m2',name:'아빠',color:'#0f6e6a'},
+    {id:'m3',name:'엄마',color:'#c47a2a'},
+    {id:'m4',name:'누나',color:'#5b6cff'},
+  ],
+  posts:[],
+  activeMoment:null, // {at: ts, deadline: ts}
+};
+function save(){localStorage.setItem(LS,JSON.stringify(st))}
+function load(){try{return JSON.parse(localStorage.getItem(LS))}catch{return null}}
+
+// ---- nav ----
+$$('.nav button').forEach(b=>b.onclick=()=>{
+  $$('.nav button').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on');
+  $$('.view').forEach(v=>v.classList.remove('on'));
+  $('#v-'+b.dataset.view).classList.add('on');
+  if(b.dataset.view==='map')renderMap();
+});
+
+// ---- countdown ----
+function pad(n){return String(n).padStart(2,'0')}
+function nextFixed(now){
+  const times=Object.keys(st.fixedTimes).filter(t=>st.fixedTimes[t]).sort();
+  if(!times.length)return null;
+  const mins=t=>{const[h,m]=t.split(':').map(Number);return h*60+m};
+  const nowM=now.getHours()*60+now.getMinutes();
+  for(const t of times)if(mins(t)>nowM){const d=new Date(now);const[h,m]=t.split(':').map(Number);d.setHours(h,m,0,0);return d;}
+  const d=new Date(now);d.setDate(d.getDate()+1);const[h,m]=times[0].split(':').map(Number);d.setHours(h,m,0,0);return d;
+}
+function tick(){
+  const now=new Date();
+  const active=st.activeMoment&&now.getTime()<st.activeMoment.deadline;
+  const clock=$('#clock'),sh=$('#shutter'),lbl=$('#shutterLabel'),note=$('#windowNote');
+  if(active){
+    const left=Math.max(0,st.activeMoment.deadline-now.getTime());
+    const s=Math.floor(left/1000);
+    clock.textContent=pad(Math.floor(s/60))+':'+pad(s%60);
+    clock.classList.add('urgent');
+    $('#heroEyebrow').textContent='지금 찍을 시간!';
+    $('#heroSub').textContent='마감까지 남은 시간';
+    sh.classList.remove('dim');lbl.textContent='지금 찍기';
+    note.textContent='다 같이 찍는 중 · 늦으면 "늦게 올림" 표시';
+  }else{
+    if(st.activeMoment)st.activeMoment=null;
+    clock.classList.remove('urgent');
+    $('#heroEyebrow').textContent='다음 모먼까지';
+    $('#heroSub').textContent='곧 다 같이 찍어요';
+    sh.classList.add('dim');lbl.textContent='대기 중';
+    note.textContent='';
+    if(st.mode==='fixed'){
+      const nx=nextFixed(now);
+      if(nx){const d=nx-now,h=Math.floor(d/3.6e6),m=Math.floor(d%3.6e6/6e4),s=Math.floor(d%6e4/1e3);
+        clock.textContent=h>0?h+'시간 '+pad(m)+'분':pad(m)+':'+pad(s);}
+      else clock.textContent='--:--';
+    }else{clock.textContent='깜짝 ⚡';}
+  }
+}
+setInterval(tick,1000);
+
+// ---- trigger a moment ----
+function fireMoment(){
+  st.activeMoment={at:Date.now(),deadline:Date.now()+st.window*60*1000};
+  save();
+  $$('.nav button').forEach(x=>x.classList.remove('on'));
+  $$('.nav button')[0].classList.add('on');
+  $$('.view').forEach(v=>v.classList.remove('on'));$('#v-now').classList.add('on');
+  toast('📸 모먼 시작! 지금 찍어요');
+  tick();
+}
+$('#demoBtn').onclick=fireMoment;
+$('#shutter').onclick=()=>{ if(!$('#shutter').classList.contains('dim'))openCam(); };
+
+// ---- capture ----
+let snapped=false;
+function openCam(){
+  snapped=false;
+  $('#modal').classList.add('on');
+  $('#camEmoji').style.display='';
+  $('#snapCanvas').style.display='none';
+  $('#postActions').style.display='none';
+  $('#snapBtn').style.display='';
+  $('#liveTag').style.display='';
+  $('#camQ').textContent='지금 이 순간을 찍어요';
+  const emojis=['🤳','🌆','🍜','☕','🚶','🏞️','🐟','📚'];
+  $('#camEmoji').textContent=emojis[Math.floor(Math.random()*emojis.length)];
+  $('#locChip').textContent='📍 위치 확인 중…';
+  getLoc();
+}
+let curLoc=null;
+function getLoc(){
+  const places=['남산 근처','한강공원','회사 앞','동네 카페','집','시장','계곡','도서관'];
+  // prototype: try real geo, fall back to mock
+  if(navigator.geolocation){
+    navigator.geolocation.getCurrentPosition(
+      p=>{curLoc={lat:p.coords.latitude,lng:p.coords.longitude,name:'현재 위치'};$('#locChip').textContent='📍 현재 위치 확인됨';},
+      ()=>{const n=places[Math.floor(Math.random()*places.length)];curLoc={lat:37.5+Math.random()*.05,lng:127+Math.random()*.05,name:n};$('#locChip').textContent='📍 '+n;},
+      {timeout:3000}
+    );
+  }else{const n=places[Math.floor(Math.random()*places.length)];curLoc={lat:37.5,lng:127,name:n};$('#locChip').textContent='📍 '+n;}
+}
+$('#snapBtn').onclick=()=>{
+  snapped=true;
+  $('#snapBtn').style.display='none';
+  $('#liveTag').style.display='none';
+  $('#camQ').textContent='이 사진으로 올릴까요?';
+  $('#postActions').style.display='flex';
+  toast('찰칵! 📸');
+};
+$('#retakeBtn').onclick=openCam;
+$('#postBtn').onclick=()=>{
+  const now=Date.now();
+  const late=st.activeMoment?now>st.activeMoment.deadline:true;
+  st.posts.unshift({
+    id:'p'+now,who:'me',emoji:$('#camEmoji').textContent,
+    loc:curLoc||{name:'어딘가'},at:now,late
+  });
+  // simulate other members posting too (first time)
+  save();renderFeed();
+  $('#modal').classList.remove('on');
+  toast(late?'늦었지만 올렸어요 ⏰':'모먼 공유 완료! ✨');
+};
+$('#modal').onclick=e=>{if(e.target.id==='modal')$('#modal').classList.remove('on')};
+
+// ---- feed ----
+function timeAgo(ts){const d=(Date.now()-ts)/1000;if(d<60)return '방금';if(d<3600)return Math.floor(d/60)+'분 전';return Math.floor(d/3600)+'시간 전';}
+function mColor(id){const m=st.members.find(x=>x.id===id);return m?m.color:'#888'}
+function mName(id){const m=st.members.find(x=>x.id===id);return m?m.name:'?'}
+function renderFeed(){
+  const f=$('#feed');
+  const participants=new Set(st.posts.map(p=>p.who));
+  $('#feedCount').textContent=participants.size+'명 참여';
+  if(!st.posts.length){
+    f.innerHTML='<div class="empty"><span class="big">🌅</span>아직 오늘의 모먼이 없어요.<br>알림이 오면 다 같이 찍어요.</div>';return;
+  }
+  f.innerHTML=st.posts.map(p=>`
+    <div class="card">
+      <div class="ph">
+        <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:90px;background:linear-gradient(135deg,#3a3530,#1a1d24)">${p.emoji}</div>
+        <div class="stamp">${new Date(p.at).getHours()}:${pad(new Date(p.at).getMinutes())}</div>
+        ${p.late?'<div class="late">⏰ 늦게 올림</div>':''}
+      </div>
+      <div class="meta">
+        <div class="avatar" style="background:${mColor(p.who)}">${mName(p.who)[0]}</div>
+        <div class="who">
+          <div class="name">${mName(p.who)}</div>
+          <div class="loc"><span class="dot"></span>${p.loc.name} · ${timeAgo(p.at)}</div>
+        </div>
+        <button class="map" onclick="document.querySelectorAll('.nav button')[1].click()">지도</button>
+      </div>
+    </div>`).join('');
+}
+
+// ---- mini map ----
+function renderMap(){
+  const box=$('#mapbox');
+  box.querySelectorAll('.mpin').forEach(e=>e.remove());
+  // use latest post per member, else scatter members
+  const seen={};
+  st.posts.forEach(p=>{if(!seen[p.who])seen[p.who]=p});
+  const items=st.members.map((m,i)=>{
+    const p=seen[m.id];
+    return {name:m.name,color:m.color,
+      x:p?15+((p.loc.lng%1)*1000%70)+10:15+i*22,
+      y:p?25+((p.loc.lat%1)*1000%55)+10:30+(i%2)*30,
+      loc:p?p.loc.name:'위치 없음'};
+  });
+  items.forEach(it=>{
+    const el=document.createElement('div');el.className='mpin';
+    el.style.left=it.x+'%';el.style.top=it.y+'%';
+    el.innerHTML=`<div class="b" style="background:${it.color}"><span>${it.name[0]}</span></div><div class="lbl">${it.name}</div>`;
+    box.appendChild(el);
+  });
+  if(!st.posts.length){
+    const el=document.createElement('div');el.className='mpin';el.style.left='50%';el.style.top='45%';
+    el.innerHTML='<div class="lbl">아직 위치가 없어요</div>';box.appendChild(el);
+  }
+}
+
+// ---- settings ----
+function renderModePills(){
+  $$('#modePills .pill').forEach(p=>p.classList.toggle('on',p.dataset.mode===st.mode));
+  $('#fixedRow').style.display=st.mode==='fixed'?'':'none';
+  $('#randomRow').style.display=st.mode==='random'?'':'none';
+}
+$$('#modePills .pill').forEach(p=>p.onclick=()=>{st.mode=p.dataset.mode;save();renderModePills();tick()});
+
+function renderFixedTimes(){
+  const g=$('#fixedTimes');
+  g.innerHTML=Object.keys(st.fixedTimes).map(t=>
+    `<button class="pill ${st.fixedTimes[t]?'on':''}" data-t="${t}">${t}</button>`).join('')
+    +`<button class="pill" data-add="1">＋ 추가</button>`;
+  g.querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>{st.fixedTimes[b.dataset.t]=!st.fixedTimes[b.dataset.t];save();renderFixedTimes();tick()});
+  g.querySelector('[data-add]').onclick=()=>{
+    const t=prompt('시간 입력 (예: 18:30)','18:30');
+    if(t&&/^\d{1,2}:\d{2}$/.test(t)){st.fixedTimes[t]=true;save();renderFixedTimes();tick()}
+  };
+}
+$$('#windowPills .pill').forEach(p=>p.onclick=()=>{
+  st.window=+p.dataset.w;$$('#windowPills .pill').forEach(x=>x.classList.toggle('on',x===p));save();
+});
+function renderMembers(){
+  $('#memberList').innerHTML=st.members.map(m=>
+    `<div class="member-li"><div class="avatar" style="background:${m.color}">${m.name[0]}</div><div style="flex:1">${m.name}</div>${m.id==='me'?'<span style="font-size:11px;color:var(--muted)">나</span>':''}</div>`).join('');
+}
+$('#inviteBtn').onclick=()=>{navigator.clipboard?.writeText('MP-4F2K');toast('초대 코드 복사됨 · MP-4F2K')};
+
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');setTimeout(()=>t.classList.remove('on'),2200)}
+
+// init
+renderModePills();renderFixedTimes();renderMembers();renderFeed();tick();
+$('#gcode').textContent='우리가족 · '+st.members.length+'명';
+</script>
+</body>
 </html>
