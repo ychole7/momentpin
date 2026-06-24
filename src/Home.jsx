@@ -52,6 +52,7 @@ export default function Home({ user, group, onOpenSettings, onMembersLoaded, onO
   const [signed, setSigned] = useState({})
   const [pushOn, setPushOn] = useState(false)
   const [moments, setMoments] = useState([])
+  const [likes, setLikes] = useState([])
   const [nowTick, setNowTick] = useState(Date.now())
 
   const mapBoxRef = useRef(null)
@@ -66,10 +67,17 @@ export default function Home({ user, group, onOpenSettings, onMembersLoaded, onO
 
   useEffect(() => { loadMembers(); loadPosts() }, [group.id])
   useEffect(() => { loadMoments() }, [group.id])
+  useEffect(() => { loadLikes() }, [group.id])
   useEffect(() => {
     const t = setInterval(() => setNowTick(Date.now()), 1000)
     return () => clearInterval(t)
   }, [])
+  useEffect(() => {
+    const lch = supabase.channel('likes-' + group.id)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'post_likes', filter: 'group_id=eq.' + group.id }, () => loadLikes())
+      .subscribe()
+    return () => { supabase.removeChannel(lch) }
+  }, [group.id])
   useEffect(() => {
     const ch = supabase.channel('moments-' + group.id)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'moments', filter: 'group_id=eq.' + group.id }, () => { loadMoments(); loadPosts() })
@@ -141,6 +149,29 @@ export default function Home({ user, group, onOpenSettings, onMembersLoaded, onO
     const seen = {}, latest = []
     for (const p of (res.data || [])) { if (seen[p.user_id]) continue; seen[p.user_id] = true; latest.push(p) }
     setPosts(latest)
+  }
+
+  async function loadLikes() {
+    let res = await supabase.from('post_likes').select('post_id,user_id').eq('group_id', group.id)
+    if (!res.error) setLikes(res.data || [])
+  }
+
+  async function toggleLike(post) {
+    const mine = likes.some(l => l.post_id === post.id && l.user_id === user.id)
+    // 낙관적 업데이트
+    if (mine) setLikes(prev => prev.filter(l => !(l.post_id === post.id && l.user_id === user.id)))
+    else setLikes(prev => [...prev, { post_id: post.id, user_id: user.id }])
+    if (mine) {
+      await supabase.from('post_likes').delete().eq('post_id', post.id).eq('user_id', user.id)
+    } else {
+      await supabase.from('post_likes').upsert({ post_id: post.id, group_id: group.id, user_id: user.id }, { onConflict: 'post_id,user_id' })
+    }
+  }
+
+  function likeInfo(postId) {
+    let count = 0, mine = false
+    for (const l of likes) { if (l.post_id === postId) { count++; if (l.user_id === user.id) mine = true } }
+    return { count, mine }
   }
 
   async function loadMoments() {
@@ -482,7 +513,12 @@ export default function Home({ user, group, onOpenSettings, onMembersLoaded, onO
                     <div style={S.cardFoot}>
                       <div style={{ ...S.avatar, width: 30, height: 30, background: colorOf(p.user_id) }}>{nameOf(p.user_id)[0]}</div>
                       <span style={{ fontWeight: 700, fontSize: 14 }}>{nameOf(p.user_id)}{p.user_id === user.id && <span style={S.meTag}>나</span>}</span>
-                      <span style={{ marginLeft: 'auto', fontSize: 12, color: '#9b9ba3' }}>{ago(p.created_at)}</span>
+                      <span style={{ fontSize: 12, color: '#9b9ba3' }}>{ago(p.created_at)}</span>
+                      {(() => { const li = likeInfo(p.id); return (
+                        <button style={{ ...S.likeBtn, marginLeft: 'auto', ...(li.mine ? S.likeBtnOn : {}) }} onClick={(e) => { e.stopPropagation(); toggleLike(p) }}>
+                          {li.mine ? '❤️' : '🤍'}{li.count > 0 && <span style={S.likeCount}>{li.count}</span>}
+                        </button>
+                      )})()}
                     </div>
                   </div>
                 )
@@ -535,6 +571,11 @@ export default function Home({ user, group, onOpenSettings, onMembersLoaded, onO
                 <div style={{ fontWeight: 700 }}>{nameOf(viewPost.user_id)}</div>
                 <div style={{ fontSize: 12, color: '#9b9ba3' }}>{!hasLoc(viewPost) ? '🔒 위치 없이' : '📍 ' + (viewPost.place_label || '위치') + (viewPost.user_id !== user.id ? ' · ' + distLabel(myPosRef.current, viewPost) : '')} · {hhmm(viewPost.created_at)}</div>
               </div>
+              {(() => { const li = likeInfo(viewPost.id); return (
+                <button style={{ ...S.likeBtn, ...(li.mine ? S.likeBtnOn : {}) }} onClick={() => toggleLike(viewPost)}>
+                  {li.mine ? '❤️' : '🤍'}{li.count > 0 && <span style={S.likeCount}>{li.count}</span>}
+                </button>
+              )})()}
               <button style={S.popX} onClick={() => setViewPost(null)}>✕</button>
             </div>
           </div>
@@ -585,6 +626,9 @@ const S = {
   cardNo: { width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 60 },
   cardLoc: { position: 'absolute', left: 12, bottom: 12, background: 'rgba(0,0,0,.45)', backdropFilter: 'blur(8px)', color: '#fff', fontSize: 12.5, fontWeight: 500, padding: '7px 12px', borderRadius: 30 },
   cardTime: { position: 'absolute', right: 12, bottom: 12, background: 'rgba(0,0,0,.45)', backdropFilter: 'blur(8px)', color: '#fff', fontSize: 12.5, fontWeight: 600, padding: '7px 12px', borderRadius: 30 },
+  likeBtn: { display: 'inline-flex', alignItems: 'center', gap: 4, border: 'none', background: '#f4f4f6', borderRadius: 20, padding: '6px 11px', fontFamily: 'inherit', fontSize: 14, cursor: 'pointer', color: '#16161a' },
+  likeBtnOn: { background: '#fff1f2' },
+  likeCount: { fontSize: 12, fontWeight: 700, color: '#e0395a' },
   cardFoot: { display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px' },
   shoot: { width: '100%', border: 'none', borderRadius: 16, padding: 16, fontFamily: 'inherit', fontSize: 16, fontWeight: 700, cursor: 'pointer', color: '#fff', background: 'linear-gradient(135deg,#ff7a45,#ff4d5e)', boxShadow: '0 8px 20px rgba(255,77,94,.3)', marginBottom: 10 },
   countdown: { textAlign: 'center', background: '#fff1ed', border: '1.5px solid #ffd9cc', color: '#e0593c', borderRadius: 14, padding: '11px 14px', fontSize: 14, fontWeight: 600, marginBottom: 10 },
