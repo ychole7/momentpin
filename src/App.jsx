@@ -6,6 +6,7 @@ import GroupGate from './GroupGate'
 import Home from './Home'
 import MyPage from './MyPage'
 import Stats from './Stats'
+import Onboarding from './Onboarding'
 
 export default function App() {
   const [session, setSession] = useState(null)
@@ -16,6 +17,7 @@ export default function App() {
   const [statsMembers, setStatsMembers] = useState([])
   const [myGroups, setMyGroups] = useState([])
   const [showSwitcher, setShowSwitcher] = useState(false)
+  const [showOnboarding, setShowOnboarding] = useState(false)
 
   async function loadMyGroups() {
     if (!session) return
@@ -46,6 +48,19 @@ export default function App() {
     if (group) localStorage.setItem('mp_group', group.id)
   }, [group])
 
+  useEffect(() => {
+    if (session) {
+      try { if (!localStorage.getItem('mp_onboarded')) setShowOnboarding(true) } catch {}
+    } else {
+      setShowOnboarding(false)
+    }
+  }, [session])
+
+  function finishOnboarding() {
+    try { localStorage.setItem('mp_onboarded', '1') } catch {}
+    setShowOnboarding(false)
+  }
+
   async function signOut() {
     await supabase.auth.signOut()
     localStorage.removeItem('mp_group')
@@ -55,6 +70,7 @@ export default function App() {
 
   if (booting) return <div style={center}>모먼핀 여는 중…</div>
   if (!session) return <Auth />
+  if (showOnboarding) return <Onboarding onDone={finishOnboarding} />
   if (!group) return <GroupGate user={session.user} onReady={setGroup} />
 
   if (showStats) return (

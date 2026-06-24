@@ -53,7 +53,6 @@ export default function Home({ user, group, onOpenSettings, onMembersLoaded, onO
   const [pushOn, setPushOn] = useState(false)
   const [moments, setMoments] = useState([])
   const [likes, setLikes] = useState([])
-  const [showWelcome, setShowWelcome] = useState(() => { try { return !localStorage.getItem('mp_welcomed_' + group.id) } catch { return false } })
   const [nowTick, setNowTick] = useState(Date.now())
 
   const mapBoxRef = useRef(null)
@@ -151,8 +150,6 @@ export default function Home({ user, group, onOpenSettings, onMembersLoaded, onO
     for (const p of (res.data || [])) { if (seen[p.user_id]) continue; seen[p.user_id] = true; latest.push(p) }
     setPosts(latest)
   }
-
-  function dismissWelcome() { try { localStorage.setItem('mp_welcomed_' + group.id, '1') } catch {}; setShowWelcome(false) }
 
   async function loadLikes() {
     let res = await supabase.from('post_likes').select('post_id,user_id').eq('group_id', group.id)
@@ -422,22 +419,6 @@ export default function Home({ user, group, onOpenSettings, onMembersLoaded, onO
         </div>
       </div>
 
-      {showWelcome && (
-        <div style={S.welcome}>
-          <button style={S.welcomeX} onClick={dismissWelcome}>✕</button>
-          <div style={S.welcomeTitle}>👋 모먼핀에 오신 걸 환영해요</div>
-          <div style={S.welcomeBody}>
-            정해진 순간이 오면 다 같이 <b>지금</b>을 남겨요.<br/>
-            서로 어디에 있는지 지도에서 한눈에 확인할 수 있어요 📍
-          </div>
-          <div style={S.welcomeSteps}>
-            <div style={S.wStep}><span style={S.wNum}>1</span> 모먼 시간이 되면 알림이 와요</div>
-            <div style={S.wStep}><span style={S.wNum}>2</span> 정해진 시간 안에 함께 남겨요</div>
-            <div style={S.wStep}><span style={S.wNum}>3</span> 지도·피드에서 서로의 지금을 봐요</div>
-          </div>
-          <button style={S.welcomeBtn} onClick={dismissWelcome}>시작하기</button>
-        </div>
-      )}
 
       <div style={S.banner}>
         <div style={S.bannerGlow} />
