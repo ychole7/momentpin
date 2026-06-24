@@ -20,6 +20,7 @@ export default function MyPage({ user, group, members, onClose, onOpenStats, onG
   const [windowMin, setWindowMin] = useState(group.window_min || 3)
   const [rStart, setRStart] = useState((group.random_start || '09:00').slice(0,5))
   const [rEnd, setREnd] = useState((group.random_end || '21:00').slice(0,5))
+  const [newTime, setNewTime] = useState('18:30')
 
   const [busy, setBusy] = useState(false)
   const [toast, setToast] = useState('')
@@ -101,12 +102,9 @@ export default function MyPage({ user, group, members, onClose, onOpenStats, onG
 
   function addTime() {
     if (times.length >= 3) { flash('최대 3개까지예요'); return }
-    const t = prompt('시간 입력 (예: 18:30)', '18:30')
-    if (t && /^\d{1,2}:\d{2}$/.test(t)) {
-      const [h, m] = t.split(':')
-      const norm = String(h).padStart(2, '0') + ':' + m
-      if (!times.includes(norm)) setTimes([...times, norm].sort())
-    }
+    if (!newTime) return
+    if (times.includes(newTime)) { flash('이미 있는 시간이에요'); return }
+    setTimes([...times, newTime].sort())
   }
   function removeTime(t) { setTimes(times.filter(x => x !== t)) }
 
@@ -301,20 +299,25 @@ export default function MyPage({ user, group, members, onClose, onOpenStats, onG
 
                   {mode === 'fixed' ? (
                     <>
-                      <div style={{ ...S.rowLabel, marginTop: 16 }}>찍는 시간 (하루 1~3회)</div>
+                      <div style={{ ...S.rowLabel, marginTop: 16 }}>모먼 시간 (하루 1~3회)</div>
                       <div style={S.pills}>
                         {times.map(t => <button key={t} style={S.timePill} onClick={() => removeTime(t)}>{t} ✕</button>)}
-                        {times.length < 3 && <button style={S.addPill} onClick={addTime}>＋ 추가</button>}
                       </div>
-                      <div style={S.hint}>시간을 탭하면 삭제돼요</div>
+                      {times.length < 3 && (
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 10 }}>
+                          <input type="time" style={{ ...S.input, flex: 1 }} value={newTime} onChange={e => setNewTime(e.target.value)} />
+                          <button style={S.addPill} onClick={addTime}>＋ 추가</button>
+                        </div>
+                      )}
+                      <div style={S.hint}>추가한 시간을 탭하면 삭제돼요</div>
                     </>
                   ) : (
                     <>
                       <div style={{ ...S.rowLabel, marginTop: 16 }}>랜덤 시간대</div>
                       <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                        <input style={{ ...S.input, textAlign: 'center', width: 90 }} value={rStart} onChange={e => setRStart(e.target.value)} placeholder="09:00" />
+                        <input type="time" style={{ ...S.input, flex: 1, textAlign: 'center' }} value={rStart} onChange={e => setRStart(e.target.value)} />
                         <span style={{ color: '#9b9ba3' }}>~</span>
-                        <input style={{ ...S.input, textAlign: 'center', width: 90 }} value={rEnd} onChange={e => setREnd(e.target.value)} placeholder="21:00" />
+                        <input type="time" style={{ ...S.input, flex: 1, textAlign: 'center' }} value={rEnd} onChange={e => setREnd(e.target.value)} />
                       </div>
                       <div style={S.hint}>이 시간대 안에서 매일 한 번, 아무도 모르는 시각에 깜짝 알림 ⚡</div>
                     </>
