@@ -93,7 +93,7 @@ export default function MyPage({ user, group, members, onClose, onOpenStats, onG
   async function saveMe() {
     if (!myName.trim()) { flash('이름을 입력해 주세요'); return }
     setBusy(true)
-    let res = await supabase.from('members').update({ display_name: myName.trim(), color: myColor }).eq('id', myMemberId)
+    let res = await supabase.from('members').update({ display_name: myName.trim().slice(0, 12), color: myColor }).eq('id', myMemberId)
     setBusy(false)
     if (res.error) { flash('저장 실패: ' + res.error.message); return }
     flash('프로필 저장됨 ✨')
@@ -166,7 +166,8 @@ export default function MyPage({ user, group, members, onClose, onOpenStats, onG
             <div style={S.secLabel}>프로필</div>
             <div style={S.card}>
               <div style={S.rowLabel}>이름</div>
-              <input style={S.input} value={myName} onChange={e => setMyName(e.target.value)} />
+              <input style={S.input} value={myName} maxLength={12} onChange={e => setMyName(e.target.value.slice(0, 12))} placeholder="이름 또는 별명" />
+              <div style={{ fontSize: 11, color: '#9b9ba3', textAlign: 'right', marginTop: 4 }}>{myName.length}/12</div>
               <div style={{ ...S.rowLabel, marginTop: 14 }}>색상</div>
               <div style={{ display: 'flex', gap: 10 }}>
                 {COLORS.map(c => (

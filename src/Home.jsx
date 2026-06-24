@@ -230,7 +230,7 @@ export default function Home({ user, group, onOpenSettings, onMembersLoaded }) {
     if (openRes.data && openRes.data.length > 0) {
       setBusy(false)
       await loadMoments()
-      flash('이미 모먼이 진행 중이에요 📸')
+      flash('이미 모먼이 진행 중이에요 📍')
       try { fetch(window.location.origin + '/api/send-moment?groupId=' + group.id) } catch {}
       return
     }
@@ -239,7 +239,7 @@ export default function Home({ user, group, onOpenSettings, onMembersLoaded }) {
     setBusy(false)
     if (res.error) { flash('모먼 시작 실패: ' + res.error.message); return }
     await loadMoments()
-    flash('📸 모먼 시작! 다 같이 찍어요 (' + (group.window_min||3) + '분)')
+    flash('📍 모먼 시작! 다 같이 찍어요 (' + (group.window_min||3) + '분)')
     try { fetch(window.location.origin + '/api/send-moment?groupId=' + group.id) } catch {}
   }
 
@@ -327,7 +327,7 @@ export default function Home({ user, group, onOpenSettings, onMembersLoaded }) {
   function flash(m) { setToast(m); setTimeout(() => setToast(''), 2600) }
   async function copyInviteLink() {
     const link = window.location.origin + '/?code=' + encodeURIComponent(group.invite_code)
-    const text = `우리 ${group.name} 모먼핀 같이 쓰자! 📸\n이 링크 누르고 가입하면 끝:\n${link}`
+    const text = `우리 ${group.name} 모먼핀 같이 쓰자! 📍\n이 링크 누르고 가입하면 끝:\n${link}`
     try { await navigator.clipboard.writeText(text) } catch {}
     flash('초대 링크 복사됨! 카톡에 붙여넣기 ✨')
   }
@@ -398,12 +398,12 @@ export default function Home({ user, group, onOpenSettings, onMembersLoaded }) {
             </>
           ) : !iJoined ? (
             <>
-              <div style={S.bBig}>📸 아직 안 찍었어요!</div>
+              <div style={S.bBig}>📍 아직 안 찍었어요!</div>
               <div style={S.bSmall}>지금 모먼을 남겨보세요 · {joinedCount}/{members.length} 참여</div>
             </>
           ) : (
             <>
-              <div style={S.bBig}>📸 지금 이 순간</div>
+              <div style={S.bBig}>📍 지금 이 순간</div>
               <div style={S.bSmall}>{joinedCount}/{members.length} 참여{waiting.length ? ' · ' + waiting.slice(0,2).map(m=>m.display_name).join(', ') + (waiting.length>2?' 외':'') + ' 대기 중' : ''}</div>
             </>
           )}
@@ -460,7 +460,7 @@ export default function Home({ user, group, onOpenSettings, onMembersLoaded }) {
           <div style={S.feed}>
             {displayPosts.length === 0 ? (
               hasOpen
-                ? <div style={S.empty}>아직 아무도 안 찍었어요 📸<br/>이번 모먼의 첫 순간을 남겨보세요</div>
+                ? <div style={S.empty}>아직 아무도 안 찍었어요 📍<br/>이번 모먼의 첫 순간을 남겨보세요</div>
                 : <div style={S.empty}>지금은 모먼 시간이 아니에요 🌙<br/>알림이 오면 다 같이 찍어요</div>
             ) :
               displayPosts.map(p => {
@@ -487,14 +487,14 @@ export default function Home({ user, group, onOpenSettings, onMembersLoaded }) {
         <input ref={fileRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={onPickFile} />
         {canShoot ? (
           <>
-            <div style={S.countdown}>📸 지금 찍어요! · ⏱️ <b>{remainLabel}</b> 남음</div>
-            <button style={{ ...S.shoot, opacity: busy ? .6 : 1 }} disabled={busy} onClick={() => { includeLocRef.current = true; fileRef.current && fileRef.current.click() }}>{busy ? '올리는 중…' : '📸 모먼 찍기'}</button>
+            <div style={S.countdown}>📍 지금 찍어요! · ⏱️ <b>{remainLabel}</b> 남음</div>
+            <button style={{ ...S.shoot, opacity: busy ? .6 : 1 }} disabled={busy} onClick={() => { includeLocRef.current = true; fileRef.current && fileRef.current.click() }}>{busy ? '올리는 중…' : '📍 모먼 찍기'}</button>
           </>
         ) : (
           <div style={S.waitBox}>
             <div style={S.waitTitle}>⏳ 지금은 모먼 시간이 아니에요</div>
             <div style={S.waitSub}>알림이 오면 다 같이 찍어요</div>
-            {isOwner && <button style={{ ...S.startBtn, opacity: busy ? .6 : 1 }} disabled={busy} onClick={startMoment}>📸 지금 모먼 시작하기</button>}
+            {isOwner && <button style={{ ...S.startBtn, opacity: busy ? .6 : 1 }} disabled={busy} onClick={startMoment}>📍 지금 모먼 시작하기</button>}
           </div>
         )}
 
