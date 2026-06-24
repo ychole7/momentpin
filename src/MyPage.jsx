@@ -119,6 +119,32 @@ export default function MyPage({ user, group, members, onClose, onOpenStats, onG
     if (onGroupUpdate) onGroupUpdate({ ...group, alarm_mode: mode, fixed_times: times, window_min: windowMin, random_start: rStart, random_end: rEnd })
   }
 
+  async function deleteAccount() {
+    if (!confirm('정말 탈퇴하시겠어요?\n계정과 모든 모먼·사진·기록이 영구히 삭제되며 되돌릴 수 없어요.')) return
+    if (!confirm('마지막 확인이에요. 정말 탈퇴를 진행할까요?')) return
+    setBusy(true)
+    try {
+      let sess = await supabase.auth.getSession()
+      const token = sess.data.session ? sess.data.session.access_token : null
+      if (!token) { flash('로그인 정보를 확인할 수 없어요'); setBusy(false); return }
+      const r = await fetch(window.location.origin + '/api/delete-account', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token }
+      })
+      const j = await r.json()
+      if (!r.ok) {
+        if (j.error === 'owner_has_members') { flash(j.message); setBusy(false); return }
+        flash('탈퇴 실패: ' + (j.message || j.error || '알 수 없는 오류')); setBusy(false); return
+      }
+      // 성공 → 로그아웃 처리
+      await supabase.auth.signOut()
+      localStorage.removeItem('mp_group')
+      window.location.href = '/'
+    } catch (e) {
+      flash('탈퇴 중 오류: ' + (e.message || e)); setBusy(false)
+    }
+  }
+
   async function copyInvite() {
     const link = window.location.origin + '/?code=' + encodeURIComponent(group.invite_code)
     try { await navigator.clipboard.writeText(link) } catch {}
@@ -233,7 +259,8 @@ export default function MyPage({ user, group, members, onClose, onOpenStats, onG
             <div style={S.secLabel}>계정</div>
             <div style={S.card}>
               <button style={S.linkRow} onClick={onLeaveGroup}>🔄 다른 그룹으로</button>
-              <button style={{ ...S.linkRow, color: '#e0593c', borderBottom: 'none' }} onClick={onSignOut}>🚪 로그아웃</button>
+              <button style={{ ...S.linkRow, color: '#e0593c' }} onClick={onSignOut}>🚪 로그아웃</button>
+              <button style={{ ...S.linkRow, color: '#9b9ba3', borderBottom: 'none', fontSize: 13 }} onClick={deleteAccount}>회원 탈퇴</button>
             </div>
           </>
         ) : (
