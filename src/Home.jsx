@@ -187,8 +187,7 @@ export default function Home({ user, group, onOpenSettings, onMembersLoaded }) {
     markersRef.current = []
     const _n = new Date()
     const _open = moments.filter(m => new Date(m.fired_at) <= _n && _n <= new Date(m.deadline))
-    const _recent = moments.slice().sort((a,b)=>new Date(b.fired_at)-new Date(a.fired_at))[0]
-    const activeIds = _open.length ? _open.map(m=>m.id) : (_recent ? [_recent.id] : [])
+    const activeIds = _open.map(m=>m.id)
     for (const p of posts) {
       if (!activeIds.includes(p.moment_id)) continue
       if (p.lat == null || p.lng == null) continue
@@ -339,8 +338,8 @@ export default function Home({ user, group, onOpenSettings, onMembersLoaded }) {
   const openMoment = openMoments.slice().sort((a,b)=>new Date(a.fired_at)-new Date(b.fired_at))[0] || null
   // 현재 기준 모먼 = 열린 모먼들 or 가장 최근 모먼
   const recentMoment = moments.slice().sort((a,b)=>new Date(b.fired_at)-new Date(a.fired_at))[0] || null
-  // 참여 집계 대상 모먼 id들 (열린 모먼 전체, 없으면 최근 1개)
-  const activeMomentIds = openMoments.length ? openMoments.map(m=>m.id) : (recentMoment ? [recentMoment.id] : [])
+  // 휘발형: 열린 모먼이 있을 때만 참여/거리 집계. 끝나면 깨끗하게 비움
+  const activeMomentIds = openMoments.map(m=>m.id)
   const activeMomentId = activeMomentIds[0] || null
   // 참여 판정: 활성 모먼들에 속한 post (갈라져도 합산)
   const activePosts = posts.filter(p => activeMomentIds.includes(p.moment_id))
