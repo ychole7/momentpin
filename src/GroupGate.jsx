@@ -23,6 +23,34 @@ export default function GroupGate({ user, onReady }) {
   const [displayName, setDisplayName] = useState('')
   const [code, setCode] = useState('')
   const [busy, setBusy] = useState(false)
+
+  async function signOut() {
+    await supabase.auth.signOut()
+    localStorage.removeItem('mp_group')
+    window.location.href = '/'
+  }
+
+  async function deleteAccount() {
+    if (!confirm('정말 탈퇴하시겠어요?\n계정과 모든 기록이 영구히 삭제되며 되돌릴 수 없어요.')) return
+    if (!confirm('마지막 확인이에요. 정말 탈퇴를 진행할까요?')) return
+    setBusy(true)
+    try {
+      let sess = await supabase.auth.getSession()
+      const token = sess.data.session ? sess.data.session.access_token : null
+      if (!token) { alert('로그인 정보를 확인할 수 없어요'); setBusy(false); return }
+      const r = await fetch(window.location.origin + '/api/delete-account', {
+        method: 'POST', headers: { 'Authorization': 'Bearer ' + token }
+      })
+      const j = await r.json()
+      if (!r.ok) {
+        if (j.error === 'owner_has_members') { alert(j.message); setBusy(false); return }
+        alert('탈퇴 실패: ' + (j.message || j.error || '오류')); setBusy(false); return
+      }
+      await supabase.auth.signOut()
+      localStorage.removeItem('mp_group')
+      window.location.href = '/'
+    } catch (e) { alert('탈퇴 중 오류: ' + (e.message || e)); setBusy(false) }
+  }
   const [msg, setMsg] = useState('')
 
   useEffect(() => { loadMyGroups() }, [])
@@ -129,6 +157,12 @@ export default function GroupGate({ user, onReady }) {
           onClick={tab === 'create' ? createGroup : joinGroup}>
           {busy ? '잠시만요…' : (tab === 'create' ? '그룹 만들기' : '참여하기')}
         </button>
+
+        <div style={S.accountRow}>
+          <button style={S.accountBtn} onClick={signOut}>로그아웃</button>
+          <span style={S.accountSep}>·</span>
+          <button style={S.accountBtn} onClick={deleteAccount}>회원 탈퇴</button>
+        </div>
       </div>
     </div>
   )
@@ -148,5 +182,8 @@ const S = {
   tabOn: { background: '#fff', color: '#16161a', boxShadow: '0 2px 8px rgba(0,0,0,.08)' },
   input: { width: '100%', border: '1.5px solid #efeff2', borderRadius: 12, padding: '13px 14px', fontSize: 15, fontFamily: 'inherit', marginBottom: 10, outline: 'none', boxSizing: 'border-box' },
   msg: { fontSize: 13, color: '#e0593c', background: '#fff1ed', padding: '10px 12px', borderRadius: 10, margin: '4px 0 12px' },
+  accountRow: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 18 },
+  accountBtn: { border: 'none', background: 'none', color: '#9b9ba3', fontFamily: 'inherit', fontSize: 12.5, cursor: 'pointer', padding: 4 },
+  accountSep: { color: '#d8d8de', fontSize: 12 },
   primary: { width: '100%', border: 'none', borderRadius: 14, padding: 15, fontSize: 15, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer', color: '#fff', background: 'linear-gradient(135deg,#ff7a45,#ff4d5e)', boxShadow: '0 8px 20px rgba(255,77,94,.3)' },
 }
