@@ -53,6 +53,9 @@ export default function Home({ user, group, onOpenSettings, onMembersLoaded, onO
   const [pushOn, setPushOn] = useState(false)
   const [moments, setMoments] = useState([])
   const [likes, setLikes] = useState([])
+  const [confetti, setConfetti] = useState(false)
+  const [poppingHeart, setPoppingHeart] = useState(null)
+  const prevAllJoinedRef = useRef(false)
   const [nowTick, setNowTick] = useState(Date.now())
 
   const mapBoxRef = useRef(null)
@@ -158,6 +161,7 @@ export default function Home({ user, group, onOpenSettings, onMembersLoaded, onO
 
   async function toggleLike(post) {
     const mine = likes.some(l => l.post_id === post.id && l.user_id === user.id)
+    if (!mine) { setPoppingHeart(post.id); setTimeout(() => setPoppingHeart(null), 450) }
     // 낙관적 업데이트
     if (mine) setLikes(prev => prev.filter(l => !(l.post_id === post.id && l.user_id === user.id)))
     else setLikes(prev => [...prev, { post_id: post.id, user_id: user.id }])
@@ -403,8 +407,17 @@ export default function Home({ user, group, onOpenSettings, onMembersLoaded, onO
   const waiting = members.filter(m => !postByUser[m.user_id])
   const iJoined = !!postByUser[user.id]
 
+  useEffect(() => {
+    if (hasOpen && allJoined && !prevAllJoinedRef.current) {
+      setConfetti(true)
+      setTimeout(() => setConfetti(false), 2600)
+    }
+    prevAllJoinedRef.current = hasOpen && allJoined
+  }, [allJoined, hasOpen])
+
   return (
     <div style={S.app}>
+      {confetti && <Confetti />}
       <div style={S.top}>
         <div style={S.logoRow}>
           <div style={S.logoDot} />
@@ -431,7 +444,7 @@ export default function Home({ user, group, onOpenSettings, onMembersLoaded, onO
             </>
           ) : allJoined ? (
             <>
-              <div style={S.bBig}>✨ 전원 도착!</div>
+              <div style={S.bBig} className="pop-in">✨ 전원 도착!</div>
               <div style={S.bSmall}>{members.length}명 모두 이 순간을 남겼어요 🎉</div>
             </>
           ) : !iJoined ? (
@@ -517,7 +530,7 @@ export default function Home({ user, group, onOpenSettings, onMembersLoaded, onO
                       <span style={{ fontSize: 12, color: '#9b9ba3' }}>{ago(p.created_at)}</span>
                       {(() => { const li = likeInfo(p.id); return (
                         <button style={{ ...S.likeBtn, marginLeft: 'auto', ...(li.mine ? S.likeBtnOn : {}) }} onClick={(e) => { e.stopPropagation(); toggleLike(p) }}>
-                          {li.mine ? '❤️' : '🤍'}{li.count > 0 && <span style={S.likeCount}>{li.count}</span>}
+                          <span className={poppingHeart === p.id ? 'heart-pop' : ''} style={{ display: 'inline-block' }}>{li.mine ? '❤️' : '🤍'}</span>{li.count > 0 && <span style={S.likeCount}>{li.count}</span>}
                         </button>
                       )})()}
                     </div>
@@ -574,7 +587,7 @@ export default function Home({ user, group, onOpenSettings, onMembersLoaded, onO
               </div>
               {(() => { const li = likeInfo(viewPost.id); return (
                 <button style={{ ...S.likeBtn, ...(li.mine ? S.likeBtnOn : {}) }} onClick={() => toggleLike(viewPost)}>
-                  {li.mine ? '❤️' : '🤍'}{li.count > 0 && <span style={S.likeCount}>{li.count}</span>}
+                  <span className={poppingHeart === viewPost.id ? 'heart-pop' : ''} style={{ display: 'inline-block' }}>{li.mine ? '❤️' : '🤍'}</span>{li.count > 0 && <span style={S.likeCount}>{li.count}</span>}
                 </button>
               )})()}
               <button style={S.popX} onClick={() => setViewPost(null)}>✕</button>
@@ -585,6 +598,23 @@ export default function Home({ user, group, onOpenSettings, onMembersLoaded, onO
 
       {toast && <div style={S.toast}>{toast}</div>}
     </div>
+  )
+}
+
+function Confetti() {
+  const colors = ['#ff4d5e', '#ff7a45', '#13bca4', '#5b8def', '#e0972e', '#9c4dcc']
+  const pieces = Array.from({ length: 40 }, (_, i) => i)
+  return (
+    <>
+      {pieces.map(i => {
+        const left = Math.random() * 100
+        const delay = Math.random() * 0.5
+        const dur = 1.8 + Math.random() * 1.2
+        const color = colors[i % colors.length]
+        const rot = Math.random() * 360
+        return <span key={i} className="confetti-piece" style={{ left: left + 'vw', background: color, animationDelay: delay + 's', animationDuration: dur + 's', transform: 'rotate(' + rot + 'deg)', borderRadius: i % 2 ? '50%' : '2px' }} />
+      })}
+    </>
   )
 }
 
