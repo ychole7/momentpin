@@ -4,7 +4,7 @@ import { supabase } from './supabaseClient'
 
 const COLORS = ['#ff4d5e', '#13bca4', '#e0972e', '#5b8def', '#9c4dcc', '#2a9d5a']
 
-export default function MyPage({ user, group, members, onClose, onOpenStats, onGroupUpdate, onLeaveGroup, onSignOut }) {
+export default function MyPage({ user, group, members, onClose, onOpenStats, onGroupUpdate, onLeaveGroup, onSignOut, onOpenPrivacy }) {
   const isOwner = group.created_by === user.id
   const [tab, setTab] = useState('me')  // me | group
 
@@ -267,6 +267,7 @@ export default function MyPage({ user, group, members, onClose, onOpenStats, onG
             <div style={S.card}>
               <button style={S.linkRow} onClick={onLeaveGroup}>🔄 다른 그룹으로</button>
               <button style={{ ...S.linkRow, color: '#e0593c' }} onClick={onSignOut}>🚪 로그아웃</button>
+              <button style={{ ...S.linkRow, fontSize: 13.5 }} onClick={onOpenPrivacy}>📄 개인정보처리방침</button>
               <button style={{ ...S.linkRow, color: '#9b9ba3', borderBottom: 'none', fontSize: 13 }} onClick={deleteAccount}>회원 탈퇴</button>
             </div>
           </>
