@@ -125,6 +125,44 @@ export default function MyPage({ user, group, members, onClose, onOpenStats, onG
     flash('초대 링크 복사됨 ✨')
   }
 
+  const [editName, setEditName] = useState(group.name)
+  async function saveGroupName() {
+    const nm = editName.trim().slice(0, 20)
+    if (!nm) { flash('그룹 이름을 입력해 주세요'); return }
+    setBusy(true)
+    let res = await supabase.from('groups').update({ name: nm }).eq('id', group.id)
+    setBusy(false)
+    if (res.error) { flash('저장 실패: ' + res.error.message); return }
+    flash('그룹 이름 변경됨 ✨')
+    if (onGroupUpdate) onGroupUpdate({ ...group, name: nm })
+  }
+
+  async function leaveGroup() {
+    if (isOwner && members.length > 1) {
+      flash('그룹장은 먼저 다른 멤버에게 넘기거나 그룹을 삭제해 주세요')
+      return
+    }
+    if (!confirm('정말 이 그룹에서 나갈까요?')) return
+    setBusy(true)
+    let res = await supabase.from('members').delete().eq('group_id', group.id).eq('user_id', user.id)
+    setBusy(false)
+    if (res.error) { flash('나가기 실패: ' + res.error.message); return }
+    if (onLeaveGroup) onLeaveGroup()
+  }
+
+  async function deleteGroup() {
+    if (!confirm('정말 그룹을 삭제할까요?\n모든 모먼과 사진이 사라지고 되돌릴 수 없어요.')) return
+    if (!confirm('한 번 더 확인할게요. 정말 삭제하시겠어요?')) return
+    setBusy(true)
+    await supabase.from('posts').delete().eq('group_id', group.id)
+    await supabase.from('moments').delete().eq('group_id', group.id)
+    await supabase.from('members').delete().eq('group_id', group.id)
+    let res = await supabase.from('groups').delete().eq('id', group.id)
+    setBusy(false)
+    if (res.error) { flash('삭제 실패: ' + res.error.message); return }
+    if (onLeaveGroup) onLeaveGroup()
+  }
+
   return (
     <div style={S.app}>
       <div style={S.top}>
@@ -210,6 +248,15 @@ export default function MyPage({ user, group, members, onClose, onOpenStats, onG
                 </div>
                 <button style={S.smallBtn} onClick={copyInvite}>🔗 초대</button>
               </div>
+              {isOwner && (
+                <div style={{ marginTop: 14 }}>
+                  <div style={S.rowLabel}>그룹 이름 바꾸기</div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <input style={{ ...S.input, flex: 1 }} value={editName} maxLength={20} onChange={e => setEditName(e.target.value.slice(0, 20))} />
+                    <button style={{ ...S.smallBtn, opacity: busy ? .6 : 1 }} disabled={busy} onClick={saveGroupName}>저장</button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* 그룹 알림 설정 (그룹장만) */}
@@ -254,6 +301,14 @@ export default function MyPage({ user, group, members, onClose, onOpenStats, onG
                 </>
               )}
             </div>
+
+            {/* 그룹 나가기 / 삭제 */}
+            <div style={S.secLabel}>그룹 관리</div>
+            <div style={S.card}>
+              <button style={S.linkRow} onClick={leaveGroup}>🚪 이 그룹에서 나가기</button>
+              {isOwner && <button style={{ ...S.linkRow, color: '#e0593c', borderBottom: 'none' }} onClick={deleteGroup}>🗑️ 그룹 삭제하기</button>}
+            </div>
+            {isOwner && <div style={S.dangerNote}>삭제하면 모든 모먼·사진이 영구히 사라져요</div>}
           </>
         )}
       </div>
@@ -296,6 +351,7 @@ const S = {
   knob: { position: 'absolute', top: 3, left: 3, width: 20, height: 20, borderRadius: '50%', background: '#fff', boxShadow: '0 2px 4px rgba(0,0,0,.2)', transition: 'transform .2s' },
   linkRow: { width: '100%', textAlign: 'left', border: 'none', background: 'none', fontFamily: 'inherit', fontSize: 14, fontWeight: 600, color: '#16161a', padding: '13px 2px', cursor: 'pointer', borderBottom: '1px solid #f4f4f6' },
   smallBtn: { border: '1.5px solid #efeff2', background: '#fff', color: '#16161a', borderRadius: 20, padding: '8px 13px', fontFamily: 'inherit', fontSize: 12, fontWeight: 600, cursor: 'pointer' },
+  dangerNote: { fontSize: 12, color: '#c0392b', textAlign: 'center', marginTop: 8 },
   ownerNote: { background: '#f7f7f9', borderRadius: 10, padding: '13px 15px', fontSize: 13, color: '#6b6b73', textAlign: 'center', lineHeight: 1.5 },
   toast: { position: 'fixed', bottom: 28, left: '50%', transform: 'translateX(-50%)', background: '#16161a', color: '#fff', padding: '12px 20px', borderRadius: 30, fontSize: 13, fontWeight: 600, boxShadow: '0 10px 30px rgba(0,0,0,.3)', zIndex: 4000 },
 }

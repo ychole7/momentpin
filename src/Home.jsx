@@ -40,7 +40,7 @@ async function reverseGeocode(lat, lng) {
 function hhmm(ts) { const d = new Date(ts); return d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0') }
 function ago(ts) { const d = (Date.now() - new Date(ts).getTime()) / 1000; if (d < 60) return '방금'; if (d < 3600) return Math.floor(d / 60) + '분 전'; return Math.floor(d / 3600) + '시간 전' }
 
-export default function Home({ user, group, onOpenSettings, onMembersLoaded }) {
+export default function Home({ user, group, onOpenSettings, onMembersLoaded, onOpenSwitcher }) {
   const [members, setMembers] = useState([])
   const [posts, setPosts] = useState([])
   const [loading, setLoading] = useState(true)
@@ -375,7 +375,13 @@ export default function Home({ user, group, onOpenSettings, onMembersLoaded }) {
   return (
     <div style={S.app}>
       <div style={S.top}>
-        <div style={S.logoRow}><div style={S.logoDot} /><div style={S.logoName}>모먼핀</div></div>
+        <div style={S.logoRow}>
+          <div style={S.logoDot} />
+          <div>
+            <div style={S.logoName}>모먼핀</div>
+            <button style={S.groupSwitch} onClick={onOpenSwitcher}>{group.name} <span style={{ fontSize: 10, opacity: .6 }}>▾</span></button>
+          </div>
+        </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <button style={S.codeBtn} onClick={copyInviteLink}>🔗 초대</button>
           <button style={S.codeBtn} onClick={onOpenSettings}>⚙️</button>
@@ -545,6 +551,7 @@ const S = {
   top: { position: 'sticky', top: 0, zIndex: 1000, background: 'rgba(250,250,250,.9)', backdropFilter: 'blur(12px)', borderBottom: '1px solid #efeff2', padding: '13px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
   logoRow: { display: 'flex', alignItems: 'center', gap: 8 },
   logoDot: { width: 24, height: 24, borderRadius: '8px 8px 8px 3px', background: 'linear-gradient(135deg,#ff7a45,#ff4d5e)' },
+  groupSwitch: { border: 'none', background: '#f0f0f3', color: '#16161a', fontFamily: 'inherit', fontSize: 12, fontWeight: 700, padding: '3px 10px', borderRadius: 12, cursor: 'pointer', marginTop: 2 },
   logoName: { fontSize: 18, fontWeight: 700, letterSpacing: '-.4px' },
   codeBtn: { border: 'none', background: 'linear-gradient(135deg,#ff7a45,#ff4d5e)', color: '#fff', fontFamily: 'inherit', fontSize: 12, fontWeight: 700, padding: '8px 13px', borderRadius: 20, cursor: 'pointer', boxShadow: '0 4px 12px rgba(255,77,94,.3)' },
   banner: { position: 'relative', margin: '14px 14px 0', borderRadius: 22, overflow: 'hidden', background: 'linear-gradient(120deg,#16161a,#2a2030)', color: '#fff', boxShadow: '0 12px 40px rgba(20,20,30,.18)' },
