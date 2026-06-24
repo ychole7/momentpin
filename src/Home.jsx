@@ -187,7 +187,8 @@ export default function Home({ user, group, onOpenSettings, onMembersLoaded }) {
     markersRef.current = []
     const _n = new Date()
     const _open = moments.filter(m => new Date(m.fired_at) <= _n && _n <= new Date(m.deadline))
-    const activeIds = _open.map(m=>m.id)
+    const _recent = moments.slice().sort((a,b)=>new Date(b.fired_at)-new Date(a.fired_at))[0]
+    const activeIds = _open.length ? _open.map(m=>m.id) : (_recent ? [_recent.id] : [])
     for (const p of posts) {
       if (!activeIds.includes(p.moment_id)) continue
       if (p.lat == null || p.lng == null) continue
@@ -246,12 +247,12 @@ export default function Home({ user, group, onOpenSettings, onMembersLoaded }) {
     const file = e.target.files && e.target.files[0]
     e.target.value = ''
     if (!file) return
-    const includeLoc = includeLocRef.current
-    setBusy(true); flash('사진 올리는 중…')
+    setBusy(true); flash('위치 확인 중…')
     try {
-      const loc = includeLoc ? await getLoc() : null
-      let dongLabel = '위치 없이'
-      if (includeLoc) dongLabel = loc ? await reverseGeocode(loc.lat, loc.lng) : '위치 없음'
+      const loc = await getLoc()
+      if (!loc) { flash('위치를 가져올 수 없어요. 위치 권한을 켜주세요 📍'); setBusy(false); return }
+      const dongLabel = await reverseGeocode(loc.lat, loc.lng)
+      flash('사진 올리는 중…')
       const postId = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()))
       const path = `${group.id}/${postId}_back.jpg`
       let up = await supabase.storage.from('moments').upload(path, file, { upsert: true })
@@ -263,7 +264,7 @@ export default function Home({ user, group, onOpenSettings, onMembersLoaded }) {
       const late = new Date() > new Date(target.deadline)
       let pres = await supabase.from('posts').upsert({
         moment_id: momentId, group_id: group.id, user_id: user.id,
-        img_back: path, lat: loc ? loc.lat : null, lng: loc ? loc.lng : null,
+        img_back: path, lat: loc.lat, lng: loc.lng,
         place_label: dongLabel, is_late: late,
       }, { onConflict: 'moment_id,user_id' })
       if (pres.error) { flash('기록 실패: ' + pres.error.message); setBusy(false); return }
@@ -336,26 +337,34 @@ export default function Home({ user, group, onOpenSettings, onMembersLoaded }) {
   const openMoments = moments.filter(m => new Date(m.fired_at) <= _now && _now <= new Date(m.deadline))
   // 사진 찍기용: 가장 먼저 시작된 열린 모먼으로 통일 (모두 같은 곳에 모이게)
   const openMoment = openMoments.slice().sort((a,b)=>new Date(a.fired_at)-new Date(b.fired_at))[0] || null
-  // 현재 기준 모먼 = 열린 모먼들 or 가장 최근 모먼
+  // 가장 최근 모먼 (열린 게 없을 때 '지난 결과'로 보여주기 위함)
   const recentMoment = moments.slice().sort((a,b)=>new Date(b.fired_at)-new Date(a.fired_at))[0] || null
-  // 휘발형: 열린 모먼이 있을 때만 참여/거리 집계. 끝나면 깨끗하게 비움
+  // 표시용 모먼: 열린 모먼 있으면 그것들, 없으면 가장 최근 모먼 (사진은 다음 모먼 전까지 남김)
+  const displayMomentIds = openMoments.length ? openMoments.map(m=>m.id) : (recentMoment ? [recentMoment.id] : [])
+  // 참여/재촉용: 열린 모먼만 (지난 모먼은 재촉 안 함)
   const activeMomentIds = openMoments.map(m=>m.id)
   const activeMomentId = activeMomentIds[0] || null
-  // 참여 판정: 활성 모먼들에 속한 post (갈라져도 합산)
+  // 표시용 posts (지도/한눈에/피드) — 지난 결과 포함
+  const displayPosts = posts.filter(p => displayMomentIds.includes(p.moment_id))
+  // 참여 판정용 postByUser — 열린 모먼만 (재촉/현황 계산)
   const activePosts = posts.filter(p => activeMomentIds.includes(p.moment_id))
   const postByUser = {}
   activePosts.forEach(p => { if (!postByUser[p.user_id]) postByUser[p.user_id] = p })
+  // 표시용 postByUser (지난 결과 보여줄 때 사용)
+  const displayByUser = {}
+  displayPosts.forEach(p => { if (!displayByUser[p.user_id]) displayByUser[p.user_id] = p })
   const remainSec = openMoment ? Math.max(0, Math.floor((new Date(openMoment.deadline) - _now)/1000)) : 0
   const remainLabel = Math.floor(remainSec/60) + ':' + String(remainSec%60).padStart(2,'0')
   const canShoot = !!openMoment
+  const hasOpen = openMoments.length > 0
   openMomentRef.current = openMoment
 
-  // 요약 (위치 공유한 사람만 거리 계산)
+  // 요약 (위치 공유한 사람만 거리 계산) — 표시용 기준
   const others = members.filter(m => m.user_id !== user.id)
   let farMember = null, farD = -1, sum = 0, cnt = 0
-  others.forEach(m => { const p = postByUser[m.user_id]; if (!hasLoc(p)) return; const d = distKm(myPosRef.current, p); if (d == null) return; sum += d; cnt++; if (d > farD) { farD = d; farMember = m } })
+  others.forEach(m => { const p = displayByUser[m.user_id]; if (!hasLoc(p)) return; const d = distKm(myPosRef.current, p); if (d == null) return; sum += d; cnt++; if (d > farD) { farD = d; farMember = m } })
   const avgD = cnt ? sum / cnt : 0
-  const allHere = cnt > 0 && others.every(m => { const p = postByUser[m.user_id]; if (!hasLoc(p)) return true; const d = distKm(myPosRef.current, p); return d != null && d < 0.3 })
+  const allHere = cnt > 0 && others.every(m => { const p = displayByUser[m.user_id]; if (!hasLoc(p)) return true; const d = distKm(myPosRef.current, p); return d != null && d < 0.3 })
 
   // 참여 현황 (전원 도착)
   const joinedCount = members.filter(m => postByUser[m.user_id]).length
@@ -377,7 +386,12 @@ export default function Home({ user, group, onOpenSettings, onMembersLoaded }) {
         <div style={S.bannerGlow} />
         <div style={{ position: 'relative', zIndex: 2 }}>
           <div style={S.bTag}>{group.name}</div>
-          {allJoined ? (
+          {!hasOpen ? (
+            <>
+              <div style={S.bBig}>🌙 지금은 모먼 시간이 아니에요</div>
+              <div style={S.bSmall}>{recentMoment ? '지난 순간을 둘러보세요 · 알림이 오면 다시 찍어요' : '알림이 오면 다 같이 찍어요'}</div>
+            </>
+          ) : allJoined ? (
             <>
               <div style={S.bBig}>✨ 전원 도착!</div>
               <div style={S.bSmall}>{members.length}명 모두 이 순간을 남겼어요 🎉</div>
@@ -407,7 +421,7 @@ export default function Home({ user, group, onOpenSettings, onMembersLoaded }) {
           <>
             <div style={S.mapWrap}><div ref={mapBoxRef} style={S.map} /></div>
             <div style={S.summary}>
-              <span style={S.sChip}><span style={S.sKey}>참여</span> <b>{joinedCount}/{members.length}</b></span>
+              <span style={S.sChip}><span style={S.sKey}>참여</span> <b>{members.filter(m => displayByUser[m.user_id]).length}/{members.length}</b></span>
               {allHere ? <span style={S.sChip}>✨ <b>모두 같은 곳에!</b></span> : (
                 <>
                   <span style={S.sSep} />
@@ -422,7 +436,7 @@ export default function Home({ user, group, onOpenSettings, onMembersLoaded }) {
         {tab === 'grid' && (
           <div style={{ ...S.grid, gridTemplateColumns: members.length <= 1 ? '1fr' : members.length <= 4 ? '1fr 1fr' : '1fr 1fr 1fr' }}>
             {members.map(m => {
-              const p = postByUser[m.user_id]
+              const p = displayByUser[m.user_id]
               const url = p ? signed[p.id] : ''
               const hidden = p && !hasLoc(p)
               return (
@@ -433,7 +447,7 @@ export default function Home({ user, group, onOpenSettings, onMembersLoaded }) {
                       <span style={{ ...S.gdot, background: m.color }} />
                       {m.display_name}{hidden ? '' : (m.user_id !== user.id && p ? ' · ' + distLabel(myPosRef.current, p) : '')}
                     </div>
-                    <div style={S.gloc}>{!p ? '대기 중' : (hasLoc(p) ? (p.place_label || '위치') : '🔒 위치 없이')}</div>
+                    <div style={S.gloc}>{!p ? (hasOpen ? '대기 중' : '·') : (hasLoc(p) ? (p.place_label || '위치') : '🔒 위치 없이')}</div>
                   </div>
                   {p && <div style={S.gtime}>{hhmm(p.created_at)}</div>}
                 </div>
@@ -444,12 +458,12 @@ export default function Home({ user, group, onOpenSettings, onMembersLoaded }) {
 
         {tab === 'feed' && (
           <div style={S.feed}>
-            {activePosts.length === 0 ? (
-              openMoments.length
+            {displayPosts.length === 0 ? (
+              hasOpen
                 ? <div style={S.empty}>아직 아무도 안 찍었어요 📸<br/>이번 모먼의 첫 순간을 남겨보세요</div>
                 : <div style={S.empty}>지금은 모먼 시간이 아니에요 🌙<br/>알림이 오면 다 같이 찍어요</div>
             ) :
-              activePosts.map(p => {
+              displayPosts.map(p => {
                 const url = signed[p.id]
                 const hidden = !hasLoc(p)
                 return (
@@ -475,7 +489,6 @@ export default function Home({ user, group, onOpenSettings, onMembersLoaded }) {
           <>
             <div style={S.countdown}>📸 지금 찍어요! · ⏱️ <b>{remainLabel}</b> 남음</div>
             <button style={{ ...S.shoot, opacity: busy ? .6 : 1 }} disabled={busy} onClick={() => { includeLocRef.current = true; fileRef.current && fileRef.current.click() }}>{busy ? '올리는 중…' : '📸 모먼 찍기'}</button>
-            <button style={{ ...S.shootGhost, opacity: busy ? .6 : 1 }} disabled={busy} onClick={() => { includeLocRef.current = false; fileRef.current && fileRef.current.click() }}>🔒 위치 없이 찍기</button>
           </>
         ) : (
           <div style={S.waitBox}>
@@ -487,20 +500,20 @@ export default function Home({ user, group, onOpenSettings, onMembersLoaded }) {
 
         <div style={S.label}>멤버</div>
         {loading ? <div style={S.muted}>불러오는 중…</div> : members.map(m => {
-          const p = postByUser[m.user_id]
-          const hidden = p && !hasLoc(p)
-          const dist = p && m.user_id !== user.id && hasLoc(p) ? distLabel(myPosRef.current, p) : ''
+          const pActive = postByUser[m.user_id]   // 열린 모먼 참여 여부 (✓/대기)
+          const pDisp = displayByUser[m.user_id]   // 표시용 (지난 결과 포함)
+          const dist = pDisp && m.user_id !== user.id && hasLoc(pDisp) ? distLabel(myPosRef.current, pDisp) : ''
           return (
             <div key={m.id} style={S.memberRow}>
               <div style={{ position: 'relative' }}>
-                <div style={{ ...S.avatar, background: m.color, opacity: p ? 1 : 0.4 }}>{m.display_name[0]}</div>
-                <span style={{ ...S.statusDot, background: p ? '#13bca4' : '#d8d8de' }}>{p ? '✓' : ''}</span>
+                <div style={{ ...S.avatar, background: m.color, opacity: pDisp ? 1 : 0.4 }}>{m.display_name[0]}</div>
+                {hasOpen && <span style={{ ...S.statusDot, background: pActive ? '#13bca4' : '#d8d8de' }}>{pActive ? '✓' : ''}</span>}
               </div>
               <div style={{ flex: 1, fontWeight: 600 }}>
                 {m.display_name}{m.user_id === user.id && <span style={S.meTag}>나</span>}
                 {dist && <span style={S.distTag}>{dist}</span>}
               </div>
-              <span style={S.shareTag}>{!p ? '⏳ 대기 중' : (hasLoc(p) ? '📍 ' + (p.place_label || '위치') : '🔒 위치 없이')}</span>
+              <span style={S.shareTag}>{hasOpen && !pActive ? '⏳ 대기 중' : (!pDisp ? '·' : (hasLoc(pDisp) ? '📍 ' + (pDisp.place_label || '위치') : '🔒 위치 없이'))}</span>
             </div>
           )
         })}
