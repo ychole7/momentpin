@@ -53,6 +53,7 @@ export default function Home({ user, group, onOpenSettings, onMembersLoaded, onO
   const [pushOn, setPushOn] = useState(false)
   const [moments, setMoments] = useState([])
   const [likes, setLikes] = useState([])
+  const [showWelcome, setShowWelcome] = useState(() => { try { return !localStorage.getItem('mp_welcomed_' + group.id) } catch { return false } })
   const [nowTick, setNowTick] = useState(Date.now())
 
   const mapBoxRef = useRef(null)
@@ -150,6 +151,8 @@ export default function Home({ user, group, onOpenSettings, onMembersLoaded, onO
     for (const p of (res.data || [])) { if (seen[p.user_id]) continue; seen[p.user_id] = true; latest.push(p) }
     setPosts(latest)
   }
+
+  function dismissWelcome() { try { localStorage.setItem('mp_welcomed_' + group.id, '1') } catch {}; setShowWelcome(false) }
 
   async function loadLikes() {
     let res = await supabase.from('post_likes').select('post_id,user_id').eq('group_id', group.id)
@@ -419,6 +422,23 @@ export default function Home({ user, group, onOpenSettings, onMembersLoaded, onO
         </div>
       </div>
 
+      {showWelcome && (
+        <div style={S.welcome}>
+          <button style={S.welcomeX} onClick={dismissWelcome}>✕</button>
+          <div style={S.welcomeTitle}>👋 모먼핀에 오신 걸 환영해요</div>
+          <div style={S.welcomeBody}>
+            정해진 순간이 오면 다 같이 <b>지금</b>을 남겨요.<br/>
+            서로 어디에 있는지 지도에서 한눈에 확인할 수 있어요 📍
+          </div>
+          <div style={S.welcomeSteps}>
+            <div style={S.wStep}><span style={S.wNum}>1</span> 모먼 시간이 되면 알림이 와요</div>
+            <div style={S.wStep}><span style={S.wNum}>2</span> 정해진 시간 안에 함께 남겨요</div>
+            <div style={S.wStep}><span style={S.wNum}>3</span> 지도·피드에서 서로의 지금을 봐요</div>
+          </div>
+          <button style={S.welcomeBtn} onClick={dismissWelcome}>시작하기</button>
+        </div>
+      )}
+
       <div style={S.banner}>
         <div style={S.bannerGlow} />
         <div style={{ position: 'relative', zIndex: 2 }}>
@@ -426,7 +446,7 @@ export default function Home({ user, group, onOpenSettings, onMembersLoaded, onO
           {!hasOpen ? (
             <>
               <div style={S.bBig}>🌙 지금은 모먼 시간이 아니에요</div>
-              <div style={S.bSmall}>{recentMoment ? '지난 순간을 둘러보세요 · 알림이 오면 다시 찍어요' : '알림이 오면 다 같이 찍어요'}</div>
+              <div style={S.bSmall}>{recentMoment ? '지난 순간을 둘러보세요 · 알림이 오면 다시 남겨요' : '모먼 시간이 되면 알림이 와요'}</div>
             </>
           ) : allJoined ? (
             <>
@@ -498,7 +518,7 @@ export default function Home({ user, group, onOpenSettings, onMembersLoaded, onO
             {displayPosts.length === 0 ? (
               hasOpen
                 ? <div style={S.empty}>아직 아무도 안 찍었어요 📍<br/>이번 모먼의 첫 순간을 남겨보세요</div>
-                : <div style={S.empty}>지금은 모먼 시간이 아니에요 🌙<br/>알림이 오면 다 같이 찍어요</div>
+                : <div style={S.empty}>지금은 모먼 시간이 아니에요 🌙<br/>모먼 시간이 되면 알림이 와요</div>
             ) :
               displayPosts.map(p => {
                 const url = signed[p.id]
@@ -535,7 +555,7 @@ export default function Home({ user, group, onOpenSettings, onMembersLoaded, onO
         ) : (
           <div style={S.waitBox}>
             <div style={S.waitTitle}>⏳ 지금은 모먼 시간이 아니에요</div>
-            <div style={S.waitSub}>알림이 오면 다 같이 찍어요</div>
+            <div style={S.waitSub}>{isOwner ? '아래 버튼으로 지금 바로 시작할 수 있어요' : '모먼 시간이 되면 알림으로 알려드려요'}</div>
             {isOwner && <button style={{ ...S.startBtn, opacity: busy ? .6 : 1 }} disabled={busy} onClick={startMoment}>📍 지금 모먼 시작하기</button>}
           </div>
         )}
@@ -595,6 +615,14 @@ const S = {
   groupSwitch: { border: 'none', background: '#f0f0f3', color: '#16161a', fontFamily: 'inherit', fontSize: 12, fontWeight: 700, padding: '3px 10px', borderRadius: 12, cursor: 'pointer', marginTop: 2 },
   logoName: { fontSize: 18, fontWeight: 700, letterSpacing: '-.4px' },
   codeBtn: { border: 'none', background: 'linear-gradient(135deg,#ff7a45,#ff4d5e)', color: '#fff', fontFamily: 'inherit', fontSize: 12, fontWeight: 700, padding: '8px 13px', borderRadius: 20, cursor: 'pointer', boxShadow: '0 4px 12px rgba(255,77,94,.3)' },
+  welcome: { position: 'relative', margin: '14px 16px 0', background: 'linear-gradient(135deg,#fff,#fff8f5)', border: '1.5px solid #ffe0d3', borderRadius: 18, padding: '20px 18px', boxShadow: '0 8px 30px rgba(255,122,69,.12)' },
+  welcomeX: { position: 'absolute', top: 12, right: 12, width: 26, height: 26, border: 'none', background: '#f4f4f6', borderRadius: '50%', fontSize: 12, cursor: 'pointer', color: '#9b9ba3' },
+  welcomeTitle: { fontSize: 16, fontWeight: 700, marginBottom: 8 },
+  welcomeBody: { fontSize: 13.5, color: '#5b5b63', lineHeight: 1.6, marginBottom: 14 },
+  welcomeSteps: { display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 },
+  wStep: { display: 'flex', alignItems: 'center', gap: 9, fontSize: 13, color: '#16161a', fontWeight: 500 },
+  wNum: { width: 20, height: 20, borderRadius: '50%', background: '#ff7a45', color: '#fff', fontSize: 11, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: 'none' },
+  welcomeBtn: { width: '100%', border: 'none', borderRadius: 12, padding: 12, fontFamily: 'inherit', fontSize: 14, fontWeight: 700, cursor: 'pointer', color: '#fff', background: 'linear-gradient(135deg,#ff7a45,#ff4d5e)' },
   banner: { position: 'relative', margin: '14px 14px 0', borderRadius: 22, overflow: 'hidden', background: 'linear-gradient(120deg,#16161a,#2a2030)', color: '#fff', boxShadow: '0 12px 40px rgba(20,20,30,.18)' },
   bannerGlow: { position: 'absolute', width: 160, height: 160, borderRadius: '50%', background: 'rgba(255,255,255,.1)', right: -40, top: -40, filter: 'blur(10px)' },
   bTag: { fontSize: 11, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase', opacity: .8, padding: '18px 20px 0' },
