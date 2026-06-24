@@ -12,7 +12,15 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="모먼핀" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+      @keyframes heartPop{0%{transform:scale(1)}35%{transform:scale(1.5)}60%{transform:scale(.9)}100%{transform:scale(1)}}
+      .heart-pop{animation:heartPop .42s ease-out}
+      @keyframes confettiFall{0%{transform:translateY(-10px) rotate(0);opacity:1}100%{transform:translateY(110vh) rotate(720deg);opacity:0}}
+      .confetti-piece{position:fixed;top:-10px;width:10px;height:14px;z-index:9999;pointer-events:none;animation:confettiFall linear forwards}
+      @keyframes popIn{0%{transform:scale(.6);opacity:0}60%{transform:scale(1.05)}100%{transform:scale(1);opacity:1}}
+      .pop-in{animation:popIn .35s ease-out}
+    </style>
   </head>
   <body>
     <div id="root"></div>
