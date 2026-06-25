@@ -45,6 +45,7 @@ export default function Home({ user, group, onOpenSettings, onMembersLoaded, onO
   const [posts, setPosts] = useState([])
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
+  const [uploadStep, setUploadStep] = useState('')  // '위치', '업로드', '기록'
   const [toast, setToast] = useState('')
   const [tab, setTab] = useState('map')
   const [viewPost, setViewPost] = useState(null)
@@ -282,33 +283,34 @@ export default function Home({ user, group, onOpenSettings, onMembersLoaded, onO
     const file = e.target.files && e.target.files[0]
     e.target.value = ''
     if (!file) return
-    setBusy(true); flash('위치 확인 중…')
+    setBusy(true); setUploadStep('위치')
     try {
       const loc = await getLoc()
-      if (!loc) { flash('위치를 가져올 수 없어요. 위치 권한을 켜주세요 📍'); setBusy(false); return }
+      if (!loc) { flash('위치를 가져올 수 없어요. 위치 권한을 켜주세요 📍'); setBusy(false); setUploadStep(''); return }
       const dongLabel = await reverseGeocode(loc.lat, loc.lng)
-      flash('사진 올리는 중…')
+      setUploadStep('업로드')
       const postId = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()))
       const path = `${group.id}/${postId}_back.jpg`
       let up = await supabase.storage.from('moments').upload(path, file, { upsert: true })
-      if (up.error) { flash('업로드 실패: ' + up.error.message); setBusy(false); return }
+      if (up.error) { flash('업로드 실패: ' + up.error.message); setBusy(false); setUploadStep(''); return }
       // 열린 모먼에만 제출 (열린 모먼 없으면 찍기 자체가 막혀있음)
       const target = openMomentRef.current
-      if (!target) { flash('지금은 모먼 시간이 아니에요'); setBusy(false); return }
+      if (!target) { flash('지금은 모먼 시간이 아니에요'); setBusy(false); setUploadStep(''); return }
       const momentId = target.id
       const late = new Date() > new Date(target.deadline)
+      setUploadStep('기록')
       let pres = await supabase.from('posts').upsert({
         moment_id: momentId, group_id: group.id, user_id: user.id,
         img_back: path, lat: loc.lat, lng: loc.lng,
         place_label: dongLabel, is_late: late,
       }, { onConflict: 'moment_id,user_id' })
-      if (pres.error) { flash('기록 실패: ' + pres.error.message); setBusy(false); return }
-      flash('모먼 공유 완료! ✨')
+      if (pres.error) { flash('기록 실패: ' + pres.error.message); setBusy(false); setUploadStep(''); return }
+      flash('안부 전했어요! ✨')
       await loadPosts()
       await loadMoments()
       if (loc && mapRef.current) mapRef.current.setView([loc.lat, loc.lng], 15)
     } catch (err) { flash('오류: ' + (err.message || err)) }
-    setBusy(false)
+    setBusy(false); setUploadStep('')
   }
 
   async function enablePush() {
@@ -544,7 +546,19 @@ export default function Home({ user, group, onOpenSettings, onMembersLoaded, onO
         {canShoot ? (
           <>
             <div style={S.countdown}>📍 지금 찍어요! · ⏱️ <b>{remainLabel}</b> 남음</div>
-            <button style={{ ...S.shoot, opacity: busy ? .6 : 1 }} disabled={busy} onClick={() => { includeLocRef.current = true; fileRef.current && fileRef.current.click() }}>{busy ? '올리는 중…' : '📍 모먼 찍기'}</button>
+            <button style={{ ...S.shoot, opacity: busy ? .85 : 1 }} disabled={busy} onClick={() => { includeLocRef.current = true; fileRef.current && fileRef.current.click() }}>
+              {busy
+                ? <span style={S.stepWrap}>
+                    <span>{uploadStep === '위치' ? '위치 확인 중' : uploadStep === '업로드' ? '사진 올리는 중' : '안부 전하는 중'}</span>
+                    <span style={S.stepDots}>
+                      {['위치','업로드','기록'].map((s,i) => {
+                        const order = ['위치','업로드','기록'].indexOf(uploadStep)
+                        return <span key={s} style={{ ...S.stepDot, ...(i <= order ? S.stepDotOn : {}) }} />
+                      })}
+                    </span>
+                  </span>
+                : '📍 모먼 찍기'}
+            </button>
           </>
         ) : (
           <div style={S.waitBox}>
@@ -684,6 +698,10 @@ const S = {
   likeBtnOn: { background: '#fff1f2' },
   likeCount: { fontSize: 12, fontWeight: 700, color: '#e0395a' },
   cardFoot: { display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px' },
+  stepWrap: { display: 'inline-flex', alignItems: 'center', gap: 9 },
+  stepDots: { display: 'inline-flex', gap: 5 },
+  stepDot: { width: 6, height: 6, borderRadius: '50%', background: 'rgba(255,255,255,.4)', transition: 'background .2s' },
+  stepDotOn: { background: '#fff' },
   shoot: { width: '100%', border: 'none', borderRadius: 16, padding: 16, fontFamily: 'inherit', fontSize: 16, fontWeight: 700, cursor: 'pointer', color: '#fff', background: 'linear-gradient(135deg,#ff7a45,#ff4d5e)', boxShadow: '0 8px 20px rgba(255,77,94,.3)', marginBottom: 10 },
   countdown: { textAlign: 'center', background: '#fff1ed', border: '1.5px solid #ffd9cc', color: '#e0593c', borderRadius: 14, padding: '11px 14px', fontSize: 14, fontWeight: 600, marginBottom: 10 },
   waitBox: { textAlign: 'center', background: '#fff', borderRadius: 18, padding: '22px 18px', boxShadow: '0 4px 24px rgba(20,20,30,.06)' },
