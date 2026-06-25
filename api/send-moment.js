@@ -95,8 +95,8 @@ export default async function handler(req, res) {
       const list = subs.data || []
 
       const payload = JSON.stringify({
-        title: '📸 모먼 시간!',
-        body: `${gname} · 지금 다 같이 찍어요`,
+        title: '📍 안부를 전할 시간이에요',
+        body: `${gname} · 지금 다 같이 안부를 나눠요`,
         url: '/',
       })
 
