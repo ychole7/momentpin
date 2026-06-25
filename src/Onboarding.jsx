@@ -4,8 +4,8 @@ import { useState } from 'react'
 const PAGES = [
   {
     art: 'welcome',
-    title: '모먼핀에 오신 걸 환영해요',
-    body: '정해진 순간이 오면 다 같이 지금을 남기고,\n서로 어디에 있는지 지도에서 확인하는\n우리만의 작은 공간이에요.',
+    title: '지도 위에 안부를 묻다',
+    body: '멀리 있어도 괜찮아요.\n정해진 순간이 오면 다 같이 지금을 남기고,\n지도 위에서 서로의 안부를 확인해요.',
   },
   {
     art: 'group',
