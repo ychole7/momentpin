@@ -591,7 +591,7 @@ export default function Home({ user, group, onOpenSettings, onMembersLoaded, onO
       {viewPost && (
         <div style={S.pop} onClick={() => setViewPost(null)}>
           <div style={S.popCard} onClick={e => e.stopPropagation()}>
-            <div style={S.popPhoto}>{bigUrl ? <img src={bigUrl} style={S.popImg} alt="" /> : <div style={S.popLoading}>불러오는 중…</div>}</div>
+            <div style={S.popPhoto}>{bigUrl ? <ZoomImage src={bigUrl} /> : <div style={S.popLoading}>불러오는 중…</div>}</div>
             <div style={S.popInfo}>
               <div style={{ ...S.avatar, background: colorOf(viewPost.user_id) }}>{nameOf(viewPost.user_id)[0]}</div>
               <div style={{ flex: 1 }}>
@@ -610,6 +610,64 @@ export default function Home({ user, group, onOpenSettings, onMembersLoaded, onO
       )}
 
       {toast && <div style={S.toast}>{toast}</div>}
+    </div>
+  )
+}
+
+function ZoomImage({ src }) {
+  const [scale, setScale] = useState(1)
+  const [tx, setTx] = useState(0)
+  const [ty, setTy] = useState(0)
+  const st = useRef({ pinchStart: 0, scaleStart: 1, lastX: 0, lastY: 0, dragging: false, lastTap: 0 })
+
+  function dist(t) {
+    const dx = t[0].clientX - t[1].clientX
+    const dy = t[0].clientY - t[1].clientY
+    return Math.hypot(dx, dy)
+  }
+  function onTouchStart(e) {
+    if (e.touches.length === 2) {
+      st.current.pinchStart = dist(e.touches)
+      st.current.scaleStart = scale
+    } else if (e.touches.length === 1) {
+      st.current.lastX = e.touches[0].clientX
+      st.current.lastY = e.touches[0].clientY
+      st.current.dragging = scale > 1
+      // 더블탭 감지
+      const now = Date.now()
+      if (now - st.current.lastTap < 300) {
+        if (scale > 1) { setScale(1); setTx(0); setTy(0) }
+        else setScale(2.5)
+      }
+      st.current.lastTap = now
+    }
+  }
+  function onTouchMove(e) {
+    if (e.touches.length === 2 && st.current.pinchStart) {
+      e.preventDefault()
+      const ratio = dist(e.touches) / st.current.pinchStart
+      const next = Math.min(4, Math.max(1, st.current.scaleStart * ratio))
+      setScale(next)
+      if (next === 1) { setTx(0); setTy(0) }
+    } else if (e.touches.length === 1 && st.current.dragging && scale > 1) {
+      e.preventDefault()
+      const dx = e.touches[0].clientX - st.current.lastX
+      const dy = e.touches[0].clientY - st.current.lastY
+      st.current.lastX = e.touches[0].clientX
+      st.current.lastY = e.touches[0].clientY
+      const max = (scale - 1) * 150
+      setTx(v => Math.max(-max, Math.min(max, v + dx)))
+      setTy(v => Math.max(-max, Math.min(max, v + dy)))
+    }
+  }
+  function onTouchEnd(e) {
+    if (e.touches.length === 0) { st.current.pinchStart = 0; st.current.dragging = false }
+  }
+  return (
+    <div className="zoomable" style={{ width: '100%', height: '100%', overflow: 'hidden', touchAction: 'none' }}
+      onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
+      <img src={src} alt="" draggable={false}
+        style={{ width: '100%', height: '100%', objectFit: 'cover', transform: `translate(${tx}px,${ty}px) scale(${scale})`, transition: st.current.dragging ? 'none' : 'transform .2s', transformOrigin: 'center' }} />
     </div>
   )
 }
