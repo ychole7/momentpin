@@ -30,11 +30,11 @@ self.addEventListener('message', (event) => {
 // 푸시가 오면 알림 띄우기
 self.addEventListener('push', (event) => {
   let data = {}
-  try { data = event.data.json() } catch { data = { title: '📍 모먼 시간!', body: '지금 다 같이 남겨요' } }
+  try { data = event.data.json() } catch { data = { title: '📍 안부를 전할 시간이에요', body: '지금 다 같이 안부를 나눠요' } }
 
-  const title = data.title || '📍 모먼 시간!'
+  const title = data.title || '📍 안부를 전할 시간이에요'
   const options = {
-    body: data.body || '지금 다 같이 남겨요',
+    body: data.body || '지금 다 같이 안부를 나눠요',
     icon: '/icon-192.png',
     badge: '/icon-192.png',
     data: { url: data.url || '/' },
