@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>모먼핀 · 지도 위에 안부를 묻다</title>
 
     <!-- 카톡/SNS 공유 미리보기 (Open Graph) -->
@@ -30,6 +30,10 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
+      /* 페이지 전체 핀치줌/더블탭줌 차단 (네이티브 앱 느낌) */
+      html, body { touch-action: pan-x pan-y; -webkit-text-size-adjust: 100%; overscroll-behavior: none; }
+      /* 단, 지도와 사진은 자체 줌을 쓰도록 예외 */
+      .leaflet-container, .zoomable { touch-action: auto !important; }
       @keyframes heartPop{0%{transform:scale(1)}35%{transform:scale(1.5)}60%{transform:scale(.9)}100%{transform:scale(1)}}
       .heart-pop{animation:heartPop .42s ease-out}
       @keyframes confettiFall{0%{transform:translateY(-10px) rotate(0);opacity:1}100%{transform:translateY(110vh) rotate(720deg);opacity:0}}
