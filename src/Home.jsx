@@ -275,7 +275,7 @@ export default function Home({ user, group, onOpenSettings, onMembersLoaded, onO
     setBusy(false)
     if (res.error) { flash('모먼 시작 실패: ' + res.error.message); return }
     await loadMoments()
-    flash('📍 모먼 시작! 다 같이 찍어요 (' + (group.window_min||3) + '분)')
+    flash('📍 모먼 시작! 다 같이 안부를 전해요 (' + (group.window_min||3) + '분)')
     try { fetch(window.location.origin + '/api/send-moment?groupId=' + group.id) } catch {}
   }
 
@@ -442,21 +442,21 @@ export default function Home({ user, group, onOpenSettings, onMembersLoaded, onO
           {!hasOpen ? (
             <>
               <div style={S.bBig}>🌙 지금은 모먼 시간이 아니에요</div>
-              <div style={S.bSmall}>{recentMoment ? '지난 순간을 둘러보세요 · 알림이 오면 다시 남겨요' : '모먼 시간이 되면 알림이 와요'}</div>
+              <div style={S.bSmall}>{recentMoment ? '지난 안부를 둘러보세요 · 알림이 오면 다시 전해요' : '모먼 시간이 되면 알림이 와요'}</div>
             </>
           ) : allJoined ? (
             <>
-              <div style={S.bBig} className="pop-in">✨ 전원 도착!</div>
+              <div style={S.bBig} className="pop-in">✨ 모두의 안부가 도착했어요</div>
               <div style={S.bSmall}>{members.length}명 모두 이 순간을 남겼어요 🎉</div>
             </>
           ) : !iJoined ? (
             <>
-              <div style={S.bBig}>📍 아직 안 찍었어요!</div>
+              <div style={S.bBig}>📍 아직 안부를 안 전했어요</div>
               <div style={S.bSmall}>지금 모먼을 남겨보세요 · {joinedCount}/{members.length} 참여</div>
             </>
           ) : (
             <>
-              <div style={S.bBig}>📍 지금 이 순간</div>
+              <div style={S.bBig}>📍 지금, 안부를 전할 시간</div>
               <div style={S.bSmall}>{joinedCount}/{members.length} 참여{waiting.length ? ' · ' + waiting.slice(0,2).map(m=>m.display_name).join(', ') + (waiting.length>2?' 외':'') + ' 대기 중' : ''}</div>
             </>
           )}
@@ -514,7 +514,7 @@ export default function Home({ user, group, onOpenSettings, onMembersLoaded, onO
             {displayPosts.length === 0 ? (
               hasOpen
                 ? <div style={S.empty}>아직 아무도 안 찍었어요 📍<br/>이번 모먼의 첫 순간을 남겨보세요</div>
-                : <div style={S.empty}>지금은 모먼 시간이 아니에요 🌙<br/>모먼 시간이 되면 알림이 와요</div>
+                : <div style={S.empty}>지금은 모먼 시간이 아니에요 🌙<br/>모먼 시간이 되면 알림으로 알려드려요</div>
             ) :
               displayPosts.map(p => {
                 const url = signed[p.id]
