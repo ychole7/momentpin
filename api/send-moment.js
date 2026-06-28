@@ -84,6 +84,19 @@ export default async function handler(req, res) {
         .limit(1)
       const hasOpen = openCheck.data && openCheck.data.length > 0
       if (!hasOpen) {
+        // 하루 발동 횟수 제한 (악용/알림폭탄 방지): 오늘 만든 모먼이 5개 이상이면 더 발동 안 함
+        const DAILY_LIMIT = 5
+        const startOfDay = new Date(now)
+        startOfDay.setHours(0, 0, 0, 0)
+        let todayCount = await supabase.from('moments')
+          .select('id', { count: 'exact', head: true })
+          .eq('group_id', gid)
+          .gte('fired_at', startOfDay.toISOString())
+        const firedToday = todayCount.count || 0
+        if (firedToday >= DAILY_LIMIT) {
+          // 오늘 한도 초과 — 이 그룹은 건너뜀
+          continue
+        }
         // 열린 모먼이 없을 때만 새로 생성 (그룹이 정한 window_min 사용)
         const deadline = new Date(now.getTime() + winMin * 60000)
         await supabase.from('moments').insert({
