@@ -26,15 +26,23 @@ const SIDO_SHORT = {
 }
 async function reverseGeocode(lat, lng) {
   try {
-    const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=14&accept-language=ko`
+    const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=16&accept-language=ko`
     const r = await fetch(url, { headers: { 'Accept': 'application/json' } })
     const j = await r.json()
     const a = j.address || {}
-    const sido = SIDO_SHORT[a.state] || a.state || ''
-    const gu = a.city_district || a.borough || a.county || ''
-    const dong = a.quarter || a.neighbourhood || a.suburb || a.village || a.town || ''
-    const label = [sido, gu, dong].filter(Boolean).join(' ')
-    return label || a.city || '위치'
+    try { console.log('[모먼핀 위치]', JSON.stringify(a)) } catch {}
+    // 시/군/구: 남양주시 같은 시 우선, 없으면 구/군
+    const city = a.city || a.town || a.county || ''
+    const gu = a.city_district || a.borough || a.district || ''
+    // 동(법정동/행정동): 하나만
+    const dong = a.quarter || a.neighbourhood || a.suburb || a.village || ''
+    // "시 + 동" 우선 (구가 있으면 구 우선). 중복 제거
+    const parts = []
+    const cityGu = gu || city   // 구가 있으면 구, 아니면 시
+    if (cityGu) parts.push(cityGu)
+    if (dong && dong !== cityGu) parts.push(dong)
+    const label = parts.join(' ')
+    return label || city || a.province || '위치'
   } catch { return '위치' }
 }
 function hhmm(ts) { const d = new Date(ts); return d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0') }
