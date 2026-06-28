@@ -30,7 +30,6 @@ async function reverseGeocode(lat, lng) {
     const r = await fetch(url, { headers: { 'Accept': 'application/json' } })
     const j = await r.json()
     const a = j.address || {}
-    try { console.log('[모먼핀 위치]', JSON.stringify(a)) } catch {}
     // 시/도 (짧게): province/state, 혹은 광역시는 city에 올 수도 있음
     let sido = SIDO_SHORT[a.province] || SIDO_SHORT[a.state] || SIDO_SHORT[a.city] || ''
     if (!sido) sido = a.province || a.state || ''
