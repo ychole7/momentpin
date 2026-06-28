@@ -31,18 +31,23 @@ async function reverseGeocode(lat, lng) {
     const j = await r.json()
     const a = j.address || {}
     try { console.log('[모먼핀 위치]', JSON.stringify(a)) } catch {}
-    // 시/군/구: 남양주시 같은 시 우선, 없으면 구/군
-    const city = a.city || a.town || a.county || ''
+    // 시/도 (짧게): province/state, 혹은 광역시는 city에 올 수도 있음
+    let sido = SIDO_SHORT[a.province] || SIDO_SHORT[a.state] || SIDO_SHORT[a.city] || ''
+    if (!sido) sido = a.province || a.state || ''
+    // 시/군/구
+    const cityIsSido = !!SIDO_SHORT[a.city]   // city가 광역시면 시/도로 쓴 것
+    const city = cityIsSido ? '' : (a.city || a.town || a.county || '')
     const gu = a.city_district || a.borough || a.district || ''
-    // 동(법정동/행정동): 하나만
+    // 동: 하나만
     const dong = a.quarter || a.neighbourhood || a.suburb || a.village || ''
-    // "시 + 동" 우선 (구가 있으면 구 우선). 중복 제거
+    // 조합: [시/도] [시 또는 구] [동], 중복 제거
     const parts = []
-    const cityGu = gu || city   // 구가 있으면 구, 아니면 시
-    if (cityGu) parts.push(cityGu)
-    if (dong && dong !== cityGu) parts.push(dong)
+    if (sido) parts.push(sido)
+    const mid = gu || city
+    if (mid && mid !== sido) parts.push(mid)
+    if (dong && dong !== mid) parts.push(dong)
     const label = parts.join(' ')
-    return label || city || a.province || '위치'
+    return label || city || sido || '위치'
   } catch { return '위치' }
 }
 function hhmm(ts) { const d = new Date(ts); return d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0') }
