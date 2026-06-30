@@ -525,8 +525,8 @@ export default function Home({ user, group, onOpenSettings, onMembersLoaded, onO
           <div style={S.feed}>
             {displayPosts.length === 0 ? (
               hasOpen
-                ? <div style={S.empty}>아직 아무도 안 찍었어요 📍<br/>이번 모먼의 첫 순간을 남겨보세요</div>
-                : <div style={S.empty}>지금은 모먼 시간이 아니에요 🌙<br/>모먼 시간이 되면 알림으로 알려드려요</div>
+                ? <div style={S.empty}>아직 아무도 안 남겼어요 📍<br/>이번 모먼의 첫 안부를 전해보세요</div>
+                : <div style={S.empty}>아직 나눈 안부가 없어요 🌙<br/>첫 모먼을 기다리고 있어요</div>
             ) :
               displayPosts.map(p => {
                 const url = signed[p.id]
@@ -574,8 +574,8 @@ export default function Home({ user, group, onOpenSettings, onMembersLoaded, onO
           </>
         ) : (
           <div style={S.waitBox}>
-            <div style={S.waitTitle}>⏳ 지금은 모먼 시간이 아니에요</div>
-            <div style={S.waitSub}>모먼 시간이 되면 알림으로 알려드려요</div>
+            <div style={S.waitTitle}>🌙 모먼을 기다리는 중</div>
+            <div style={S.waitSub}>시간이 되면 다 같이 안부를 나눠요</div>
           </div>
         )}
 

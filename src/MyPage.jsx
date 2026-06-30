@@ -372,7 +372,7 @@ const S = {
   miniCard: { background: 'var(--mp-card)', borderRadius: 14, padding: '14px 16px', boxShadow: '0 4px 24px rgba(20,20,30,.06)', textAlign: 'center' },
   miniNum: { fontSize: 24, fontWeight: 700, color: '#ff4d5e', letterSpacing: '-.5px' },
   miniLabel: { fontSize: 12, color: 'var(--mp-sub)', fontWeight: 600, marginTop: 2 },
-  statsLink: { width: '100%', border: 'none', borderRadius: 14, padding: 14, fontFamily: 'inherit', fontSize: 14, fontWeight: 700, cursor: 'pointer', color: 'var(--mp-ink)', background: 'linear-gradient(135deg,#fff1ed,#ffe9e0)', border: '1.5px solid #ffd9cc', marginBottom: 20 },
+  statsLink: { width: '100%', border: '1.5px solid var(--mp-coral)', borderRadius: 14, padding: 14, fontFamily: 'inherit', fontSize: 14, fontWeight: 700, cursor: 'pointer', color: 'var(--mp-coral)', background: 'var(--mp-card2)', marginBottom: 20 },
   tabs: { display: 'flex', gap: 6, background: 'var(--mp-card2)', borderRadius: 22, padding: 4, marginBottom: 16 },
   tab: { flex: 1, border: 'none', background: 'none', fontFamily: 'inherit', fontSize: 13, fontWeight: 600, color: 'var(--mp-muted)', padding: 9, borderRadius: 18, cursor: 'pointer' },
   tabOn: { background: 'var(--mp-card)', color: 'var(--mp-ink)', boxShadow: '0 2px 8px rgba(0,0,0,.08)' },
