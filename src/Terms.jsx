@@ -75,15 +75,15 @@ function Sec({ n, t, children }) {
 }
 
 const S = {
-  app: { width: '100%', maxWidth: 480, margin: '0 auto', minHeight: '100vh', background: '#fafafa', fontFamily: "'Outfit','Gowun Dodum',sans-serif", color: '#16161a', paddingBottom: 40 },
-  top: { position: 'sticky', top: 0, zIndex: 100, background: 'rgba(250,250,250,.92)', backdropFilter: 'blur(12px)', borderBottom: '1px solid #efeff2', padding: 'max(calc(env(safe-area-inset-top, 0px) + 13px), 13px) 14px 13px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
-  back: { width: 32, height: 32, border: 'none', background: '#f0f0f3', borderRadius: '50%', fontSize: 18, cursor: 'pointer', color: '#16161a' },
+  app: { width: '100%', maxWidth: 480, margin: '0 auto', minHeight: '100vh', background: 'var(--mp-bg)', fontFamily: "'Outfit','Gowun Dodum',sans-serif", color: 'var(--mp-ink)', paddingBottom: 40 },
+  top: { position: 'sticky', top: 0, zIndex: 100, background: 'var(--mp-topbar)', backdropFilter: 'blur(12px)', borderBottom: '1px solid var(--mp-line)', padding: 'max(calc(env(safe-area-inset-top, 0px) + 13px), 13px) 14px 13px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
+  back: { width: 32, height: 32, border: 'none', background: 'var(--mp-card2)', borderRadius: '50%', fontSize: 18, cursor: 'pointer', color: 'var(--mp-ink)' },
   title: { fontWeight: 700, fontSize: 16 },
   body: { padding: '18px 18px' },
-  date: { fontSize: 13, color: '#9b9ba3', fontWeight: 600, marginBottom: 14 },
-  intro: { fontSize: 13.5, color: '#5b5b63', lineHeight: 1.7, marginBottom: 8 },
+  date: { fontSize: 13, color: 'var(--mp-muted)', fontWeight: 600, marginBottom: 14 },
+  intro: { fontSize: 13.5, color: 'var(--mp-sub)', lineHeight: 1.7, marginBottom: 8 },
   sec: { marginTop: 22 },
   secTitle: { fontSize: 15, fontWeight: 700, marginBottom: 8 },
-  secBody: { fontSize: 13.5, color: '#5b5b63', lineHeight: 1.8 },
-  note: { fontSize: 12, color: '#9b9ba3', lineHeight: 1.6, marginTop: 28, padding: 14, background: '#f4f4f6', borderRadius: 12 },
+  secBody: { fontSize: 13.5, color: 'var(--mp-sub)', lineHeight: 1.8 },
+  note: { fontSize: 12, color: 'var(--mp-muted)', lineHeight: 1.6, marginTop: 28, padding: 14, background: 'var(--mp-card2)', borderRadius: 12 },
 }

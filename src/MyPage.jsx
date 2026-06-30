@@ -210,7 +210,7 @@ export default function MyPage({ user, group, members, onClose, onOpenStats, onG
           <div style={{ ...S.bigAvatar, background: myColor }}>{(myName || '?')[0]}</div>
           <div>
             <div style={{ fontSize: 19, fontWeight: 700 }}>{myName || '나'}</div>
-            <div style={{ fontSize: 12.5, color: '#9b9ba3' }}>{user.email}</div>
+            <div style={{ fontSize: 12.5, color: 'var(--mp-muted)' }}>{user.email}</div>
             {isOwner && <div style={S.ownerBadge}>👑 그룹장</div>}
           </div>
         </div>
@@ -238,7 +238,7 @@ export default function MyPage({ user, group, members, onClose, onOpenStats, onG
             <div style={S.card}>
               <div style={S.rowLabel}>이름</div>
               <input style={S.input} value={myName} maxLength={12} onChange={e => setMyName(e.target.value.slice(0, 12))} placeholder="이름 또는 별명" />
-              <div style={{ fontSize: 11, color: '#9b9ba3', textAlign: 'right', marginTop: 4 }}>{myName.length}/12</div>
+              <div style={{ fontSize: 11, color: 'var(--mp-muted)', textAlign: 'right', marginTop: 4 }}>{myName.length}/12</div>
               <div style={{ ...S.rowLabel, marginTop: 14 }}>색상</div>
               <div style={{ display: 'flex', gap: 10 }}>
                 {COLORS.map(c => (
@@ -254,7 +254,7 @@ export default function MyPage({ user, group, members, onClose, onOpenStats, onG
               <div style={S.toggleRow}>
                 <div>
                   <div style={{ fontWeight: 600 }}>모먼 알림</div>
-                  <div style={{ fontSize: 12, color: '#9b9ba3' }}>정해진 시간에 "지금 찍어!" 알림</div>
+                  <div style={{ fontSize: 12, color: 'var(--mp-muted)' }}>정해진 시간에 "지금 찍어!" 알림</div>
                 </div>
                 <button onClick={togglePush} style={{ ...S.switch, background: pushOn ? '#13bca4' : '#d8d8de' }}>
                   <span style={{ ...S.knob, transform: pushOn ? 'translateX(20px)' : 'translateX(0)' }} />
@@ -269,7 +269,7 @@ export default function MyPage({ user, group, members, onClose, onOpenStats, onG
               <button style={{ ...S.linkRow, color: '#e0593c' }} onClick={onSignOut}>🚪 로그아웃</button>
               <button style={{ ...S.linkRow, fontSize: 13.5 }} onClick={onOpenPrivacy}>📄 개인정보처리방침</button>
               <button style={{ ...S.linkRow, fontSize: 13.5 }} onClick={onOpenTerms}>📋 이용약관</button>
-              <button style={{ ...S.linkRow, color: '#9b9ba3', borderBottom: 'none', fontSize: 13 }} onClick={deleteAccount}>회원 탈퇴</button>
+              <button style={{ ...S.linkRow, color: 'var(--mp-muted)', borderBottom: 'none', fontSize: 13 }} onClick={deleteAccount}>회원 탈퇴</button>
             </div>
           </>
         ) : (
@@ -280,7 +280,7 @@ export default function MyPage({ user, group, members, onClose, onOpenStats, onG
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div>
                   <div style={{ fontWeight: 700, fontSize: 16 }}>{group.name}</div>
-                  <div style={{ fontSize: 12, color: '#9b9ba3' }}>멤버 {members.length}명 · 코드 {group.invite_code}</div>
+                  <div style={{ fontSize: 12, color: 'var(--mp-muted)' }}>멤버 {members.length}명 · 코드 {group.invite_code}</div>
                 </div>
                 <button style={S.smallBtn} onClick={copyInvite}>🔗 초대</button>
               </div>
@@ -327,7 +327,7 @@ export default function MyPage({ user, group, members, onClose, onOpenStats, onG
                       <div style={{ ...S.rowLabel, marginTop: 16 }}>랜덤 시간대</div>
                       <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                         <input type="time" style={{ ...S.input, flex: 1, textAlign: 'center' }} value={rStart} onChange={e => setRStart(e.target.value)} />
-                        <span style={{ color: '#9b9ba3' }}>~</span>
+                        <span style={{ color: 'var(--mp-muted)' }}>~</span>
                         <input type="time" style={{ ...S.input, flex: 1, textAlign: 'center' }} value={rEnd} onChange={e => setREnd(e.target.value)} />
                       </div>
                       <div style={S.hint}>이 시간대 안에서 매일 한 번, 아무도 모르는 시각에 깜짝 알림 ⚡</div>
@@ -360,39 +360,39 @@ export default function MyPage({ user, group, members, onClose, onOpenStats, onG
 }
 
 const S = {
-  app: { width: '100%', maxWidth: 480, margin: '0 auto', minHeight: '100vh', background: '#fafafa', fontFamily: "'Outfit','Gowun Dodum',sans-serif", color: '#16161a', paddingBottom: 40 },
-  top: { position: 'sticky', top: 0, zIndex: 100, background: 'rgba(250,250,250,.92)', backdropFilter: 'blur(12px)', borderBottom: '1px solid #efeff2', padding: '13px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
-  back: { width: 32, height: 32, border: 'none', background: '#f0f0f3', borderRadius: '50%', fontSize: 18, cursor: 'pointer', color: '#16161a' },
+  app: { width: '100%', maxWidth: 480, margin: '0 auto', minHeight: '100vh', background: 'var(--mp-bg)', fontFamily: "'Outfit','Gowun Dodum',sans-serif", color: 'var(--mp-ink)', paddingBottom: 40 },
+  top: { position: 'sticky', top: 0, zIndex: 100, background: 'var(--mp-topbar)', backdropFilter: 'blur(12px)', borderBottom: '1px solid var(--mp-line)', padding: '13px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
+  back: { width: 32, height: 32, border: 'none', background: 'var(--mp-card2)', borderRadius: '50%', fontSize: 18, cursor: 'pointer', color: 'var(--mp-ink)' },
   title: { fontWeight: 700, fontSize: 17 },
   body: { padding: 16 },
   profile: { display: 'flex', alignItems: 'center', gap: 14, padding: '6px 4px 18px' },
   bigAvatar: { width: 60, height: 60, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 24, flex: 'none' },
   ownerBadge: { display: 'inline-block', marginTop: 5, fontSize: 11, fontWeight: 700, color: '#e0972e', background: '#fff8ec', padding: '3px 9px', borderRadius: 10 },
   miniCards: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 },
-  miniCard: { background: '#fff', borderRadius: 14, padding: '14px 16px', boxShadow: '0 4px 24px rgba(20,20,30,.06)', textAlign: 'center' },
+  miniCard: { background: 'var(--mp-card)', borderRadius: 14, padding: '14px 16px', boxShadow: '0 4px 24px rgba(20,20,30,.06)', textAlign: 'center' },
   miniNum: { fontSize: 24, fontWeight: 700, color: '#ff4d5e', letterSpacing: '-.5px' },
-  miniLabel: { fontSize: 12, color: '#6b6b73', fontWeight: 600, marginTop: 2 },
-  statsLink: { width: '100%', border: 'none', borderRadius: 14, padding: 14, fontFamily: 'inherit', fontSize: 14, fontWeight: 700, cursor: 'pointer', color: '#16161a', background: 'linear-gradient(135deg,#fff1ed,#ffe9e0)', border: '1.5px solid #ffd9cc', marginBottom: 20 },
-  tabs: { display: 'flex', gap: 6, background: '#f0f0f3', borderRadius: 22, padding: 4, marginBottom: 16 },
-  tab: { flex: 1, border: 'none', background: 'none', fontFamily: 'inherit', fontSize: 13, fontWeight: 600, color: '#9b9ba3', padding: 9, borderRadius: 18, cursor: 'pointer' },
-  tabOn: { background: '#fff', color: '#16161a', boxShadow: '0 2px 8px rgba(0,0,0,.08)' },
-  secLabel: { fontSize: 12, fontWeight: 600, color: '#9b9ba3', textTransform: 'uppercase', letterSpacing: .4, margin: '16px 4px 8px' },
-  card: { background: '#fff', borderRadius: 16, padding: 16, boxShadow: '0 4px 24px rgba(20,20,30,.06)' },
+  miniLabel: { fontSize: 12, color: 'var(--mp-sub)', fontWeight: 600, marginTop: 2 },
+  statsLink: { width: '100%', border: 'none', borderRadius: 14, padding: 14, fontFamily: 'inherit', fontSize: 14, fontWeight: 700, cursor: 'pointer', color: 'var(--mp-ink)', background: 'linear-gradient(135deg,#fff1ed,#ffe9e0)', border: '1.5px solid #ffd9cc', marginBottom: 20 },
+  tabs: { display: 'flex', gap: 6, background: 'var(--mp-card2)', borderRadius: 22, padding: 4, marginBottom: 16 },
+  tab: { flex: 1, border: 'none', background: 'none', fontFamily: 'inherit', fontSize: 13, fontWeight: 600, color: 'var(--mp-muted)', padding: 9, borderRadius: 18, cursor: 'pointer' },
+  tabOn: { background: 'var(--mp-card)', color: 'var(--mp-ink)', boxShadow: '0 2px 8px rgba(0,0,0,.08)' },
+  secLabel: { fontSize: 12, fontWeight: 600, color: 'var(--mp-muted)', textTransform: 'uppercase', letterSpacing: .4, margin: '16px 4px 8px' },
+  card: { background: 'var(--mp-card)', borderRadius: 16, padding: 16, boxShadow: '0 4px 24px rgba(20,20,30,.06)' },
   rowLabel: { fontSize: 14, fontWeight: 600, marginBottom: 10 },
-  input: { width: '100%', border: '1.5px solid #efeff2', borderRadius: 10, padding: '11px 13px', fontFamily: 'inherit', fontSize: 14, fontWeight: 600, outline: 'none', boxSizing: 'border-box' },
+  input: { width: '100%', border: '1.5px solid var(--mp-line)', borderRadius: 10, padding: '11px 13px', fontFamily: 'inherit', fontSize: 14, fontWeight: 600, outline: 'none', boxSizing: 'border-box' },
   pills: { display: 'flex', gap: 8, flexWrap: 'wrap' },
-  pill: { border: '1.5px solid #efeff2', background: '#fff', color: '#16161a', padding: '9px 15px', borderRadius: 22, fontFamily: 'inherit', fontSize: 13, fontWeight: 600, cursor: 'pointer' },
-  hint: { fontSize: 12, color: '#9b9ba3', marginTop: 8 },
+  pill: { border: '1.5px solid var(--mp-line)', background: 'var(--mp-card)', color: 'var(--mp-ink)', padding: '9px 15px', borderRadius: 22, fontFamily: 'inherit', fontSize: 13, fontWeight: 600, cursor: 'pointer' },
+  hint: { fontSize: 12, color: 'var(--mp-muted)', marginTop: 8 },
   pillOn: { background: '#16161a', color: '#fff', borderColor: '#16161a' },
   timePill: { border: '1.5px solid #ffd9cc', background: '#fff1ed', color: '#e0593c', padding: '9px 14px', borderRadius: 22, fontFamily: 'inherit', fontSize: 13, fontWeight: 700, cursor: 'pointer' },
-  addPill: { border: '1.5px dashed #c4c4cc', background: '#fff', color: '#9b9ba3', padding: '9px 14px', borderRadius: 22, fontFamily: 'inherit', fontSize: 13, fontWeight: 600, cursor: 'pointer' },
+  addPill: { border: '1.5px dashed #c4c4cc', background: 'var(--mp-card)', color: 'var(--mp-muted)', padding: '9px 14px', borderRadius: 22, fontFamily: 'inherit', fontSize: 13, fontWeight: 600, cursor: 'pointer' },
   save: { width: '100%', border: 'none', borderRadius: 12, padding: 13, marginTop: 16, fontFamily: 'inherit', fontSize: 14, fontWeight: 700, cursor: 'pointer', color: '#fff', background: 'linear-gradient(135deg,#ff7a45,#ff4d5e)', boxShadow: '0 6px 16px rgba(255,77,94,.28)' },
   toggleRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
   switch: { width: 46, height: 26, borderRadius: 20, border: 'none', cursor: 'pointer', position: 'relative', padding: 0, transition: 'background .2s' },
-  knob: { position: 'absolute', top: 3, left: 3, width: 20, height: 20, borderRadius: '50%', background: '#fff', boxShadow: '0 2px 4px rgba(0,0,0,.2)', transition: 'transform .2s' },
-  linkRow: { width: '100%', textAlign: 'left', border: 'none', background: 'none', fontFamily: 'inherit', fontSize: 14, fontWeight: 600, color: '#16161a', padding: '13px 2px', cursor: 'pointer', borderBottom: '1px solid #f4f4f6' },
-  smallBtn: { border: '1.5px solid #efeff2', background: '#fff', color: '#16161a', borderRadius: 20, padding: '8px 13px', fontFamily: 'inherit', fontSize: 12, fontWeight: 600, cursor: 'pointer' },
+  knob: { position: 'absolute', top: 3, left: 3, width: 20, height: 20, borderRadius: '50%', background: 'var(--mp-card)', boxShadow: '0 2px 4px rgba(0,0,0,.2)', transition: 'transform .2s' },
+  linkRow: { width: '100%', textAlign: 'left', border: 'none', background: 'none', fontFamily: 'inherit', fontSize: 14, fontWeight: 600, color: 'var(--mp-ink)', padding: '13px 2px', cursor: 'pointer', borderBottom: '1px solid var(--mp-line)' },
+  smallBtn: { border: '1.5px solid var(--mp-line)', background: 'var(--mp-card)', color: 'var(--mp-ink)', borderRadius: 20, padding: '8px 13px', fontFamily: 'inherit', fontSize: 12, fontWeight: 600, cursor: 'pointer' },
   dangerNote: { fontSize: 12, color: '#c0392b', textAlign: 'center', marginTop: 8 },
-  ownerNote: { background: '#f7f7f9', borderRadius: 10, padding: '13px 15px', fontSize: 13, color: '#6b6b73', textAlign: 'center', lineHeight: 1.5 },
+  ownerNote: { background: '#f7f7f9', borderRadius: 10, padding: '13px 15px', fontSize: 13, color: 'var(--mp-sub)', textAlign: 'center', lineHeight: 1.5 },
   toast: { position: 'fixed', bottom: 28, left: '50%', transform: 'translateX(-50%)', background: '#16161a', color: '#fff', padding: '12px 20px', borderRadius: 30, fontSize: 13, fontWeight: 600, boxShadow: '0 10px 30px rgba(0,0,0,.3)', zIndex: 4000 },
 }

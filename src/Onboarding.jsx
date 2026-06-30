@@ -92,17 +92,17 @@ function Art({ kind }) {
 }
 
 const S = {
-  wrap: { position: 'fixed', inset: 0, background: '#fff', zIndex: 9000, display: 'flex', flexDirection: 'column', fontFamily: "'Outfit','Gowun Dodum',sans-serif", color: '#16161a', maxWidth: 480, margin: '0 auto' },
+  wrap: { position: 'fixed', inset: 0, background: 'var(--mp-card)', zIndex: 9000, display: 'flex', flexDirection: 'column', fontFamily: "'Outfit','Gowun Dodum',sans-serif", color: 'var(--mp-ink)', maxWidth: 480, margin: '0 auto' },
   skipRow: { display: 'flex', justifyContent: 'flex-end', padding: 'max(calc(env(safe-area-inset-top, 0px) + 16px), 56px) 18px 0', minHeight: 44 },
-  skip: { border: 'none', background: '#f4f4f6', color: '#6b6b73', fontFamily: 'inherit', fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: '7px 14px', borderRadius: 16 },
+  skip: { border: 'none', background: 'var(--mp-card2)', color: 'var(--mp-sub)', fontFamily: 'inherit', fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: '7px 14px', borderRadius: 16 },
   body: { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '0 32px', textAlign: 'center' },
   art: { marginBottom: 32 },
   title: { fontSize: 22, fontWeight: 700, marginBottom: 14, letterSpacing: '-.5px' },
-  text: { fontSize: 15, color: '#5b5b63', lineHeight: 1.7 },
+  text: { fontSize: 15, color: 'var(--mp-sub)', lineHeight: 1.7 },
   steps: { display: 'flex', flexDirection: 'column', gap: 14, marginTop: 8, width: '100%', maxWidth: 320 },
-  step: { display: 'flex', alignItems: 'center', gap: 14, background: '#fafafa', borderRadius: 14, padding: '14px 16px', textAlign: 'left' },
+  step: { display: 'flex', alignItems: 'center', gap: 14, background: 'var(--mp-bg)', borderRadius: 14, padding: '14px 16px', textAlign: 'left' },
   stepIcon: { fontSize: 22, flex: 'none' },
-  stepText: { fontSize: 14, fontWeight: 500, color: '#16161a' },
+  stepText: { fontSize: 14, fontWeight: 500, color: 'var(--mp-ink)' },
   bottom: { padding: '20px 24px calc(env(safe-area-inset-bottom, 0px) + 28px)' },
   dots: { display: 'flex', justifyContent: 'center', gap: 7, marginBottom: 20 },
   dot: { width: 7, height: 7, borderRadius: '50%', background: '#e0e0e6', transition: 'all .2s' },
