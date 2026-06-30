@@ -140,12 +140,12 @@ export default function GroupGate({ user, onReady }) {
           <button style={{ ...S.tab, ...(tab === 'join' ? S.tabOn : {}) }} onClick={() => { setTab('join'); setMsg('') }}>초대코드로 참여</button>
         </div>
 
-        <input style={S.input} placeholder="내 이름 (예: 아빠, 민지)"
-          value={displayName} onChange={e => setDisplayName(e.target.value)} />
+        <input style={S.input} placeholder="내 이름 (예: 아빠, 민지)" maxLength={12}
+          value={displayName} onChange={e => setDisplayName(e.target.value.slice(0, 12))} />
 
         {tab === 'create' ? (
-          <input style={S.input} placeholder="그룹 이름 (예: 우리가족)"
-            value={name} onChange={e => setName(e.target.value)} />
+          <input style={S.input} placeholder="그룹 이름 (예: 우리가족)" maxLength={20}
+            value={name} onChange={e => setName(e.target.value.slice(0, 20))} />
         ) : (
           <input style={{ ...S.input, textTransform: 'uppercase' }} placeholder="초대코드 (예: MP-4F2K)"
             value={code} onChange={e => setCode(e.target.value)} />
