@@ -541,7 +541,7 @@ export default function Home({ user, group, onOpenSettings, onMembersLoaded, onO
                     <div style={S.cardFoot}>
                       <div style={{ ...S.avatar, width: 30, height: 30, background: colorOf(p.user_id) }}>{nameOf(p.user_id)[0]}</div>
                       <span style={{ fontWeight: 700, fontSize: 14 }}>{nameOf(p.user_id)}{p.user_id === user.id && <span style={S.meTag}>나</span>}</span>
-                      <span style={{ fontSize: 12, color: '#9b9ba3' }}>{ago(p.created_at)}</span>
+                      <span style={{ fontSize: 12, color: 'var(--mp-muted)' }}>{ago(p.created_at)}</span>
                       {(() => { const li = likeInfo(p.id); return (
                         <button style={{ ...S.likeBtn, marginLeft: 'auto', ...(li.mine ? S.likeBtnOn : {}) }} onClick={(e) => { e.stopPropagation(); toggleLike(p) }}>
                           <span className={poppingHeart === p.id ? 'heart-pop' : ''} style={{ display: 'inline-block' }}>{li.mine ? '❤️' : '🤍'}</span>{li.count > 0 && <span style={S.likeCount}>{li.count}</span>}
@@ -608,7 +608,7 @@ export default function Home({ user, group, onOpenSettings, onMembersLoaded, onO
               <div style={{ ...S.avatar, background: colorOf(viewPost.user_id) }}>{nameOf(viewPost.user_id)[0]}</div>
               <div style={{ flex: 1 }}>
                 <div style={{ fontWeight: 700 }}>{nameOf(viewPost.user_id)}</div>
-                <div style={{ fontSize: 12, color: '#9b9ba3' }}>{!hasLoc(viewPost) ? '🔒 위치 없이' : '📍 ' + (viewPost.place_label || '위치') + (viewPost.user_id !== user.id ? ' · ' + distLabel(myPosRef.current, viewPost) : '')} · {hhmm(viewPost.created_at)}</div>
+                <div style={{ fontSize: 12, color: 'var(--mp-muted)' }}>{!hasLoc(viewPost) ? '🔒 위치 없이' : '📍 ' + (viewPost.place_label || '위치') + (viewPost.user_id !== user.id ? ' · ' + distLabel(myPosRef.current, viewPost) : '')} · {hhmm(viewPost.created_at)}</div>
               </div>
               {(() => { const li = likeInfo(viewPost.id); return (
                 <button style={{ ...S.likeBtn, ...(li.mine ? S.likeBtnOn : {}) }} onClick={() => toggleLike(viewPost)}>
@@ -688,7 +688,7 @@ function MemberSkeleton() {
   return (
     <>
       {[0,1,2].map(i => (
-        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '12px 0', borderBottom: '1px solid #f4f4f6' }}>
+        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '12px 0', borderBottom: '1px solid var(--mp-line)' }}>
           <div className="skel" style={{ width: 44, height: 44, borderRadius: '50%' }} />
           <div style={{ flex: 1 }}>
             <div className="skel" style={{ width: '40%', height: 13, marginBottom: 7 }} />
@@ -718,19 +718,19 @@ function Confetti() {
 }
 
 const S = {
-  app: { width: '100%', maxWidth: 480, margin: '0 auto', minHeight: '100vh', background: '#fafafa', fontFamily: "'Outfit','Gowun Dodum',sans-serif", color: '#16161a', paddingBottom: 30 },
-  top: { position: 'sticky', top: 0, zIndex: 1000, background: 'rgba(250,250,250,.9)', backdropFilter: 'blur(12px)', borderBottom: '1px solid #efeff2', padding: '13px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
+  app: { width: '100%', maxWidth: 480, margin: '0 auto', minHeight: '100vh', background: 'var(--mp-bg)', fontFamily: "'Outfit','Gowun Dodum',sans-serif", color: 'var(--mp-ink)', paddingBottom: 30 },
+  top: { position: 'sticky', top: 0, zIndex: 1000, background: 'rgba(250,250,250,.9)', backdropFilter: 'blur(12px)', borderBottom: '1px solid var(--mp-line)', padding: '13px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
   logoRow: { display: 'flex', alignItems: 'center', gap: 8 },
   logoDot: { width: 24, height: 24, borderRadius: '8px 8px 8px 3px', background: 'linear-gradient(135deg,#ff7a45,#ff4d5e)' },
-  groupSwitch: { border: 'none', background: '#f0f0f3', color: '#16161a', fontFamily: 'inherit', fontSize: 12, fontWeight: 700, padding: '3px 10px', borderRadius: 12, cursor: 'pointer', marginTop: 2 },
+  groupSwitch: { border: 'none', background: 'var(--mp-card2)', color: 'var(--mp-ink)', fontFamily: 'inherit', fontSize: 12, fontWeight: 700, padding: '3px 10px', borderRadius: 12, cursor: 'pointer', marginTop: 2 },
   logoName: { fontSize: 18, fontWeight: 700, letterSpacing: '-.4px' },
   codeBtn: { border: 'none', background: 'linear-gradient(135deg,#ff7a45,#ff4d5e)', color: '#fff', fontFamily: 'inherit', fontSize: 12, fontWeight: 700, padding: '8px 13px', borderRadius: 20, cursor: 'pointer', boxShadow: '0 4px 12px rgba(255,77,94,.3)' },
   welcome: { position: 'relative', margin: '14px 16px 0', background: 'linear-gradient(135deg,#fff,#fff8f5)', border: '1.5px solid #ffe0d3', borderRadius: 18, padding: '20px 18px', boxShadow: '0 8px 30px rgba(255,122,69,.12)' },
-  welcomeX: { position: 'absolute', top: 12, right: 12, width: 26, height: 26, border: 'none', background: '#f4f4f6', borderRadius: '50%', fontSize: 12, cursor: 'pointer', color: '#9b9ba3' },
+  welcomeX: { position: 'absolute', top: 12, right: 12, width: 26, height: 26, border: 'none', background: 'var(--mp-card2)', borderRadius: '50%', fontSize: 12, cursor: 'pointer', color: 'var(--mp-muted)' },
   welcomeTitle: { fontSize: 16, fontWeight: 700, marginBottom: 8 },
-  welcomeBody: { fontSize: 13.5, color: '#5b5b63', lineHeight: 1.6, marginBottom: 14 },
+  welcomeBody: { fontSize: 13.5, color: 'var(--mp-sub)', lineHeight: 1.6, marginBottom: 14 },
   welcomeSteps: { display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 },
-  wStep: { display: 'flex', alignItems: 'center', gap: 9, fontSize: 13, color: '#16161a', fontWeight: 500 },
+  wStep: { display: 'flex', alignItems: 'center', gap: 9, fontSize: 13, color: 'var(--mp-ink)', fontWeight: 500 },
   wNum: { width: 20, height: 20, borderRadius: '50%', background: '#ff7a45', color: '#fff', fontSize: 11, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: 'none' },
   welcomeBtn: { width: '100%', border: 'none', borderRadius: 12, padding: 12, fontFamily: 'inherit', fontSize: 14, fontWeight: 700, cursor: 'pointer', color: '#fff', background: 'linear-gradient(135deg,#ff7a45,#ff4d5e)' },
   banner: { position: 'relative', margin: '14px 14px 0', borderRadius: 22, overflow: 'hidden', background: 'linear-gradient(120deg,#16161a,#2a2030)', color: '#fff', boxShadow: '0 12px 40px rgba(20,20,30,.18)' },
@@ -738,18 +738,18 @@ const S = {
   bTag: { fontSize: 11, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase', opacity: .8, padding: '18px 20px 0' },
   bBig: { fontSize: 24, fontWeight: 700, letterSpacing: '-.5px', padding: '3px 20px 0' },
   bSmall: { fontSize: 13, opacity: .85, padding: '3px 20px 18px' },
-  toggle: { display: 'flex', gap: 6, background: '#f0f0f3', borderRadius: 24, padding: 4, margin: '14px 14px 0' },
-  tBtn: { flex: 1, border: 'none', background: 'none', fontFamily: 'inherit', fontSize: 13, fontWeight: 600, color: '#9b9ba3', padding: 9, borderRadius: 20, cursor: 'pointer' },
-  tBtnOn: { background: '#fff', color: '#16161a', boxShadow: '0 2px 8px rgba(0,0,0,.08)' },
+  toggle: { display: 'flex', gap: 6, background: 'var(--mp-card2)', borderRadius: 24, padding: 4, margin: '14px 14px 0' },
+  tBtn: { flex: 1, border: 'none', background: 'none', fontFamily: 'inherit', fontSize: 13, fontWeight: 600, color: 'var(--mp-muted)', padding: 9, borderRadius: 20, cursor: 'pointer' },
+  tBtnOn: { background: 'var(--mp-card)', color: 'var(--mp-ink)', boxShadow: '0 2px 8px rgba(0,0,0,.08)' },
   body: { padding: 14 },
   mapWrap: { position: 'relative', borderRadius: 20, overflow: 'hidden', boxShadow: '0 4px 24px rgba(20,20,30,.07)', marginBottom: 12, zIndex: 0, isolation: 'isolate' },
   map: { width: '100%', height: 300 },
-  summary: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, flexWrap: 'wrap', background: '#fff', borderRadius: 14, padding: '11px 14px', boxShadow: '0 4px 24px rgba(20,20,30,.07)', marginBottom: 16, fontSize: 13 },
+  summary: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, flexWrap: 'wrap', background: 'var(--mp-card)', borderRadius: 14, padding: '11px 14px', boxShadow: '0 4px 24px rgba(20,20,30,.07)', marginBottom: 16, fontSize: 13 },
   sChip: { display: 'inline-flex', alignItems: 'center', gap: 5 },
-  sKey: { color: '#9b9ba3', fontWeight: 500 },
+  sKey: { color: 'var(--mp-muted)', fontWeight: 500 },
   sSep: { width: 1, height: 14, background: '#efeff2' },
   grid: { display: 'grid', gap: 8, marginBottom: 16 },
-  gcell: { position: 'relative', aspectRatio: '3/4', borderRadius: 16, overflow: 'hidden', background: '#f0f0f3', cursor: 'pointer', boxShadow: '0 4px 16px rgba(20,20,30,.08)' },
+  gcell: { position: 'relative', aspectRatio: '3/4', borderRadius: 16, overflow: 'hidden', background: 'var(--mp-card2)', cursor: 'pointer', boxShadow: '0 4px 16px rgba(20,20,30,.08)' },
   gimg: { width: '100%', height: '100%', objectFit: 'cover' },
   gwait: { width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, color: '#c4c4cc' },
   gname: { position: 'absolute', left: 7, bottom: 7, right: 7, display: 'flex', flexDirection: 'column', gap: 2, fontSize: 11, fontWeight: 700, color: '#fff', textShadow: '0 1px 4px rgba(0,0,0,.7)' },
@@ -757,49 +757,49 @@ const S = {
   gdot: { width: 7, height: 7, borderRadius: '50%', flex: 'none' },
   gtime: { position: 'absolute', right: 7, top: 7, background: 'rgba(0,0,0,.5)', color: '#fff', fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 12 },
   feed: { display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 16 },
-  empty: { textAlign: 'center', color: '#9b9ba3', padding: '40px 20px', fontSize: 14, lineHeight: 1.6 },
-  card: { background: '#fff', borderRadius: 20, overflow: 'hidden', boxShadow: '0 4px 24px rgba(20,20,30,.08)', cursor: 'pointer' },
+  empty: { textAlign: 'center', color: 'var(--mp-muted)', padding: '40px 20px', fontSize: 14, lineHeight: 1.6 },
+  card: { background: 'var(--mp-card)', borderRadius: 20, overflow: 'hidden', boxShadow: '0 4px 24px rgba(20,20,30,.08)', cursor: 'pointer' },
   cardPhoto: { position: 'relative', aspectRatio: '4/5', background: '#222' },
   cardImg: { width: '100%', height: '100%', objectFit: 'cover', display: 'block' },
   cardNo: { width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 60 },
   cardLoc: { position: 'absolute', left: 12, bottom: 12, background: 'rgba(0,0,0,.45)', backdropFilter: 'blur(8px)', color: '#fff', fontSize: 12.5, fontWeight: 500, padding: '7px 12px', borderRadius: 30 },
   cardTime: { position: 'absolute', right: 12, bottom: 12, background: 'rgba(0,0,0,.45)', backdropFilter: 'blur(8px)', color: '#fff', fontSize: 12.5, fontWeight: 600, padding: '7px 12px', borderRadius: 30 },
-  likeBtn: { display: 'inline-flex', alignItems: 'center', gap: 4, border: 'none', background: '#f4f4f6', borderRadius: 20, padding: '6px 11px', fontFamily: 'inherit', fontSize: 14, cursor: 'pointer', color: '#16161a' },
+  likeBtn: { display: 'inline-flex', alignItems: 'center', gap: 4, border: 'none', background: 'var(--mp-card2)', borderRadius: 20, padding: '6px 11px', fontFamily: 'inherit', fontSize: 14, cursor: 'pointer', color: 'var(--mp-ink)' },
   likeBtnOn: { background: '#fff1f2' },
   likeCount: { fontSize: 12, fontWeight: 700, color: '#e0395a' },
   cardFoot: { display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px' },
   stepWrap: { display: 'inline-flex', alignItems: 'center', gap: 9 },
   stepDots: { display: 'inline-flex', gap: 5 },
   stepDot: { width: 6, height: 6, borderRadius: '50%', background: 'rgba(255,255,255,.4)', transition: 'background .2s' },
-  stepDotOn: { background: '#fff' },
+  stepDotOn: { background: 'var(--mp-card)' },
   shoot: { width: '100%', border: 'none', borderRadius: 16, padding: 16, fontFamily: 'inherit', fontSize: 16, fontWeight: 700, cursor: 'pointer', color: '#fff', background: 'linear-gradient(135deg,#ff7a45,#ff4d5e)', boxShadow: '0 8px 20px rgba(255,77,94,.3)', marginBottom: 10 },
   countdown: { textAlign: 'center', background: '#fff1ed', border: '1.5px solid #ffd9cc', color: '#e0593c', borderRadius: 14, padding: '11px 14px', fontSize: 14, fontWeight: 600, marginBottom: 10 },
-  waitBox: { textAlign: 'center', background: '#fff', borderRadius: 18, padding: '22px 18px', boxShadow: '0 4px 24px rgba(20,20,30,.06)' },
-  waitTitle: { fontSize: 15, fontWeight: 700, color: '#16161a', marginBottom: 4 },
-  waitSub: { fontSize: 13, color: '#9b9ba3', marginBottom: 14 },
+  waitBox: { textAlign: 'center', background: 'var(--mp-card)', borderRadius: 18, padding: '22px 18px', boxShadow: '0 4px 24px rgba(20,20,30,.06)' },
+  waitTitle: { fontSize: 15, fontWeight: 700, color: 'var(--mp-ink)', marginBottom: 4 },
+  waitSub: { fontSize: 13, color: 'var(--mp-muted)', marginBottom: 14 },
   startBtn: { border: 'none', borderRadius: 14, padding: '13px 20px', fontFamily: 'inherit', fontSize: 14, fontWeight: 700, cursor: 'pointer', color: '#fff', background: 'linear-gradient(135deg,#ff7a45,#ff4d5e)', boxShadow: '0 6px 16px rgba(255,77,94,.28)' },
-  shootGhost: { width: '100%', border: '1.5px solid #efeff2', borderRadius: 14, padding: 13, fontFamily: 'inherit', fontSize: 14, fontWeight: 600, cursor: 'pointer', color: '#6b6b73', background: '#fff', marginBottom: 14 },
+  shootGhost: { width: '100%', border: '1.5px solid var(--mp-line)', borderRadius: 14, padding: 13, fontFamily: 'inherit', fontSize: 14, fontWeight: 600, cursor: 'pointer', color: 'var(--mp-sub)', background: 'var(--mp-card)', marginBottom: 14 },
   subBtns: { display: 'flex', gap: 10, marginBottom: 22 },
   subBtnOn: { background: '#eafaf6', borderColor: '#13bca4', color: '#0e9d88' },
-  subBtn: { flex: 1, border: '1.5px solid #efeff2', background: '#fff', color: '#16161a', borderRadius: 14, padding: 12, fontFamily: 'inherit', fontSize: 13, fontWeight: 600, cursor: 'pointer' },
-  label: { fontSize: 12, fontWeight: 600, color: '#9b9ba3', textTransform: 'uppercase', letterSpacing: .4, marginBottom: 10 },
-  muted: { color: '#9b9ba3', fontSize: 14 },
-  memberRow: { display: 'flex', alignItems: 'center', gap: 11, padding: '10px 0', borderBottom: '1px solid #f4f4f6' },
+  subBtn: { flex: 1, border: '1.5px solid var(--mp-line)', background: 'var(--mp-card)', color: 'var(--mp-ink)', borderRadius: 14, padding: 12, fontFamily: 'inherit', fontSize: 13, fontWeight: 600, cursor: 'pointer' },
+  label: { fontSize: 12, fontWeight: 600, color: 'var(--mp-muted)', textTransform: 'uppercase', letterSpacing: .4, marginBottom: 10 },
+  muted: { color: 'var(--mp-muted)', fontSize: 14 },
+  memberRow: { display: 'flex', alignItems: 'center', gap: 11, padding: '10px 0', borderBottom: '1px solid var(--mp-line)' },
   avatar: { width: 36, height: 36, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, flex: 'none', fontSize: 14 },
   crown: { fontSize: 13, marginLeft: 5 },
-  meTag: { fontSize: 11, color: '#9b9ba3', fontWeight: 600, marginLeft: 7 },
+  meTag: { fontSize: 11, color: 'var(--mp-muted)', fontWeight: 600, marginLeft: 7 },
   statusDot: { position: 'absolute', right: -2, bottom: -2, width: 16, height: 16, borderRadius: '50%', border: '2px solid #fafafa', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: '#fff', fontWeight: 700 },
   distTag: { fontSize: 12, color: '#13bca4', fontWeight: 700, marginLeft: 7 },
-  shareTag: { fontSize: 12, color: '#9b9ba3', fontWeight: 500 },
-  statsBtn: { width: '100%', border: 'none', borderRadius: 14, padding: 14, fontFamily: 'inherit', fontSize: 14, fontWeight: 700, cursor: 'pointer', color: '#16161a', background: 'linear-gradient(135deg,#fff1ed,#ffe9e0)', border: '1.5px solid #ffd9cc', marginTop: 24 },
+  shareTag: { fontSize: 12, color: 'var(--mp-muted)', fontWeight: 500 },
+  statsBtn: { width: '100%', border: 'none', borderRadius: 14, padding: 14, fontFamily: 'inherit', fontSize: 14, fontWeight: 700, cursor: 'pointer', color: 'var(--mp-ink)', background: 'linear-gradient(135deg,#fff1ed,#ffe9e0)', border: '1.5px solid #ffd9cc', marginTop: 24 },
   actions: { display: 'flex', gap: 10, marginTop: 24 },
-  ghost: { flex: 1, border: '1.5px solid #efeff2', background: '#fff', color: '#16161a', borderRadius: 14, padding: 13, fontFamily: 'inherit', fontSize: 14, fontWeight: 600, cursor: 'pointer' },
+  ghost: { flex: 1, border: '1.5px solid var(--mp-line)', background: 'var(--mp-card)', color: 'var(--mp-ink)', borderRadius: 14, padding: 13, fontFamily: 'inherit', fontSize: 14, fontWeight: 600, cursor: 'pointer' },
   pop: { position: 'fixed', inset: 0, zIndex: 3000, background: 'rgba(10,10,14,.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 },
-  popCard: { width: '100%', maxWidth: 360, background: '#fff', borderRadius: 24, overflow: 'hidden', boxShadow: '0 24px 60px rgba(0,0,0,.5)' },
+  popCard: { width: '100%', maxWidth: 360, background: 'var(--mp-card)', borderRadius: 24, overflow: 'hidden', boxShadow: '0 24px 60px rgba(0,0,0,.5)' },
   popPhoto: { aspectRatio: '4/5', background: '#222', display: 'flex', alignItems: 'center', justifyContent: 'center' },
   popImg: { width: '100%', height: '100%', objectFit: 'cover' },
   popLoading: { color: '#fff', fontSize: 13 },
   popInfo: { display: 'flex', alignItems: 'center', gap: 11, padding: '14px 16px' },
-  popX: { marginLeft: 'auto', background: '#f0f0f3', border: 'none', width: 34, height: 34, borderRadius: '50%', fontSize: 16, cursor: 'pointer', color: '#9b9ba3' },
+  popX: { marginLeft: 'auto', background: 'var(--mp-card2)', border: 'none', width: 34, height: 34, borderRadius: '50%', fontSize: 16, cursor: 'pointer', color: 'var(--mp-muted)' },
   toast: { position: 'fixed', bottom: 28, left: '50%', transform: 'translateX(-50%)', background: '#16161a', color: '#fff', padding: '12px 20px', borderRadius: 30, fontSize: 13, fontWeight: 600, boxShadow: '0 10px 30px rgba(0,0,0,.3)', zIndex: 4000 },
 }
