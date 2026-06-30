@@ -160,7 +160,7 @@ export default function MyPage({ user, group, members, onClose, onOpenStats, onG
 
   const [editName, setEditName] = useState(group.name)
   async function saveGroupName() {
-    const nm = editName.trim().slice(0, 20)
+    const nm = editName.trim().slice(0, 10)
     if (!nm) { flash('그룹 이름을 입력해 주세요'); return }
     setBusy(true)
     let res = await supabase.from('groups').update({ name: nm }).eq('id', group.id)
@@ -288,7 +288,7 @@ export default function MyPage({ user, group, members, onClose, onOpenStats, onG
                 <div style={{ marginTop: 14 }}>
                   <div style={S.rowLabel}>그룹 이름 바꾸기</div>
                   <div style={{ display: 'flex', gap: 8 }}>
-                    <input style={{ ...S.input, flex: 1 }} value={editName} maxLength={20} onChange={e => setEditName(e.target.value.slice(0, 20))} />
+                    <input style={{ ...S.input, flex: 1 }} value={editName} maxLength={10} onChange={e => setEditName(e.target.value.slice(0, 10))} />
                     <button style={{ ...S.smallBtn, opacity: busy ? .6 : 1 }} disabled={busy} onClick={saveGroupName}>저장</button>
                   </div>
                 </div>

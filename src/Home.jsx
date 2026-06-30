@@ -722,7 +722,7 @@ const S = {
   top: { position: 'sticky', top: 0, zIndex: 1000, background: 'rgba(250,250,250,.9)', backdropFilter: 'blur(12px)', borderBottom: '1px solid var(--mp-line)', padding: '13px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
   logoRow: { display: 'flex', alignItems: 'center', gap: 8 },
   logoDot: { width: 24, height: 24, borderRadius: '8px 8px 8px 3px', background: 'linear-gradient(135deg,#ff7a45,#ff4d5e)' },
-  groupSwitch: { border: 'none', background: 'var(--mp-card2)', color: 'var(--mp-ink)', fontFamily: 'inherit', fontSize: 12, fontWeight: 700, padding: '3px 10px', borderRadius: 12, cursor: 'pointer', marginTop: 2, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center' },
+  groupSwitch: { border: 'none', background: 'var(--mp-card2)', color: 'var(--mp-ink)', fontFamily: 'inherit', fontSize: 12, fontWeight: 700, padding: '3px 10px', borderRadius: 12, cursor: 'pointer', marginTop: 2, maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center' },
   logoName: { fontSize: 18, fontWeight: 700, letterSpacing: '-.4px' },
   codeBtn: { border: 'none', background: 'linear-gradient(135deg,#ff7a45,#ff4d5e)', color: '#fff', fontFamily: 'inherit', fontSize: 12, fontWeight: 700, padding: '8px 13px', borderRadius: 20, cursor: 'pointer', boxShadow: '0 4px 12px rgba(255,77,94,.3)' },
   welcome: { position: 'relative', margin: '14px 16px 0', background: 'linear-gradient(135deg,#fff,#fff8f5)', border: '1.5px solid #ffe0d3', borderRadius: 18, padding: '20px 18px', boxShadow: '0 8px 30px rgba(255,122,69,.12)' },

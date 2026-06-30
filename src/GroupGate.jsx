@@ -144,8 +144,8 @@ export default function GroupGate({ user, onReady }) {
           value={displayName} onChange={e => setDisplayName(e.target.value.slice(0, 12))} />
 
         {tab === 'create' ? (
-          <input style={S.input} placeholder="그룹 이름 (예: 우리가족)" maxLength={20}
-            value={name} onChange={e => setName(e.target.value.slice(0, 20))} />
+          <input style={S.input} placeholder="그룹 이름 (예: 우리가족)" maxLength={10}
+            value={name} onChange={e => setName(e.target.value.slice(0, 10))} />
         ) : (
           <input style={{ ...S.input, textTransform: 'uppercase' }} placeholder="초대코드 (예: MP-4F2K)"
             value={code} onChange={e => setCode(e.target.value)} />
