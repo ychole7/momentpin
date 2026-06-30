@@ -136,17 +136,17 @@ export default function App() {
 
 const sheet = {
   overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,.4)', zIndex: 5000, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' },
-  card: { width: '100%', maxWidth: 480, background: '#fff', borderRadius: '22px 22px 0 0', padding: '10px 18px 28px', maxHeight: '70vh', overflowY: 'auto' },
+  card: { width: '100%', maxWidth: 480, background: 'var(--mp-card)', borderRadius: '22px 22px 0 0', padding: '10px 18px 28px', maxHeight: '70vh', overflowY: 'auto' },
   handle: { width: 40, height: 4, borderRadius: 2, background: '#e0e0e6', margin: '6px auto 14px' },
   title: { fontWeight: 700, fontSize: 16, marginBottom: 12, padding: '0 2px' },
-  row: { width: '100%', display: 'flex', alignItems: 'center', gap: 8, border: '1.5px solid #efeff2', background: '#fff', borderRadius: 14, padding: '15px 16px', marginBottom: 8, fontFamily: 'inherit', fontSize: 15, cursor: 'pointer', textAlign: 'left' },
+  row: { width: '100%', display: 'flex', alignItems: 'center', gap: 8, border: '1.5px solid var(--mp-line)', background: 'var(--mp-card)', borderRadius: 14, padding: '15px 16px', marginBottom: 8, fontFamily: 'inherit', fontSize: 15, cursor: 'pointer', textAlign: 'left' },
   rowActive: { borderColor: '#ff7a45', background: '#fff8f5' },
   current: { fontSize: 11, fontWeight: 700, color: '#ff4d5e', background: '#fff1ed', padding: '2px 8px', borderRadius: 8 },
   owner: { marginLeft: 'auto', fontSize: 13 },
-  addBtn: { width: '100%', border: '1.5px dashed #c4c4cc', background: '#fff', color: '#6b6b73', borderRadius: 14, padding: 15, marginTop: 4, fontFamily: 'inherit', fontSize: 14, fontWeight: 600, cursor: 'pointer' },
+  addBtn: { width: '100%', border: '1.5px dashed var(--mp-line2)', background: 'var(--mp-card)', color: 'var(--mp-sub)', borderRadius: 14, padding: 15, marginTop: 4, fontFamily: 'inherit', fontSize: 14, fontWeight: 600, cursor: 'pointer' },
 }
 
 const center = {
   minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-  color: '#9b9ba3', fontFamily: "'Outfit','Gowun Dodum',sans-serif", background: '#fafafa',
+  color: 'var(--mp-muted)', fontFamily: "'Outfit','Gowun Dodum',sans-serif", background: 'var(--mp-bg)',
 }
