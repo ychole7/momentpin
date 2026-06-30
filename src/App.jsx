@@ -8,6 +8,7 @@ import MyPage from './MyPage'
 import Stats from './Stats'
 import Onboarding from './Onboarding'
 import Privacy from './Privacy'
+import Terms from './Terms'
 
 export default function App() {
   const [session, setSession] = useState(null)
@@ -20,6 +21,7 @@ export default function App() {
   const [showSwitcher, setShowSwitcher] = useState(false)
   const [showOnboarding, setShowOnboarding] = useState(false)
   const [showPrivacy, setShowPrivacy] = useState(false)
+  const [showTerms, setShowTerms] = useState(false)
 
   async function loadMyGroups() {
     if (!session) return
@@ -76,6 +78,7 @@ export default function App() {
   if (!group) return <GroupGate user={session.user} onReady={setGroup} />
 
   if (showPrivacy) return <Privacy onClose={() => { setShowPrivacy(false); setShowSettings(true) }} />
+  if (showTerms) return <Terms onClose={() => { setShowTerms(false); setShowSettings(true) }} />
 
   if (showStats) return (
     <Stats
@@ -97,6 +100,7 @@ export default function App() {
       onLeaveGroup={() => { setShowSettings(false); setGroup(null) }}
       onSignOut={signOut}
       onOpenPrivacy={() => { setShowPrivacy(true); setShowSettings(false) }}
+      onOpenTerms={() => { setShowTerms(true); setShowSettings(false) }}
     />
   )
 

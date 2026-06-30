@@ -2,10 +2,12 @@
 import { useState } from 'react'
 import { supabase } from './supabaseClient'
 import Privacy from './Privacy'
+import Terms from './Terms'
 
 export default function Auth() {
   const [mode, setMode] = useState('login') // 'login' | 'signup'
   const [showPrivacy, setShowPrivacy] = useState(false)
+  const [showTerms, setShowTerms] = useState(false)
   const [email, setEmail] = useState('')
   const [pw, setPw] = useState('')
   const [busy, setBusy] = useState(false)
@@ -37,6 +39,7 @@ export default function Auth() {
   }
 
   if (showPrivacy) return <Privacy onClose={() => setShowPrivacy(false)} />
+  if (showTerms) return <Terms onClose={() => setShowTerms(false)} />
 
   return (
     <div style={S.wrap}>
@@ -61,7 +64,7 @@ export default function Auth() {
         {mode === 'signup' && (
           <label style={S.ageRow}>
             <input type="checkbox" checked={age} onChange={e => setAge(e.target.checked)} style={S.checkbox} />
-            <span>만 14세 이상이며, <button type="button" onClick={() => setShowPrivacy(true)} style={S.linkBtn}>개인정보처리방침</button>에 동의합니다.</span>
+            <span>만 14세 이상이며, <button type="button" onClick={() => setShowTerms(true)} style={S.linkBtn}>이용약관</button> 및 <button type="button" onClick={() => setShowPrivacy(true)} style={S.linkBtn}>개인정보처리방침</button>에 동의합니다.</span>
           </label>
         )}
 
