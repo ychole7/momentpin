@@ -25,9 +25,23 @@ export default function MyPage({ user, group, members, onClose, onOpenStats, onG
   const [busy, setBusy] = useState(false)
   const [toast, setToast] = useState('')
   const [pushOn, setPushOn] = useState(false)
+  const [todayCount, setTodayCount] = useState(null)  // 오늘 생성된 모먼 수
   function flash(m) { setToast(m); setTimeout(() => setToast(''), 2400) }
 
-  useEffect(() => { loadMe(); loadMyStats(); checkPush() }, [])
+  useEffect(() => { loadMe(); loadMyStats(); checkPush(); loadTodayCount() }, [])
+
+  async function loadTodayCount() {
+    // KST 기준 오늘 0시 이후 생성된 모먼 수
+    const now = new Date()
+    const kst = new Date(now.getTime() + 9 * 3600 * 1000)
+    const y = kst.getUTCFullYear(), mo = kst.getUTCMonth(), d = kst.getUTCDate()
+    const startKstUtc = new Date(Date.UTC(y, mo, d) - 9 * 3600 * 1000)  // KST 자정을 UTC로
+    let res = await supabase.from('moments')
+      .select('id', { count: 'exact', head: true })
+      .eq('group_id', group.id)
+      .gte('fired_at', startKstUtc.toISOString())
+    if (typeof res.count === 'number') setTodayCount(res.count)
+  }
 
   async function checkPush() {
     try {
@@ -242,7 +256,7 @@ export default function MyPage({ user, group, members, onClose, onOpenStats, onG
               <div style={{ ...S.rowLabel, marginTop: 14 }}>색상</div>
               <div style={{ display: 'flex', gap: 10 }}>
                 {COLORS.map(c => (
-                  <button key={c} onClick={() => setMyColor(c)} style={{ width: 32, height: 32, borderRadius: '50%', background: c, border: myColor === c ? '3px solid #16161a' : '3px solid #fff', cursor: 'pointer', boxShadow: '0 2px 6px rgba(0,0,0,.15)' }} />
+                  <button key={c} onClick={() => setMyColor(c)} style={{ width: 32, height: 32, borderRadius: '50%', background: c, border: myColor === c ? '3px solid var(--mp-ink)' : '3px solid var(--mp-card)', cursor: 'pointer', boxShadow: '0 2px 6px rgba(0,0,0,.15)' }} />
                 ))}
               </div>
               <button style={{ ...S.save, opacity: busy ? .6 : 1 }} disabled={busy} onClick={saveMe}>프로필 저장</button>
@@ -256,7 +270,7 @@ export default function MyPage({ user, group, members, onClose, onOpenStats, onG
                   <div style={{ fontWeight: 600 }}>모먼 알림</div>
                   <div style={{ fontSize: 12, color: 'var(--mp-muted)' }}>정해진 시간에 "지금 찍어!" 알림</div>
                 </div>
-                <button onClick={togglePush} style={{ ...S.switch, background: pushOn ? '#13bca4' : '#d8d8de' }}>
+                <button onClick={togglePush} style={{ ...S.switch, background: pushOn ? '#13bca4' : 'var(--mp-line2)' }}>
                   <span style={{ ...S.knob, transform: pushOn ? 'translateX(20px)' : 'translateX(0)' }} />
                 </button>
               </div>
@@ -266,7 +280,7 @@ export default function MyPage({ user, group, members, onClose, onOpenStats, onG
             <div style={S.secLabel}>계정</div>
             <div style={S.card}>
               <button style={S.linkRow} onClick={onLeaveGroup}>🔄 다른 그룹으로</button>
-              <button style={{ ...S.linkRow, color: '#e0593c' }} onClick={onSignOut}>🚪 로그아웃</button>
+              <button style={{ ...S.linkRow, color: 'var(--mp-coral)' }} onClick={onSignOut}>🚪 로그아웃</button>
               <button style={{ ...S.linkRow, fontSize: 13.5 }} onClick={onOpenPrivacy}>📄 개인정보처리방침</button>
               <button style={{ ...S.linkRow, fontSize: 13.5 }} onClick={onOpenTerms}>📋 이용약관</button>
               <button style={{ ...S.linkRow, color: 'var(--mp-muted)', borderBottom: 'none', fontSize: 13 }} onClick={deleteAccount}>회원 탈퇴</button>
@@ -338,6 +352,34 @@ export default function MyPage({ user, group, members, onClose, onOpenStats, onG
                   <div style={S.pills}>
                     {[2, 3, 5, 10].map(w => <button key={w} style={{ ...S.pill, ...(windowMin === w ? S.pillOn : {}) }} onClick={() => setWindowMin(w)}>{w}분</button>)}
                   </div>
+
+                  {(() => {
+                    const dailyLimit = Math.min(5, Math.max(1, mode === 'random' ? 1 : times.length))
+                    const used = todayCount == null ? null : todayCount
+                    const left = used == null ? null : Math.max(0, dailyLimit - used)
+                    return (
+                      <div style={S.quotaBox}>
+                        <div style={S.quotaRow}>
+                          <span style={S.quotaLabel}>{mode === 'random' ? '하루 알림' : '오늘 알림 예정'}</span>
+                          <span style={S.quotaVal}>하루 {dailyLimit}번</span>
+                        </div>
+                        {left != null && (
+                          <div style={S.quotaRow}>
+                            <span style={S.quotaLabel}>오늘 남은 모먼</span>
+                            <span style={{ ...S.quotaVal, color: left === 0 ? 'var(--mp-muted)' : 'var(--mp-coral)' }}>
+                              {left === 0 ? '오늘은 끝 🌙' : left + '번 남음'}
+                            </span>
+                          </div>
+                        )}
+                        <div style={S.quotaHint}>
+                          {mode === 'random'
+                            ? '설정한 시간대 안에서 하루 한 번 깜짝 알림이 가요'
+                            : '설정한 시간 개수만큼 하루 알림이 가요 (지금 ' + times.length + '개)'}
+                        </div>
+                      </div>
+                    )
+                  })()}
+
                   <button style={{ ...S.save, opacity: busy ? .6 : 1 }} disabled={busy} onClick={saveGroup}>그룹 설정 저장</button>
                 </>
               )}
@@ -347,7 +389,7 @@ export default function MyPage({ user, group, members, onClose, onOpenStats, onG
             <div style={S.secLabel}>그룹 관리</div>
             <div style={S.card}>
               <button style={S.linkRow} onClick={leaveGroup}>🚪 이 그룹에서 나가기</button>
-              {isOwner && <button style={{ ...S.linkRow, color: '#e0593c', borderBottom: 'none' }} onClick={deleteGroup}>🗑️ 그룹 삭제하기</button>}
+              {isOwner && <button style={{ ...S.linkRow, color: 'var(--mp-coral)', borderBottom: 'none' }} onClick={deleteGroup}>🗑️ 그룹 삭제하기</button>}
             </div>
             {isOwner && <div style={S.dangerNote}>삭제하면 모든 모먼·사진이 영구히 사라져요</div>}
           </>
@@ -360,7 +402,7 @@ export default function MyPage({ user, group, members, onClose, onOpenStats, onG
 }
 
 const S = {
-  app: { width: '100%', maxWidth: 480, margin: '0 auto', minHeight: '100vh', background: 'var(--mp-bg)', fontFamily: "'Outfit','Gowun Dodum',sans-serif", color: 'var(--mp-ink)', paddingBottom: 40 },
+  app: { width: '100%', maxWidth: 480, margin: '0 auto', minHeight: '100dvh', background: 'var(--mp-bg)', fontFamily: "'Outfit','Gowun Dodum',sans-serif", color: 'var(--mp-ink)', paddingBottom: 40 },
   top: { position: 'sticky', top: 0, zIndex: 100, background: 'var(--mp-topbar)', backdropFilter: 'blur(12px)', borderBottom: '1px solid var(--mp-line)', padding: '13px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
   back: { width: 32, height: 32, border: 'none', background: 'var(--mp-card2)', borderRadius: '50%', fontSize: 18, cursor: 'pointer', color: 'var(--mp-ink)' },
   title: { fontWeight: 700, fontSize: 17 },
@@ -383,16 +425,21 @@ const S = {
   pills: { display: 'flex', gap: 8, flexWrap: 'wrap' },
   pill: { border: '1.5px solid var(--mp-line)', background: 'var(--mp-card)', color: 'var(--mp-ink)', padding: '9px 15px', borderRadius: 22, fontFamily: 'inherit', fontSize: 13, fontWeight: 600, cursor: 'pointer' },
   hint: { fontSize: 12, color: 'var(--mp-muted)', marginTop: 8 },
-  pillOn: { background: '#16161a', color: '#fff', borderColor: '#16161a' },
-  timePill: { border: '1.5px solid #ffd9cc', background: '#fff1ed', color: '#e0593c', padding: '9px 14px', borderRadius: 22, fontFamily: 'inherit', fontSize: 13, fontWeight: 700, cursor: 'pointer' },
-  addPill: { border: '1.5px dashed #c4c4cc', background: 'var(--mp-card)', color: 'var(--mp-muted)', padding: '9px 14px', borderRadius: 22, fontFamily: 'inherit', fontSize: 13, fontWeight: 600, cursor: 'pointer' },
+  quotaBox: { marginTop: 16, background: 'var(--mp-card2)', border: '1px solid var(--mp-line)', borderRadius: 12, padding: '12px 14px' },
+  quotaRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 },
+  quotaLabel: { fontSize: 13, color: 'var(--mp-sub)', fontWeight: 500 },
+  quotaVal: { fontSize: 14, fontWeight: 700, color: 'var(--mp-ink)' },
+  quotaHint: { fontSize: 11.5, color: 'var(--mp-muted)', marginTop: 4, lineHeight: 1.5 },
+  pillOn: { background: 'linear-gradient(135deg,#ff7a45,#ff4d5e)', color: '#fff', borderColor: 'transparent', boxShadow: '0 4px 12px rgba(255,77,94,.3)' },
+  timePill: { border: '1.5px solid var(--mp-coral)', background: 'var(--mp-card2)', color: 'var(--mp-coral)', padding: '9px 14px', borderRadius: 22, fontFamily: 'inherit', fontSize: 13, fontWeight: 700, cursor: 'pointer' },
+  addPill: { border: '1.5px dashed var(--mp-line2)', background: 'var(--mp-card)', color: 'var(--mp-muted)', padding: '9px 14px', borderRadius: 22, fontFamily: 'inherit', fontSize: 13, fontWeight: 600, cursor: 'pointer' },
   save: { width: '100%', border: 'none', borderRadius: 12, padding: 13, marginTop: 16, fontFamily: 'inherit', fontSize: 14, fontWeight: 700, cursor: 'pointer', color: '#fff', background: 'linear-gradient(135deg,#ff7a45,#ff4d5e)', boxShadow: '0 6px 16px rgba(255,77,94,.28)' },
   toggleRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
   switch: { width: 46, height: 26, borderRadius: 20, border: 'none', cursor: 'pointer', position: 'relative', padding: 0, transition: 'background .2s' },
-  knob: { position: 'absolute', top: 3, left: 3, width: 20, height: 20, borderRadius: '50%', background: 'var(--mp-card)', boxShadow: '0 2px 4px rgba(0,0,0,.2)', transition: 'transform .2s' },
+  knob: { position: 'absolute', top: 3, left: 3, width: 20, height: 20, borderRadius: '50%', background: '#fff', boxShadow: '0 2px 4px rgba(0,0,0,.2)', transition: 'transform .2s' },
   linkRow: { width: '100%', textAlign: 'left', border: 'none', background: 'none', fontFamily: 'inherit', fontSize: 14, fontWeight: 600, color: 'var(--mp-ink)', padding: '13px 2px', cursor: 'pointer', borderBottom: '1px solid var(--mp-line)' },
   smallBtn: { border: '1.5px solid var(--mp-line)', background: 'var(--mp-card)', color: 'var(--mp-ink)', borderRadius: 20, padding: '8px 13px', fontFamily: 'inherit', fontSize: 12, fontWeight: 600, cursor: 'pointer' },
-  dangerNote: { fontSize: 12, color: '#c0392b', textAlign: 'center', marginTop: 8 },
-  ownerNote: { background: '#f7f7f9', borderRadius: 10, padding: '13px 15px', fontSize: 13, color: 'var(--mp-sub)', textAlign: 'center', lineHeight: 1.5 },
-  toast: { position: 'fixed', bottom: 28, left: '50%', transform: 'translateX(-50%)', background: '#16161a', color: '#fff', padding: '12px 20px', borderRadius: 30, fontSize: 13, fontWeight: 600, boxShadow: '0 10px 30px rgba(0,0,0,.3)', zIndex: 4000 },
+  dangerNote: { fontSize: 12, color: 'var(--mp-coral)', textAlign: 'center', marginTop: 8 },
+  ownerNote: { background: 'var(--mp-card2)', borderRadius: 10, padding: '13px 15px', fontSize: 13, color: 'var(--mp-sub)', textAlign: 'center', lineHeight: 1.5 },
+  toast: { position: 'fixed', bottom: 28, left: '50%', transform: 'translateX(-50%)', background: 'var(--mp-ink)', color: 'var(--mp-bg)', padding: '12px 20px', borderRadius: 30, fontSize: 13, fontWeight: 600, boxShadow: '0 10px 30px rgba(0,0,0,.3)', zIndex: 4000 },
 }
