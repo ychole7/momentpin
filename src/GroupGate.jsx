@@ -118,10 +118,16 @@ export default function GroupGate({ user, onReady }) {
 
   return (
     <div style={S.wrap}>
-      <div style={S.card}>
-        <div style={S.h}>모먼핀 그룹</div>
+      <div style={S.top}>
+        <div style={S.logoRow}>
+          <div style={S.logoDot} />
+          <div style={S.logoName}>모먼핀</div>
+        </div>
+        <div style={S.h}>그룹으로 시작해요</div>
+        <div style={S.sub}>가족이나 친구와 함께 안부를 나눠요</div>
+      </div>
 
-        {/* 이미 속한 그룹이 있으면 바로 선택 */}
+      <div style={S.form}>
         {myGroups.length > 0 && (
           <div style={{ marginBottom: 20 }}>
             <div style={S.label}>내 그룹</div>
@@ -170,9 +176,14 @@ export default function GroupGate({ user, onReady }) {
 
 const S = {
   center: { minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--mp-muted)', fontFamily: "'Outfit',sans-serif" },
-  wrap: { minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--mp-bg)', padding: 20, fontFamily: "'Outfit','Gowun Dodum',sans-serif" },
-  card: { width: '100%', maxWidth: 380, background: 'var(--mp-card)', borderRadius: 24, padding: 24, boxShadow: '0 12px 40px rgba(20,20,30,.1)' },
-  h: { fontSize: 20, fontWeight: 700, letterSpacing: '-.4px', marginBottom: 18, color: 'var(--mp-ink)' },
+  wrap: { minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', background: 'var(--mp-bg)', fontFamily: "'Outfit','Gowun Dodum',sans-serif", maxWidth: 480, margin: '0 auto' },
+  top: { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 32px 40px' },
+  form: { padding: '0 24px calc(env(safe-area-inset-bottom,0px) + 32px)' },
+  logoRow: { display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 },
+  logoDot: { width: 40, height: 40, borderRadius: '12px 12px 12px 4px', background: 'linear-gradient(135deg,#ff7a45,#ff4d5e)', boxShadow: '0 6px 16px rgba(255,77,94,.4)' },
+  logoName: { fontSize: 26, fontWeight: 700, letterSpacing: '-.5px', color: 'var(--mp-ink)' },
+  h: { fontSize: 22, fontWeight: 700, letterSpacing: '-.4px', marginBottom: 8, color: 'var(--mp-ink)', textAlign: 'center' },
+  sub: { fontSize: 14, color: 'var(--mp-muted)', textAlign: 'center' },
   label: { fontSize: 12, fontWeight: 600, color: 'var(--mp-muted)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: .4 },
   groupRow: { width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: '1.5px solid var(--mp-line)', background: 'var(--mp-card)', borderRadius: 14, padding: '13px 14px', marginBottom: 8, cursor: 'pointer', fontFamily: 'inherit', fontSize: 15, color: 'var(--mp-ink)' },
   codeChip: { fontSize: 12, fontWeight: 600, color: 'var(--mp-muted)', background: 'var(--mp-card2)', padding: '4px 9px', borderRadius: 20 },
@@ -180,10 +191,10 @@ const S = {
   tabs: { display: 'flex', gap: 6, background: 'var(--mp-card2)', borderRadius: 24, padding: 4, marginBottom: 14 },
   tab: { flex: 1, border: 'none', background: 'none', fontFamily: 'inherit', fontSize: 13, fontWeight: 600, color: 'var(--mp-muted)', padding: 9, borderRadius: 20, cursor: 'pointer' },
   tabOn: { background: 'var(--mp-card)', color: 'var(--mp-ink)', boxShadow: '0 2px 8px rgba(0,0,0,.08)' },
-  input: { width: '100%', border: '1.5px solid var(--mp-line)', borderRadius: 12, padding: '13px 14px', fontSize: 15, fontFamily: 'inherit', marginBottom: 10, outline: 'none', boxSizing: 'border-box' },
+  input: { width: '100%', border: '1.5px solid var(--mp-line)', background: 'var(--mp-card)', color: 'var(--mp-ink)', borderRadius: 14, padding: '14px 16px', fontSize: 15, fontFamily: 'inherit', marginBottom: 10, outline: 'none', boxSizing: 'border-box' },
   msg: { fontSize: 13, color: '#e0593c', background: '#fff1ed', padding: '10px 12px', borderRadius: 10, margin: '4px 0 12px' },
   accountRow: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 18 },
   accountBtn: { border: 'none', background: 'none', color: 'var(--mp-muted)', fontFamily: 'inherit', fontSize: 12.5, cursor: 'pointer', padding: 4 },
   accountSep: { color: '#d8d8de', fontSize: 12 },
-  primary: { width: '100%', border: 'none', borderRadius: 14, padding: 15, fontSize: 15, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer', color: '#fff', background: 'linear-gradient(135deg,#ff7a45,#ff4d5e)', boxShadow: '0 8px 20px rgba(255,77,94,.3)' },
+  primary: { width: '100%', border: 'none', borderRadius: 14, padding: 16, fontSize: 16, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer', color: '#fff', background: 'linear-gradient(135deg,#ff7a45,#ff4d5e)', boxShadow: '0 8px 20px rgba(255,77,94,.3)' },
 }
