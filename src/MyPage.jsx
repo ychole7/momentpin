@@ -363,11 +363,11 @@ export default function MyPage({ user, group, members, onClose, onOpenStats, onG
                           <span style={S.quotaLabel}>{mode === 'random' ? '하루 알림' : '오늘 알림 예정'}</span>
                           <span style={S.quotaVal}>하루 {dailyLimit}번</span>
                         </div>
-                        {left != null && (
+                        {used != null && (
                           <div style={S.quotaRow}>
-                            <span style={S.quotaLabel}>오늘 남은 모먼</span>
+                            <span style={S.quotaLabel}>오늘 찍은 모먼</span>
                             <span style={{ ...S.quotaVal, color: left === 0 ? 'var(--mp-muted)' : 'var(--mp-coral)' }}>
-                              {left === 0 ? '오늘은 끝 🌙' : left + '번 남음'}
+                              {used} / {dailyLimit}회{left === 0 ? ' · 오늘 끝 🌙' : ''}
                             </span>
                           </div>
                         )}
