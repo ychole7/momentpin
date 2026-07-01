@@ -92,11 +92,11 @@ export default function Auth() {
 }
 
 const S = {
-  wrap: { minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
+  wrap: { minHeight: '100dvh', display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
     background: 'var(--mp-bg)', fontFamily: "'Outfit','Gowun Dodum',-apple-system,sans-serif",
     maxWidth: 480, margin: '0 auto' },
   top: { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-    padding: '60px 32px 40px' },
+    padding: 'calc(env(safe-area-inset-top,0px) + 40px) 32px 32px' },
   form: { padding: '0 24px calc(env(safe-area-inset-bottom,0px) + 32px)' },
   logoRow: { display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 },
   logoDot: { width: 44, height: 44, borderRadius: '13px 13px 13px 4px',
@@ -115,7 +115,7 @@ const S = {
   link: { color: '#ff4d5e', textDecoration: 'underline', fontWeight: 600 },
   linkBtn: { color: '#ff4d5e', textDecoration: 'underline', fontWeight: 600, border: 'none',
     background: 'none', padding: 0, font: 'inherit', cursor: 'pointer' },
-  msg: { fontSize: 13, color: '#e0593c', background: '#fff1ed', padding: '10px 12px',
+  msg: { fontSize: 13, color: 'var(--mp-coral)', background: 'var(--mp-card2)', border: '1px solid var(--mp-line)', padding: '10px 12px',
     borderRadius: 10, margin: '4px 0 12px' },
   primary: { width: '100%', border: 'none', borderRadius: 14, padding: 16, fontSize: 16, fontWeight: 700,
     fontFamily: 'inherit', cursor: 'pointer', color: '#fff',

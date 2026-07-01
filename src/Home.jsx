@@ -282,6 +282,21 @@ export default function Home({ user, group, onOpenSettings, onMembersLoaded, onO
       try { fetch(window.location.origin + '/api/send-moment?groupId=' + group.id) } catch {}
       return
     }
+    // 하루 발동 횟수 제한 (마감시간 재설정으로 무제한 촬영되는 것 방지)
+    // 정해진 시간 모드: 하루 허용 = 설정된 시간 개수, 랜덤 모드: 하루 1회. 최소 1, 안전상한 5.
+    const modeTimes = Array.isArray(group.fixed_times) ? group.fixed_times.length : 0
+    const dailyLimit = Math.min(5, Math.max(1, group.alarm_mode === 'random' ? 1 : modeTimes))
+    const startOfDay = new Date(now); startOfDay.setHours(0, 0, 0, 0)
+    let todayRes = await supabase.from('moments')
+      .select('id', { count: 'exact', head: true })
+      .eq('group_id', group.id)
+      .gte('fired_at', startOfDay.toISOString())
+    const firedToday = todayRes.count || 0
+    if (firedToday >= dailyLimit) {
+      setBusy(false)
+      flash('오늘은 이미 모먼을 다 찍었어요 (하루 ' + dailyLimit + '회) 🌙')
+      return
+    }
     const deadline = new Date(now.getTime() + (group.window_min || 3) * 60000)
     let res = await supabase.from('moments').insert({ group_id: group.id, fired_at: now.toISOString(), deadline: deadline.toISOString() }).select().single()
     setBusy(false)
@@ -422,12 +437,18 @@ export default function Home({ user, group, onOpenSettings, onMembersLoaded, onO
   const iJoined = !!postByUser[user.id]
 
   useEffect(() => {
-    if (hasOpen && allJoined && !prevAllJoinedRef.current) {
+    if (!hasOpen || !allJoined || !openMoment) { prevAllJoinedRef.current = hasOpen && allJoined; return }
+    // 이 모먼에 대해 이미 축하했는지 확인 (설정 갔다 오거나 새로고침해도 재생 안 되게)
+    const celebKey = 'mp_celebrated_' + openMoment.id
+    let alreadyCelebrated = false
+    try { alreadyCelebrated = sessionStorage.getItem(celebKey) === '1' } catch {}
+    if (!prevAllJoinedRef.current && !alreadyCelebrated) {
       setConfetti(true)
       setTimeout(() => setConfetti(false), 2600)
+      try { sessionStorage.setItem(celebKey, '1') } catch {}
     }
     prevAllJoinedRef.current = hasOpen && allJoined
-  }, [allJoined, hasOpen])
+  }, [allJoined, hasOpen, openMoment?.id])
 
   return (
     <div style={S.app}>
@@ -718,7 +739,7 @@ function Confetti() {
 }
 
 const S = {
-  app: { width: '100%', maxWidth: 480, margin: '0 auto', minHeight: '100vh', background: 'var(--mp-bg)', fontFamily: "'Outfit','Gowun Dodum',sans-serif", color: 'var(--mp-ink)', paddingBottom: 30 },
+  app: { width: '100%', maxWidth: 480, margin: '0 auto', minHeight: '100dvh', background: 'var(--mp-bg)', fontFamily: "'Outfit','Gowun Dodum',sans-serif", color: 'var(--mp-ink)', paddingBottom: 30 },
   top: { position: 'sticky', top: 0, zIndex: 1000, background: 'var(--mp-topbar)', backdropFilter: 'blur(12px)', borderBottom: '1px solid var(--mp-line)', padding: '13px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
   logoRow: { display: 'flex', alignItems: 'center', gap: 8 },
   logoDot: { width: 24, height: 24, borderRadius: '8px 8px 8px 3px', background: 'linear-gradient(135deg,#ff7a45,#ff4d5e)' },

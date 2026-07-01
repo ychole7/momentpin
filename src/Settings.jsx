@@ -120,7 +120,7 @@ export default function Settings({ user, group, onClose, onGroupUpdate, onLeaveG
               <div style={{ ...S.rowLabel, marginTop: 16 }}>랜덤 시간대</div>
               <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                 <input style={S.input} value={rStart} onChange={e => isOwner && setRStart(e.target.value)} readOnly={!isOwner} placeholder="09:00" />
-                <span style={{ color: '#9b9ba3' }}>~</span>
+                <span style={{ color: 'var(--mp-muted)' }}>~</span>
                 <input style={S.input} value={rEnd} onChange={e => isOwner && setREnd(e.target.value)} readOnly={!isOwner} placeholder="21:00" />
               </div>
               <div style={S.hint}>이 시간대 안에서 매일 한 번 깜짝 알림</div>
@@ -148,7 +148,7 @@ export default function Settings({ user, group, onClose, onGroupUpdate, onLeaveG
           <div style={S.rowLabel}>내 색상</div>
           <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
             {COLORS.map(c => (
-              <button key={c} onClick={() => setMyColor(c)} style={{ width: 32, height: 32, borderRadius: '50%', background: c, border: myColor === c ? '3px solid #16161a' : '3px solid #fff', cursor: 'pointer', boxShadow: '0 2px 6px rgba(0,0,0,.15)' }} />
+              <button key={c} onClick={() => setMyColor(c)} style={{ width: 32, height: 32, borderRadius: '50%', background: c, border: myColor === c ? '3px solid var(--mp-ink)' : '3px solid var(--mp-card)', cursor: 'pointer', boxShadow: '0 2px 6px rgba(0,0,0,.15)' }} />
             ))}
           </div>
 
@@ -166,7 +166,7 @@ export default function Settings({ user, group, onClose, onGroupUpdate, onLeaveG
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
             <div>
               <div style={{ fontWeight: 700, fontSize: 16 }}>{group.name}</div>
-              <div style={{ fontSize: 12, color: '#9b9ba3' }}>초대코드 {group.invite_code}</div>
+              <div style={{ fontSize: 12, color: 'var(--mp-muted)' }}>초대코드 {group.invite_code}</div>
             </div>
             <button style={S.smallBtn} onClick={copyInvite}>🔗 초대 링크</button>
           </div>
@@ -180,28 +180,28 @@ export default function Settings({ user, group, onClose, onGroupUpdate, onLeaveG
 }
 
 const S = {
-  app: { width: '100%', maxWidth: 480, margin: '0 auto', minHeight: '100vh', background: '#fafafa', fontFamily: "'Outfit','Gowun Dodum',sans-serif", color: '#16161a', paddingBottom: 40 },
-  top: { position: 'sticky', top: 0, zIndex: 100, background: 'rgba(250,250,250,.92)', backdropFilter: 'blur(12px)', borderBottom: '1px solid #efeff2', padding: '13px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
-  back: { width: 32, height: 32, border: 'none', background: '#f0f0f3', borderRadius: '50%', fontSize: 18, cursor: 'pointer', color: '#16161a' },
-  title: { fontWeight: 700, fontSize: 17 },
+  app: { width: '100%', maxWidth: 480, margin: '0 auto', minHeight: '100dvh', background: 'var(--mp-bg)', fontFamily: "'Outfit','Gowun Dodum',sans-serif", color: 'var(--mp-ink)', paddingBottom: 40 },
+  top: { position: 'sticky', top: 0, zIndex: 100, background: 'var(--mp-topbar)', backdropFilter: 'blur(12px)', borderBottom: '1px solid var(--mp-line)', padding: '13px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
+  back: { width: 32, height: 32, border: 'none', background: 'var(--mp-card2)', borderRadius: '50%', fontSize: 18, cursor: 'pointer', color: 'var(--mp-ink)' },
+  title: { fontWeight: 700, fontSize: 17, color: 'var(--mp-ink)' },
   body: { padding: 16 },
-  secLabel: { fontSize: 12, fontWeight: 600, color: '#9b9ba3', textTransform: 'uppercase', letterSpacing: .4, margin: '18px 4px 8px' },
-  card: { background: '#fff', borderRadius: 18, padding: 16, boxShadow: '0 4px 24px rgba(20,20,30,.06)' },
-  rowLabel: { fontSize: 14, fontWeight: 600, marginBottom: 10 },
+  secLabel: { fontSize: 12, fontWeight: 600, color: 'var(--mp-muted)', textTransform: 'uppercase', letterSpacing: .4, margin: '18px 4px 8px' },
+  card: { background: 'var(--mp-card)', borderRadius: 18, padding: 16, boxShadow: 'var(--mp-shadow, 0 4px 24px rgba(20,20,30,.06))' },
+  rowLabel: { fontSize: 14, fontWeight: 600, marginBottom: 10, color: 'var(--mp-ink)' },
   pills: { display: 'flex', gap: 8, flexWrap: 'wrap' },
-  pill: { border: '1.5px solid #efeff2', background: '#fff', color: '#16161a', padding: '9px 15px', borderRadius: 22, fontFamily: 'inherit', fontSize: 13, fontWeight: 600, cursor: 'pointer' },
-  pillOn: { background: '#16161a', color: '#fff', borderColor: '#16161a' },
-  timePill: { border: '1.5px solid #ffd9cc', background: '#fff1ed', color: '#e0593c', padding: '9px 14px', borderRadius: 22, fontFamily: 'inherit', fontSize: 13, fontWeight: 700, cursor: 'pointer' },
-  addPill: { border: '1.5px dashed #c4c4cc', background: '#fff', color: '#9b9ba3', padding: '9px 14px', borderRadius: 22, fontFamily: 'inherit', fontSize: 13, fontWeight: 600, cursor: 'pointer' },
-  input: { border: '1.5px solid #efeff2', background: '#fff', borderRadius: 10, padding: '11px 13px', fontFamily: 'inherit', fontSize: 14, fontWeight: 600, color: '#16161a', outline: 'none', textAlign: 'center', boxSizing: 'border-box' },
-  hint: { fontSize: 12, color: '#9b9ba3', marginTop: 8 },
+  pill: { border: '1.5px solid var(--mp-line)', background: 'var(--mp-card)', color: 'var(--mp-ink)', padding: '9px 15px', borderRadius: 22, fontFamily: 'inherit', fontSize: 13, fontWeight: 600, cursor: 'pointer' },
+  pillOn: { background: 'var(--mp-ink)', color: 'var(--mp-card)', borderColor: 'var(--mp-ink)' },
+  timePill: { border: '1.5px solid var(--mp-coral)', background: 'var(--mp-card2)', color: 'var(--mp-coral)', padding: '9px 14px', borderRadius: 22, fontFamily: 'inherit', fontSize: 13, fontWeight: 700, cursor: 'pointer' },
+  addPill: { border: '1.5px dashed var(--mp-line2)', background: 'var(--mp-card)', color: 'var(--mp-muted)', padding: '9px 14px', borderRadius: 22, fontFamily: 'inherit', fontSize: 13, fontWeight: 600, cursor: 'pointer' },
+  input: { border: '1.5px solid var(--mp-line)', background: 'var(--mp-card)', borderRadius: 10, padding: '11px 13px', fontFamily: 'inherit', fontSize: 14, fontWeight: 600, color: 'var(--mp-ink)', outline: 'none', textAlign: 'center', boxSizing: 'border-box' },
+  hint: { fontSize: 12, color: 'var(--mp-muted)', marginTop: 8 },
   toggleRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 0 14px' },
-  infoBox: { background: '#f4faf9', border: '1.5px solid #d7f3ee', borderRadius: 12, padding: '13px 15px', fontSize: 13, color: '#16161a', lineHeight: 1.6, marginBottom: 4 },
-  ownerNote: { marginTop: 16, background: '#f7f7f9', border: '1.5px solid #efeff2', borderRadius: 12, padding: '13px 15px', fontSize: 13, color: '#6b6b73', textAlign: 'center', lineHeight: 1.5 },
+  infoBox: { background: 'var(--mp-card2)', border: '1.5px solid var(--mp-line)', borderRadius: 12, padding: '13px 15px', fontSize: 13, color: 'var(--mp-ink)', lineHeight: 1.6, marginBottom: 4 },
+  ownerNote: { marginTop: 16, background: 'var(--mp-card2)', border: '1.5px solid var(--mp-line)', borderRadius: 12, padding: '13px 15px', fontSize: 13, color: 'var(--mp-sub)', textAlign: 'center', lineHeight: 1.5 },
   switch: { width: 46, height: 26, borderRadius: 20, border: 'none', cursor: 'pointer', position: 'relative', padding: 0, transition: 'background .2s' },
   knob: { position: 'absolute', top: 3, left: 3, width: 20, height: 20, borderRadius: '50%', background: '#fff', boxShadow: '0 2px 4px rgba(0,0,0,.2)', transition: 'transform .2s' },
   save: { width: '100%', border: 'none', borderRadius: 12, padding: 13, marginTop: 16, fontFamily: 'inherit', fontSize: 14, fontWeight: 700, cursor: 'pointer', color: '#fff', background: 'linear-gradient(135deg,#ff7a45,#ff4d5e)', boxShadow: '0 6px 16px rgba(255,77,94,.28)' },
-  smallBtn: { border: '1.5px solid #efeff2', background: '#fff', color: '#16161a', borderRadius: 20, padding: '8px 13px', fontFamily: 'inherit', fontSize: 12, fontWeight: 600, cursor: 'pointer' },
-  leave: { width: '100%', border: '1.5px solid #ffd9cc', background: '#fff', color: '#e0593c', borderRadius: 12, padding: 12, fontFamily: 'inherit', fontSize: 14, fontWeight: 600, cursor: 'pointer' },
-  toast: { position: 'fixed', bottom: 28, left: '50%', transform: 'translateX(-50%)', background: '#16161a', color: '#fff', padding: '12px 20px', borderRadius: 30, fontSize: 13, fontWeight: 600, boxShadow: '0 10px 30px rgba(0,0,0,.3)', zIndex: 4000 },
+  smallBtn: { border: '1.5px solid var(--mp-line)', background: 'var(--mp-card)', color: 'var(--mp-ink)', borderRadius: 20, padding: '8px 13px', fontFamily: 'inherit', fontSize: 12, fontWeight: 600, cursor: 'pointer' },
+  leave: { width: '100%', border: '1.5px solid var(--mp-coral)', background: 'var(--mp-card)', color: 'var(--mp-coral)', borderRadius: 12, padding: 12, fontFamily: 'inherit', fontSize: 14, fontWeight: 600, cursor: 'pointer' },
+  toast: { position: 'fixed', bottom: 28, left: '50%', transform: 'translateX(-50%)', background: 'var(--mp-ink)', color: 'var(--mp-bg)', padding: '12px 20px', borderRadius: 30, fontSize: 13, fontWeight: 600, boxShadow: '0 10px 30px rgba(0,0,0,.3)', zIndex: 4000 },
 }
