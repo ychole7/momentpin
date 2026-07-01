@@ -16,7 +16,12 @@ export default function Auth() {
 
   async function submit() {
     if (!email || !pw) { setMsg('이메일과 비밀번호를 입력해 주세요.'); return }
-    if (mode === 'signup' && !age) { setMsg('만 14세 이상만 가입할 수 있어요. 동의에 체크해 주세요.'); return }
+    if (mode === 'signup') {
+      if (!age) { setMsg('만 14세 이상만 가입할 수 있어요. 동의에 체크해 주세요.'); return }
+      if (pw.length < 8) { setMsg('비밀번호는 8자 이상이어야 해요.'); return }
+      if (!/[a-zA-Z]/.test(pw)) { setMsg('비밀번호에 영문자를 포함해 주세요.'); return }
+      if (!/[0-9]/.test(pw)) { setMsg('비밀번호에 숫자를 포함해 주세요.'); return }
+    }
     setBusy(true); setMsg('')
 
     if (mode === 'signup') {
@@ -60,6 +65,7 @@ export default function Auth() {
           value={pw} onChange={e => setPw(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && submit()}
           autoComplete={mode === 'signup' ? 'new-password' : 'current-password'} />
+        {mode === 'signup' && <div style={S.pwHint}>영문+숫자 조합 8자 이상</div>}
 
         {mode === 'signup' && (
           <label style={S.ageRow}>
@@ -95,6 +101,7 @@ const S = {
   tagline: { fontSize: 14, color: 'var(--mp-sub)', lineHeight: 1.5, margin: '0 0 22px' },
   input: { width: '100%', border: '1.5px solid var(--mp-line)', borderRadius: 12, padding: '13px 14px',
     fontSize: 15, fontFamily: 'inherit', marginBottom: 10, outline: 'none', boxSizing: 'border-box' },
+  pwHint: { fontSize: 11.5, color: 'var(--mp-muted)', marginTop: 4, paddingLeft: 2 },
   ageRow: { display: 'flex', alignItems: 'flex-start', gap: 9, fontSize: 12.5, color: 'var(--mp-sub)', lineHeight: 1.5, margin: '2px 2px 4px', cursor: 'pointer', textAlign: 'left' },
   checkbox: { width: 17, height: 17, marginTop: 1, accentColor: '#ff4d5e', flex: 'none', cursor: 'pointer' },
   link: { color: '#ff4d5e', textDecoration: 'underline', fontWeight: 600 },
