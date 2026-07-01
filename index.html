@@ -50,6 +50,9 @@
         }
       }
       body { background: var(--mp-bg); }
+      /* 스크롤은 되게 두되, 스크롤바만 안 보이게 (네이티브 앱 느낌) */
+      html { scrollbar-width: none; -ms-overflow-style: none; }
+      html::-webkit-scrollbar, body::-webkit-scrollbar { width: 0; height: 0; display: none; }
       /* 페이지 전체 핀치줌/더블탭줌 차단 (네이티브 앱 느낌) */
       html, body { touch-action: pan-x pan-y; -webkit-text-size-adjust: 100%; overscroll-behavior: none; }
       /* 단, 지도와 사진은 자체 줌을 쓰도록 예외 */
