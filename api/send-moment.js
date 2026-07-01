@@ -73,7 +73,7 @@ export default async function handler(req, res) {
     let sent = 0, failed = 0
     for (const gid of targetGroupIds) {
       // 그룹 정보 (이름, 마감시간)
-      let grpInfo = await supabase.from('groups').select('name,window_min').eq('id', gid).single()
+      let grpInfo = await supabase.from('groups').select('name,window_min,alarm_mode,fixed_times').eq('id', gid).single()
       const gname = grpInfo.data ? grpInfo.data.name : '모먼핀'
       const winMin = (grpInfo.data && grpInfo.data.window_min) ? grpInfo.data.window_min : 3
       // 이미 열린 모먼이 있으면 새로 만들지 않음 (중복 방지)
@@ -84,8 +84,11 @@ export default async function handler(req, res) {
         .limit(1)
       const hasOpen = openCheck.data && openCheck.data.length > 0
       if (!hasOpen) {
-        // 하루 발동 횟수 제한 (악용/알림폭탄 방지): 오늘 만든 모먼이 5개 이상이면 더 발동 안 함
-        const DAILY_LIMIT = 5
+        // 하루 발동 횟수 제한 (마감시간 재설정 악용/알림폭탄 방지)
+        // 정해진 시간 모드: 하루 허용 = 설정된 시간 개수, 랜덤 모드: 하루 1회. 최소 1, 안전상한 5.
+        const gmode = grpInfo.data ? grpInfo.data.alarm_mode : 'fixed'
+        const gtimes = (grpInfo.data && Array.isArray(grpInfo.data.fixed_times)) ? grpInfo.data.fixed_times.length : 0
+        const DAILY_LIMIT = Math.min(5, Math.max(1, gmode === 'random' ? 1 : gtimes))
         const startOfDay = new Date(now)
         startOfDay.setHours(0, 0, 0, 0)
         let todayCount = await supabase.from('moments')
