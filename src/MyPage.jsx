@@ -355,8 +355,10 @@ export default function MyPage({ user, group, members, onClose, onOpenStats, onG
 
                   {(() => {
                     const dailyLimit = Math.min(5, Math.max(1, mode === 'random' ? 1 : times.length))
-                    const used = todayCount == null ? null : todayCount
-                    const left = used == null ? null : Math.max(0, dailyLimit - used)
+                    const rawUsed = todayCount == null ? null : todayCount
+                    // 모드 변경 등으로 오늘 찍은 수가 한도를 넘는 경우, 표시는 한도로 클램프 (3/1 같은 역전 방지)
+                    const used = rawUsed == null ? null : Math.min(rawUsed, dailyLimit)
+                    const left = used == null ? null : Math.max(0, dailyLimit - rawUsed)
                     return (
                       <div style={S.quotaBox}>
                         <div style={S.quotaRow}>
