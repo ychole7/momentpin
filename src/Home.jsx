@@ -502,6 +502,18 @@ export default function Home({ user, group, onOpenSettings, onMembersLoaded, onO
         ))}
       </div>
 
+      {canShoot && (
+        <div style={S.timerPillWrap}>
+          <button
+            style={S.timerPill}
+            onClick={() => { if (tab !== 'map') setTab('map') }}
+          >
+            <span>⏱️ <b>{remainLabel}</b> 남음</span>
+            {tab !== 'map' && <span style={S.timerPillGo}>지도에서 찍기 →</span>}
+          </button>
+        </div>
+      )}
+
       <div style={S.body}>
         {tab === 'map' && (
           <>
@@ -576,7 +588,7 @@ export default function Home({ user, group, onOpenSettings, onMembersLoaded, onO
         )}
 
         <input ref={fileRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={onPickFile} />
-        {canShoot ? (
+        {tab === 'map' && (canShoot ? (
           <>
             <div style={S.countdown}>📍 지금 찍어요! · ⏱️ <b>{remainLabel}</b> 남음</div>
             <button style={{ ...S.shoot, opacity: busy ? .85 : 1 }} disabled={busy} onClick={() => { includeLocRef.current = true; fileRef.current && fileRef.current.click() }}>
@@ -598,7 +610,7 @@ export default function Home({ user, group, onOpenSettings, onMembersLoaded, onO
             <div style={S.waitTitle}>🌙 모먼을 기다리는 중</div>
             <div style={S.waitSub}>시간이 되면 다 같이 안부를 나눠요</div>
           </div>
-        )}
+        ))}
 
         <div style={S.label}>멤버</div>
         {loading ? <MemberSkeleton /> : members.map(m => {
@@ -794,7 +806,10 @@ const S = {
   stepDot: { width: 6, height: 6, borderRadius: '50%', background: 'rgba(255,255,255,.4)', transition: 'background .2s' },
   stepDotOn: { background: 'var(--mp-card)' },
   shoot: { width: '100%', border: 'none', borderRadius: 16, padding: 16, fontFamily: 'inherit', fontSize: 16, fontWeight: 700, cursor: 'pointer', color: '#fff', background: 'linear-gradient(135deg,#ff7a45,#ff4d5e)', boxShadow: '0 8px 20px rgba(255,77,94,.3)', marginBottom: 10 },
-  countdown: { textAlign: 'center', background: '#fff1ed', border: '1.5px solid #ffd9cc', color: '#e0593c', borderRadius: 14, padding: '11px 14px', fontSize: 14, fontWeight: 600, marginBottom: 10 },
+  countdown: { textAlign: 'center', background: 'var(--mp-card2)', border: '1.5px solid var(--mp-coral)', color: 'var(--mp-coral)', borderRadius: 14, padding: '11px 14px', fontSize: 14, fontWeight: 600, marginBottom: 10 },
+  timerPillWrap: { display: 'flex', justifyContent: 'center', margin: '10px 14px 0' },
+  timerPill: { display: 'inline-flex', alignItems: 'center', gap: 10, background: 'var(--mp-card2)', border: '1.5px solid var(--mp-coral)', color: 'var(--mp-coral)', borderRadius: 22, padding: '8px 16px', fontSize: 13, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' },
+  timerPillGo: { fontSize: 12, fontWeight: 700, opacity: .85 },
   waitBox: { textAlign: 'center', background: 'var(--mp-card)', borderRadius: 18, padding: '22px 18px', boxShadow: '0 4px 24px rgba(20,20,30,.06)' },
   waitTitle: { fontSize: 15, fontWeight: 700, color: 'var(--mp-ink)', marginBottom: 4 },
   waitSub: { fontSize: 13, color: 'var(--mp-muted)', marginBottom: 14 },
