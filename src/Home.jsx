@@ -467,6 +467,23 @@ export default function Home({ user, group, onOpenSettings, onMembersLoaded, onO
         </div>
       </div>
 
+      {(() => {
+        const now = new Date();
+        const isXmas = now.getMonth() === 11 && now.getDate() === 25;
+        // 테스트용: 주소 뒤에 ?xmas=1 붙이면 날짜 상관없이 배너 표시
+        const forceXmas = new URLSearchParams(window.location.search).get('xmas') === '1';
+        if (!isXmas && !forceXmas) return null;
+        return (
+          <a href="https://xmas-gift-ten.vercel.app" target="_blank" rel="noopener noreferrer" style={S.xmasBanner}>
+            <span style={{ fontSize: 20 }}>🎁</span>
+            <span style={S.xmasBannerText}>
+              <b>크리스마스 선물이 도착했어요</b>
+              <span style={S.xmasBannerSub}>올 한 해 우리의 순간들을 열어보세요 →</span>
+            </span>
+          </a>
+        );
+      })()}
+
 
       <div style={S.banner}>
         <div style={S.bannerGlow} />
@@ -758,6 +775,9 @@ const S = {
   groupSwitch: { border: 'none', background: 'var(--mp-card2)', color: 'var(--mp-ink)', fontFamily: 'inherit', fontSize: 12, fontWeight: 700, padding: '3px 10px', borderRadius: 12, cursor: 'pointer', marginTop: 2, maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center' },
   logoName: { fontSize: 18, fontWeight: 700, letterSpacing: '-.4px', color: 'var(--mp-ink)' },
   codeBtn: { border: 'none', background: 'linear-gradient(135deg,#ff7a45,#ff4d5e)', color: '#fff', fontFamily: 'inherit', fontSize: 12, fontWeight: 700, padding: '8px 13px', borderRadius: 20, cursor: 'pointer', boxShadow: '0 4px 12px rgba(255,77,94,.3)' },
+  xmasBanner: { display: 'flex', alignItems: 'center', gap: 12, margin: '10px 14px 0', padding: '13px 16px', borderRadius: 16, textDecoration: 'none', background: 'linear-gradient(135deg,#c0392b,#7d1f1f)', boxShadow: '0 8px 22px rgba(140,20,20,.35)', border: '1px solid rgba(255,217,138,.35)' },
+  xmasBannerText: { display: 'flex', flexDirection: 'column', gap: 2, color: '#fff', fontFamily: 'inherit', fontSize: 14, lineHeight: 1.3 },
+  xmasBannerSub: { fontSize: 11.5, fontWeight: 500, color: 'rgba(255,240,220,.85)' },
   welcome: { position: 'relative', margin: '14px 16px 0', background: 'linear-gradient(135deg,#fff,#fff8f5)', border: '1.5px solid #ffe0d3', borderRadius: 18, padding: '20px 18px', boxShadow: '0 8px 30px rgba(255,122,69,.12)' },
   welcomeX: { position: 'absolute', top: 12, right: 12, width: 26, height: 26, border: 'none', background: 'var(--mp-card2)', borderRadius: '50%', fontSize: 12, cursor: 'pointer', color: 'var(--mp-muted)' },
   welcomeTitle: { fontSize: 16, fontWeight: 700, marginBottom: 8 },
