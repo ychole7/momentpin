@@ -155,22 +155,21 @@ export default function Home({ user, group, profileVersion, onOpenSettings, onMe
     let res = await supabase.from('members').select('id,user_id,share_location,display_name,color').eq('group_id', group.id).order('joined_at', { ascending: true })
     if (res.error) { flash(res.error.message); setLoading(false); return }
     let list = res.data || []
-    // 프로필(계정 단위)에서 이름·색을 가져와 덮어씀
+    // 이름·색 우선순위: 그룹별 설정(members) > 계정 기본 프로필(profiles)
     const uids = list.map(m => m.user_id).filter(Boolean)
     if (uids.length) {
       let pres = await supabase.from('profiles').select('user_id,display_name,color').in('user_id', uids)
-      if (!pres.error && pres.data) {
-        const pmap = {}
-        pres.data.forEach(p => { pmap[p.user_id] = p })
-        list = list.map(m => {
-          const p = pmap[m.user_id]
-          return {
-            ...m,
-            display_name: (p && p.display_name) ? p.display_name : (m.display_name || '?'),
-            color: (p && p.color) ? p.color : (m.color || '#888'),
-          }
-        })
-      }
+      const pmap = {}
+      if (!pres.error && pres.data) pres.data.forEach(p => { pmap[p.user_id] = p })
+      list = list.map(m => {
+        const p = pmap[m.user_id]
+        return {
+          ...m,
+          // members에 그룹별 값이 있으면 그걸, 없으면 프로필 기본값, 그것도 없으면 fallback
+          display_name: m.display_name || (p && p.display_name) || '?',
+          color: m.color || (p && p.color) || '#888',
+        }
+      })
     }
     setMembers(list); membersRef.current = list
     setLoading(false)

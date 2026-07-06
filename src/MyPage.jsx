@@ -11,6 +11,11 @@ export default function MyPage({ user, group, members, onClose, onOpenStats, onG
   // 프로필 (계정 단위 profiles 테이블)
   const [myName, setMyName] = useState('')
   const [myColor, setMyColor] = useState('#ff4d5e')
+  // 이 그룹에서만 쓰는 이름·색 (members 테이블, 비어있으면 기본 프로필 사용)
+  const [groupName, setGroupName] = useState('')     // 그룹별 이름 (빈값 = 기본 사용)
+  const [groupColor, setGroupColor] = useState('')   // 그룹별 색 (빈값 = 기본 사용)
+  const [useGroupName, setUseGroupName] = useState(false)  // 이 그룹에서 다른 이름 쓰기 on/off
+  const [myMemberId, setMyMemberId] = useState(null)
   // 내 기록
   const [myStats, setMyStats] = useState(null)
   // 그룹 설정
@@ -85,11 +90,21 @@ export default function MyPage({ user, group, members, onClose, onOpenStats, onG
   }
 
   async function loadMe() {
-    // 프로필은 계정 단위 (profiles 테이블)
+    // 계정 기본 프로필 (profiles 테이블)
     let res = await supabase.from('profiles').select('display_name,color').eq('user_id', user.id).maybeSingle()
     if (!res.error && res.data) {
       setMyName(res.data.display_name || '')
       setMyColor(res.data.color || '#ff4d5e')
+    }
+    // 이 그룹에서 쓰는 이름·색 (members 테이블) — 값 있으면 "그룹별 이름 쓰기" on
+    let mres = await supabase.from('members').select('id,display_name,color').eq('group_id', group.id).eq('user_id', user.id).maybeSingle()
+    if (!mres.error && mres.data) {
+      setMyMemberId(mres.data.id)
+      if (mres.data.display_name) {
+        setGroupName(mres.data.display_name)
+        setGroupColor(mres.data.color || '')
+        setUseGroupName(true)
+      }
     }
   }
 
@@ -118,6 +133,22 @@ export default function MyPage({ user, group, members, onClose, onOpenStats, onG
     if (res.error) { flash('저장 실패: ' + res.error.message); return }
     flash('프로필 저장됨 ✨')
     if (onProfileUpdate) onProfileUpdate({ display_name: myName.trim().slice(0, 12), color: myColor })
+  }
+
+  // 이 그룹에서 쓰는 이름·색 저장 (members 테이블)
+  // useGroupName이 꺼져있으면 null로 비워서 기본 프로필을 쓰게 함
+  async function saveMyGroupName() {
+    if (!myMemberId) { flash('멤버 정보를 찾을 수 없어요'); return }
+    if (useGroupName && !groupName.trim()) { flash('이 그룹에서 쓸 이름을 입력해 주세요'); return }
+    setBusy(true)
+    const payload = useGroupName
+      ? { display_name: groupName.trim().slice(0, 12), color: groupColor || myColor }
+      : { display_name: null, color: null }
+    let res = await supabase.from('members').update(payload).eq('id', myMemberId)
+    setBusy(false)
+    if (res.error) { flash('저장 실패: ' + res.error.message); return }
+    flash(useGroupName ? '이 그룹 이름 저장됨 ✨' : '기본 프로필로 되돌렸어요')
+    if (onProfileUpdate) onProfileUpdate()   // Home 멤버 갱신
   }
 
   function addTime() {
@@ -266,6 +297,42 @@ export default function MyPage({ user, group, members, onClose, onOpenStats, onG
                 ))}
               </div>
               <button style={{ ...S.save, opacity: busy ? .6 : 1 }} disabled={busy} onClick={saveMe}>프로필 저장</button>
+            </div>
+
+            {/* 이 그룹에서 다른 이름 쓰기 */}
+            <div style={{ ...S.secLabel, marginTop: 20 }}>이 그룹에서 쓰는 이름</div>
+            <div style={S.card}>
+              <div style={S.toggleRow}>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--mp-ink)' }}>다른 이름 쓰기</div>
+                  <div style={{ fontSize: 12, color: 'var(--mp-muted)', marginTop: 2 }}>
+                    {useGroupName ? '이 그룹에서만 다르게 표시돼요' : '지금은 기본 프로필(' + (myName || '이름 없음') + ')을 써요'}
+                  </div>
+                </div>
+                <button
+                  onClick={() => setUseGroupName(v => !v)}
+                  style={{ ...S.switch, background: useGroupName ? '#13bca4' : 'var(--mp-line2)' }}
+                >
+                  <span style={{ ...S.knob, transform: useGroupName ? 'translateX(20px)' : 'translateX(0)' }} />
+                </button>
+              </div>
+
+              {useGroupName && (
+                <>
+                  <div style={{ ...S.rowLabel, marginTop: 14 }}>이 그룹에서 쓸 이름</div>
+                  <input style={S.input} value={groupName} maxLength={12} onChange={e => setGroupName(e.target.value.slice(0, 12))} placeholder="예: 아빠, 팀장님" />
+                  <div style={{ fontSize: 11, color: 'var(--mp-muted)', textAlign: 'right', marginTop: 4 }}>{groupName.length}/12</div>
+                  <div style={{ ...S.rowLabel, marginTop: 14 }}>이 그룹에서 쓸 색상</div>
+                  <div style={{ display: 'flex', gap: 10 }}>
+                    {COLORS.map(c => (
+                      <button key={c} onClick={() => setGroupColor(c)} style={{ width: 32, height: 32, borderRadius: '50%', background: c, border: (groupColor || myColor) === c ? '3px solid var(--mp-ink)' : '3px solid var(--mp-card)', cursor: 'pointer', boxShadow: '0 2px 6px rgba(0,0,0,.15)' }} />
+                    ))}
+                  </div>
+                </>
+              )}
+              <button style={{ ...S.save, opacity: busy ? .6 : 1 }} disabled={busy} onClick={saveMyGroupName}>
+                {useGroupName ? '이 그룹 이름 저장' : '기본 프로필로 되돌리기'}
+              </button>
             </div>
 
             {/* 알림 */}
