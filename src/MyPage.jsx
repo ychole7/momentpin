@@ -140,6 +140,17 @@ export default function MyPage({ user, group, members, onClose, onOpenStats, onG
   async function saveMyGroupName() {
     if (!myMemberId) { flash('멤버 정보를 찾을 수 없어요'); return }
     if (useGroupName && !groupName.trim()) { flash('이 그룹에서 쓸 이름을 입력해 주세요'); return }
+
+    // 그룹 닉네임 중복 차단: 나 말고 다른 멤버가 이미 쓰는 이름과 겹치면 거부
+    if (useGroupName) {
+      const wanted = groupName.trim().toLowerCase()
+      const clash = (members || []).some(m =>
+        m.user_id !== user.id &&
+        (m.display_name || '').trim().toLowerCase() === wanted
+      )
+      if (clash) { flash('이 그룹에 이미 같은 이름이 있어요. 다른 이름을 써주세요'); return }
+    }
+
     setBusy(true)
     const payload = useGroupName
       ? { display_name: groupName.trim().slice(0, 12), color: groupColor || myColor }
