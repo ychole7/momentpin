@@ -310,42 +310,6 @@ export default function MyPage({ user, group, members, onClose, onOpenStats, onG
               <button style={{ ...S.save, opacity: busy ? .6 : 1 }} disabled={busy} onClick={saveMe}>프로필 저장</button>
             </div>
 
-            {/* 이 그룹에서 다른 이름 쓰기 */}
-            <div style={{ ...S.secLabel, marginTop: 20 }}>이 그룹에서 쓰는 이름</div>
-            <div style={S.card}>
-              <div style={S.toggleRow}>
-                <div>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--mp-ink)' }}>다른 이름 쓰기</div>
-                  <div style={{ fontSize: 12, color: 'var(--mp-muted)', marginTop: 2 }}>
-                    {useGroupName ? '이 그룹에서만 다르게 표시돼요' : '지금은 기본 프로필(' + (myName || '이름 없음') + ')을 써요'}
-                  </div>
-                </div>
-                <button
-                  onClick={() => setUseGroupName(v => !v)}
-                  style={{ ...S.switch, background: useGroupName ? '#13bca4' : 'var(--mp-line2)' }}
-                >
-                  <span style={{ ...S.knob, transform: useGroupName ? 'translateX(20px)' : 'translateX(0)' }} />
-                </button>
-              </div>
-
-              {useGroupName && (
-                <>
-                  <div style={{ ...S.rowLabel, marginTop: 14 }}>이 그룹에서 쓸 이름</div>
-                  <input style={S.input} value={groupName} maxLength={12} onChange={e => setGroupName(e.target.value.slice(0, 12))} placeholder="예: 아빠, 팀장님" />
-                  <div style={{ fontSize: 11, color: 'var(--mp-muted)', textAlign: 'right', marginTop: 4 }}>{groupName.length}/12</div>
-                  <div style={{ ...S.rowLabel, marginTop: 14 }}>이 그룹에서 쓸 색상</div>
-                  <div style={{ display: 'flex', gap: 10 }}>
-                    {COLORS.map(c => (
-                      <button key={c} onClick={() => setGroupColor(c)} style={{ width: 32, height: 32, borderRadius: '50%', background: c, border: (groupColor || myColor) === c ? '3px solid var(--mp-ink)' : '3px solid var(--mp-card)', cursor: 'pointer', boxShadow: '0 2px 6px rgba(0,0,0,.15)' }} />
-                    ))}
-                  </div>
-                </>
-              )}
-              <button style={{ ...S.save, opacity: busy ? .6 : 1 }} disabled={busy} onClick={saveMyGroupName}>
-                {useGroupName ? '이 그룹 이름 저장' : '기본 프로필로 되돌리기'}
-              </button>
-            </div>
-
             {/* 알림 */}
             <div style={S.secLabel}>알림</div>
             <div style={S.card}>
@@ -399,6 +363,42 @@ export default function MyPage({ user, group, members, onClose, onOpenStats, onG
                   </div>
                 </div>
               )}
+            </div>
+
+            {/* 이 그룹에서 다른 이름 쓰기 (모든 멤버) */}
+            <div style={S.secLabel}>이 그룹에서 쓰는 이름</div>
+            <div style={S.card}>
+              <div style={S.toggleRow}>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--mp-ink)' }}>다른 이름 쓰기</div>
+                  <div style={{ fontSize: 12, color: 'var(--mp-muted)', marginTop: 2 }}>
+                    {useGroupName ? '이 그룹에서만 다르게 표시돼요' : '지금은 기본 프로필(' + (myName || '이름 없음') + ')을 써요'}
+                  </div>
+                </div>
+                <button
+                  onClick={() => setUseGroupName(v => !v)}
+                  style={{ ...S.switch, background: useGroupName ? '#13bca4' : 'var(--mp-line2)' }}
+                >
+                  <span style={{ ...S.knob, transform: useGroupName ? 'translateX(20px)' : 'translateX(0)' }} />
+                </button>
+              </div>
+
+              {useGroupName && (
+                <>
+                  <div style={{ ...S.rowLabel, marginTop: 14 }}>이 그룹에서 쓸 이름</div>
+                  <input style={S.input} value={groupName} maxLength={12} onChange={e => setGroupName(e.target.value.slice(0, 12))} placeholder="예: 아빠, 팀장님" />
+                  <div style={{ fontSize: 11, color: 'var(--mp-muted)', textAlign: 'right', marginTop: 4 }}>{groupName.length}/12</div>
+                  <div style={{ ...S.rowLabel, marginTop: 14 }}>이 그룹에서 쓸 색상</div>
+                  <div style={{ display: 'flex', gap: 10 }}>
+                    {COLORS.map(c => (
+                      <button key={c} onClick={() => setGroupColor(c)} style={{ width: 32, height: 32, borderRadius: '50%', background: c, border: (groupColor || myColor) === c ? '3px solid var(--mp-ink)' : '3px solid var(--mp-card)', cursor: 'pointer', boxShadow: '0 2px 6px rgba(0,0,0,.15)' }} />
+                    ))}
+                  </div>
+                </>
+              )}
+              <button style={{ ...S.save, opacity: busy ? .6 : 1 }} disabled={busy} onClick={saveMyGroupName}>
+                {useGroupName ? '이 그룹 이름 저장' : '기본 프로필로 되돌리기'}
+              </button>
             </div>
 
             {/* 그룹 알림 설정 (그룹장만) */}
