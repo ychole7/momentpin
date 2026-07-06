@@ -52,7 +52,7 @@ async function reverseGeocode(lat, lng) {
 function hhmm(ts) { const d = new Date(ts); return d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0') }
 function ago(ts) { const d = (Date.now() - new Date(ts).getTime()) / 1000; if (d < 60) return '방금'; if (d < 3600) return Math.floor(d / 60) + '분 전'; return Math.floor(d / 3600) + '시간 전' }
 
-export default function Home({ user, group, onOpenSettings, onMembersLoaded, onOpenSwitcher }) {
+export default function Home({ user, group, profileVersion, onOpenSettings, onMembersLoaded, onOpenSwitcher }) {
   const [members, setMembers] = useState([])
   const [posts, setPosts] = useState([])
   const [loading, setLoading] = useState(true)
@@ -82,6 +82,8 @@ export default function Home({ user, group, onOpenSettings, onMembersLoaded, onO
   const isOwner = group.created_by === user.id
 
   useEffect(() => { loadMembers(); loadPosts() }, [group.id])
+  // 프로필(이름·색) 변경 시 멤버 다시 불러오기
+  useEffect(() => { if (profileVersion) loadMembers() }, [profileVersion])
   useEffect(() => { loadMoments() }, [group.id])
   useEffect(() => { loadLikes() }, [group.id])
   useEffect(() => {
@@ -150,9 +152,26 @@ export default function Home({ user, group, onOpenSettings, onMembersLoaded, onO
 
   async function loadMembers() {
     setLoading(true)
-    let res = await supabase.from('members').select('id,user_id,display_name,color,share_location').eq('group_id', group.id).order('joined_at', { ascending: true })
+    let res = await supabase.from('members').select('id,user_id,share_location,display_name,color').eq('group_id', group.id).order('joined_at', { ascending: true })
     if (res.error) { flash(res.error.message); setLoading(false); return }
-    const list = res.data || []
+    let list = res.data || []
+    // 프로필(계정 단위)에서 이름·색을 가져와 덮어씀
+    const uids = list.map(m => m.user_id).filter(Boolean)
+    if (uids.length) {
+      let pres = await supabase.from('profiles').select('user_id,display_name,color').in('user_id', uids)
+      if (!pres.error && pres.data) {
+        const pmap = {}
+        pres.data.forEach(p => { pmap[p.user_id] = p })
+        list = list.map(m => {
+          const p = pmap[m.user_id]
+          return {
+            ...m,
+            display_name: (p && p.display_name) ? p.display_name : (m.display_name || '?'),
+            color: (p && p.color) ? p.color : (m.color || '#888'),
+          }
+        })
+      }
+    }
     setMembers(list); membersRef.current = list
     setLoading(false)
     drawPins()

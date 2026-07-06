@@ -19,6 +19,7 @@ export default function App() {
   const [statsMembers, setStatsMembers] = useState([])
   const [myGroups, setMyGroups] = useState([])
   const [showSwitcher, setShowSwitcher] = useState(false)
+  const [profileVersion, setProfileVersion] = useState(0)  // 프로필 변경 시 증가 → Home 멤버 리로드
   const [showOnboarding, setShowOnboarding] = useState(false)
   const [showPrivacy, setShowPrivacy] = useState(false)
   const [showTerms, setShowTerms] = useState(false)
@@ -97,6 +98,7 @@ export default function App() {
       onClose={() => setShowSettings(false)}
       onOpenStats={(m) => { setStatsMembers(m || []); setShowStats(true); setShowSettings(false) }}
       onGroupUpdate={(g) => setGroup(g)}
+      onProfileUpdate={() => setProfileVersion(v => v + 1)}
       onLeaveGroup={() => { setShowSettings(false); setGroup(null) }}
       onSignOut={signOut}
       onOpenPrivacy={() => { setShowPrivacy(true); setShowSettings(false) }}
@@ -109,6 +111,7 @@ export default function App() {
       <Home
         user={session.user}
         group={group}
+        profileVersion={profileVersion}
         onOpenSettings={() => setShowSettings(true)}
         onMembersLoaded={(m) => setStatsMembers(m || [])}
         onOpenSwitcher={() => { loadMyGroups(); setShowSwitcher(true) }}

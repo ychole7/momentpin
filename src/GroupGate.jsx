@@ -23,6 +23,16 @@ export default function GroupGate({ user, onReady }) {
   const [displayName, setDisplayName] = useState('')
   const [code, setCode] = useState('')
   const [busy, setBusy] = useState(false)
+  const [myColor, setMyColor] = useState(randColor())      // 프로필 색 (없으면 랜덤)
+  const [hasProfile, setHasProfile] = useState(false)      // 이미 이름 정한 계정인지
+
+  async function loadProfile() {
+    let res = await supabase.from('profiles').select('display_name,color').eq('user_id', user.id).maybeSingle()
+    if (!res.error && res.data) {
+      if (res.data.display_name) { setDisplayName(res.data.display_name); setHasProfile(true) }
+      if (res.data.color) setMyColor(res.data.color)
+    }
+  }
 
   async function signOut() {
     await supabase.auth.signOut()
@@ -53,7 +63,7 @@ export default function GroupGate({ user, onReady }) {
   }
   const [msg, setMsg] = useState('')
 
-  useEffect(() => { loadMyGroups() }, [])
+  useEffect(() => { loadMyGroups(); loadProfile() }, [])
 
   async function loadMyGroups() {
     setLoading(true)
@@ -67,9 +77,24 @@ export default function GroupGate({ user, onReady }) {
     setLoading(false)
   }
 
+  // 프로필(계정 단위) 저장 — 그룹 만들/참여 시 함께 저장
+  async function saveProfile() {
+    let res = await supabase.from('profiles').upsert({
+      user_id: user.id,
+      display_name: displayName.trim().slice(0, 12),
+      color: myColor,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'user_id' })
+    return res.error
+  }
+
   async function createGroup() {
     if (!name.trim() || !displayName.trim()) { setMsg('그룹 이름과 내 이름을 입력해 주세요.'); return }
     setBusy(true); setMsg('')
+
+    // 0) 프로필 저장 (계정 단위 이름·색)
+    const pErr = await saveProfile()
+    if (pErr) { setMsg('프로필 저장 실패: ' + pErr.message); setBusy(false); return }
 
     // 1) 그룹 생성 (초대코드 충돌 시 한 번 더 시도)
     let group = null
@@ -82,9 +107,9 @@ export default function GroupGate({ user, onReady }) {
     }
     if (!group) { setMsg('초대코드 생성에 실패했어요. 다시 시도해 주세요.'); setBusy(false); return }
 
-    // 2) 본인을 멤버로 추가
+    // 2) 본인을 멤버로 추가 (members에도 이름·색 저장 = 기존 호환/fallback)
     let res2 = await supabase.from('members')
-      .insert({ group_id: group.id, user_id: user.id, display_name: displayName.trim(), color: randColor() })
+      .insert({ group_id: group.id, user_id: user.id, display_name: displayName.trim().slice(0, 12), color: myColor })
     const e2 = res2.error
     if (e2) { setMsg(e2.message); setBusy(false); return }
 
@@ -96,6 +121,10 @@ export default function GroupGate({ user, onReady }) {
     if (!code.trim() || !displayName.trim()) { setMsg('초대코드와 내 이름을 입력해 주세요.'); return }
     setBusy(true); setMsg('')
 
+    // 0) 프로필 저장
+    const pErr = await saveProfile()
+    if (pErr) { setMsg('프로필 저장 실패: ' + pErr.message); setBusy(false); return }
+
     // 1) 코드로 그룹 찾기
     let res = await supabase.from('groups')
       .select('id,name,invite_code,created_by,alarm_mode,fixed_times,random_start,random_end,window_min')
@@ -106,7 +135,7 @@ export default function GroupGate({ user, onReady }) {
 
     // 2) 멤버로 추가 (이미 있으면 무시하고 통과)
     let res2 = await supabase.from('members')
-      .insert({ group_id: group.id, user_id: user.id, display_name: displayName.trim(), color: randColor() })
+      .insert({ group_id: group.id, user_id: user.id, display_name: displayName.trim().slice(0, 12), color: myColor })
     const e2 = res2.error
     if (e2 && !String(e2.message).includes('duplicate')) { setMsg(e2.message); setBusy(false); return }
 

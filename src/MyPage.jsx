@@ -4,14 +4,13 @@ import { supabase } from './supabaseClient'
 
 const COLORS = ['#ff4d5e', '#13bca4', '#e0972e', '#5b8def', '#9c4dcc', '#2a9d5a']
 
-export default function MyPage({ user, group, members, onClose, onOpenStats, onGroupUpdate, onLeaveGroup, onSignOut, onOpenPrivacy, onOpenTerms }) {
+export default function MyPage({ user, group, members, onClose, onOpenStats, onGroupUpdate, onLeaveGroup, onSignOut, onOpenPrivacy, onOpenTerms, onProfileUpdate }) {
   const isOwner = group.created_by === user.id
   const [tab, setTab] = useState('me')  // me | group
 
-  // 프로필
+  // 프로필 (계정 단위 profiles 테이블)
   const [myName, setMyName] = useState('')
   const [myColor, setMyColor] = useState('#ff4d5e')
-  const [myMemberId, setMyMemberId] = useState(null)
   // 내 기록
   const [myStats, setMyStats] = useState(null)
   // 그룹 설정
@@ -86,9 +85,9 @@ export default function MyPage({ user, group, members, onClose, onOpenStats, onG
   }
 
   async function loadMe() {
-    let res = await supabase.from('members').select('id,display_name,color').eq('group_id', group.id).eq('user_id', user.id).single()
+    // 프로필은 계정 단위 (profiles 테이블)
+    let res = await supabase.from('profiles').select('display_name,color').eq('user_id', user.id).maybeSingle()
     if (!res.error && res.data) {
-      setMyMemberId(res.data.id)
       setMyName(res.data.display_name || '')
       setMyColor(res.data.color || '#ff4d5e')
     }
@@ -108,10 +107,17 @@ export default function MyPage({ user, group, members, onClose, onOpenStats, onG
   async function saveMe() {
     if (!myName.trim()) { flash('이름을 입력해 주세요'); return }
     setBusy(true)
-    let res = await supabase.from('members').update({ display_name: myName.trim().slice(0, 12), color: myColor }).eq('id', myMemberId)
+    // 계정 단위 프로필 저장 (upsert)
+    let res = await supabase.from('profiles').upsert({
+      user_id: user.id,
+      display_name: myName.trim().slice(0, 12),
+      color: myColor,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'user_id' })
     setBusy(false)
     if (res.error) { flash('저장 실패: ' + res.error.message); return }
     flash('프로필 저장됨 ✨')
+    if (onProfileUpdate) onProfileUpdate({ display_name: myName.trim().slice(0, 12), color: myColor })
   }
 
   function addTime() {
