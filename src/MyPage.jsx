@@ -29,13 +29,13 @@ export default function MyPage({ user, group, members, onClose, onOpenStats, onG
   const [busy, setBusy] = useState(false)
   const [toast, setToast] = useState('')
   const [pushOn, setPushOn] = useState(false)
-  const [todayCount, setTodayCount] = useState(null)  // 오늘 생성된 모먼 수
+  const [todayCount, setTodayCount] = useState(null)  // 오늘 생성된 안부 수
   function flash(m) { setToast(m); setTimeout(() => setToast(''), 2400) }
 
   useEffect(() => { loadMe(); loadMyStats(); checkPush(); loadTodayCount() }, [])
 
   async function loadTodayCount() {
-    // KST 기준 오늘 0시 이후 생성된 모먼 수
+    // KST 기준 오늘 0시 이후 생성된 안부 수
     const now = new Date()
     const kst = new Date(now.getTime() + 9 * 3600 * 1000)
     const y = kst.getUTCFullYear(), mo = kst.getUTCMonth(), d = kst.getUTCDate()
@@ -115,7 +115,7 @@ export default function MyPage({ user, group, members, onClose, onOpenStats, onG
     const myPosts = (pres.data || []).filter(p => p.user_id === user.id)
     const myCount = myPosts.length
     const rate = totalMoments ? Math.round(myCount / totalMoments * 100) : 0
-    // 연속 참여(간단): 최근 모먼들 중 내가 연속으로 찍은 수 — 날짜 기준 단순 계산
+    // 연속 참여(간단): 최근 안부들 중 내가 연속으로 남긴 수 — 날짜 기준 단순 계산
     setMyStats({ myCount, totalMoments, rate })
   }
 
@@ -173,7 +173,7 @@ export default function MyPage({ user, group, members, onClose, onOpenStats, onG
   async function saveGroup() {
     // 유효성 검사
     if (mode === 'fixed') {
-      if (!times.length) { flash('모먼 시간을 1개 이상 추가해 주세요'); return }
+      if (!times.length) { flash('안부 시간을 1개 이상 추가해 주세요'); return }
     } else {
       const toMin = (t) => { const [h, m] = t.split(':').map(Number); return h * 60 + m }
       const s = toMin(rStart), e = toMin(rEnd)
@@ -189,7 +189,7 @@ export default function MyPage({ user, group, members, onClose, onOpenStats, onG
   }
 
   async function deleteAccount() {
-    if (!confirm('정말 탈퇴하시겠어요?\n계정과 모든 모먼·사진·기록이 영구히 삭제되며 되돌릴 수 없어요.')) return
+    if (!confirm('정말 탈퇴하시겠어요?\n계정과 모든 안부·사진·기록이 영구히 삭제되며 되돌릴 수 없어요.')) return
     if (!confirm('마지막 확인이에요. 정말 탈퇴를 진행할까요?')) return
     setBusy(true)
     try {
@@ -246,7 +246,7 @@ export default function MyPage({ user, group, members, onClose, onOpenStats, onG
   }
 
   async function deleteGroup() {
-    if (!confirm('정말 그룹을 삭제할까요?\n모든 모먼과 사진이 사라지고 되돌릴 수 없어요.')) return
+    if (!confirm('정말 그룹을 삭제할까요?\n모든 안부와 사진이 사라지고 되돌릴 수 없어요.')) return
     if (!confirm('한 번 더 확인할게요. 정말 삭제하시겠어요?')) return
     setBusy(true)
     await supabase.from('posts').delete().eq('group_id', group.id)
@@ -280,7 +280,7 @@ export default function MyPage({ user, group, members, onClose, onOpenStats, onG
         {/* 내 기록 */}
         {myStats && (
           <div style={S.miniCards}>
-            <div style={S.miniCard}><div style={S.miniNum}>{myStats.myCount}</div><div style={S.miniLabel}>내가 찍은 모먼</div></div>
+            <div style={S.miniCard}><div style={S.miniNum}>{myStats.myCount}</div><div style={S.miniLabel}>내가 남긴 안부</div></div>
             <div style={S.miniCard}><div style={S.miniNum}>{myStats.rate}%</div><div style={S.miniLabel}>참여율</div></div>
           </div>
         )}
@@ -315,7 +315,7 @@ export default function MyPage({ user, group, members, onClose, onOpenStats, onG
             <div style={S.card}>
               <div style={S.toggleRow}>
                 <div>
-                  <div style={{ fontWeight: 600 }}>모먼 알림</div>
+                  <div style={{ fontWeight: 600 }}>안부 알림</div>
                   <div style={{ fontSize: 12, color: 'var(--mp-muted)' }}>정해진 시간에 "지금 찍어!" 알림</div>
                 </div>
                 <button onClick={togglePush} style={{ ...S.switch, background: pushOn ? '#13bca4' : 'var(--mp-line2)' }}>
@@ -402,7 +402,7 @@ export default function MyPage({ user, group, members, onClose, onOpenStats, onG
             </div>
 
             {/* 그룹 알림 설정 (그룹장만) */}
-            <div style={S.secLabel}>모먼 알림 설정</div>
+            <div style={S.secLabel}>안부 알림 설정</div>
             <div style={S.card}>
               {!isOwner ? (
                 <div style={S.ownerNote}>🔒 그룹 알림 설정은 <b>그룹장</b>만 바꿀 수 있어요</div>
@@ -416,7 +416,7 @@ export default function MyPage({ user, group, members, onClose, onOpenStats, onG
 
                   {mode === 'fixed' ? (
                     <>
-                      <div style={{ ...S.rowLabel, marginTop: 16 }}>모먼 시간 (하루 1~3회)</div>
+                      <div style={{ ...S.rowLabel, marginTop: 16 }}>안부 시간 (하루 1~3회)</div>
                       <div style={S.pills}>
                         {times.map(t => <button key={t} style={S.timePill} onClick={() => removeTime(t)}>{t} ✕</button>)}
                       </div>
@@ -459,7 +459,7 @@ export default function MyPage({ user, group, members, onClose, onOpenStats, onG
                         </div>
                         {used != null && (
                           <div style={S.quotaRow}>
-                            <span style={S.quotaLabel}>오늘 찍은 모먼</span>
+                            <span style={S.quotaLabel}>오늘 남긴 안부</span>
                             <span style={{ ...S.quotaVal, color: left === 0 ? 'var(--mp-muted)' : 'var(--mp-coral)' }}>
                               {used} / {dailyLimit}회{left === 0 ? ' · 오늘 끝 🌙' : ''}
                             </span>
@@ -485,7 +485,7 @@ export default function MyPage({ user, group, members, onClose, onOpenStats, onG
               <button style={S.linkRow} onClick={leaveGroup}>🚪 이 그룹에서 나가기</button>
               {isOwner && <button style={{ ...S.linkRow, color: 'var(--mp-coral)', borderBottom: 'none' }} onClick={deleteGroup}>🗑️ 그룹 삭제하기</button>}
             </div>
-            {isOwner && <div style={S.dangerNote}>삭제하면 모든 모먼·사진이 영구히 사라져요</div>}
+            {isOwner && <div style={S.dangerNote}>삭제하면 모든 안부·사진이 영구히 사라져요</div>}
           </>
         )}
       </div>

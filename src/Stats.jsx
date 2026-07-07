@@ -10,7 +10,7 @@ export default function Stats({ user, group, members, onClose }) {
 
   async function load() {
     setLoading(true)
-    // 전체 모먼/사진 (DB에 보존된 모든 기록)
+    // 전체 안부/사진 (DB에 보존된 모든 기록)
     let mres = await supabase.from('moments').select('id,fired_at').eq('group_id', group.id)
     let pres = await supabase.from('posts').select('id,moment_id,user_id,created_at,is_late').eq('group_id', group.id)
     const moments = mres.data || []
@@ -64,7 +64,7 @@ export default function Stats({ user, group, members, onClose }) {
           </div>
 
           <div style={S.cards}>
-            <div style={S.statCard}><div style={S.statNum}>{stats.totalMoments}</div><div style={S.statLabel}>📸 함께한 모먼</div></div>
+            <div style={S.statCard}><div style={S.statNum}>{stats.totalMoments}</div><div style={S.statLabel}>📸 함께한 안부</div></div>
             <div style={S.statCard}><div style={S.statNum}>{stats.totalPosts}</div><div style={S.statLabel}>🖼️ 남긴 순간</div></div>
             <div style={S.statCard}><div style={S.statNum}>{stats.allJoinedCount}</div><div style={S.statLabel}>✨ 전원 참여</div></div>
             <div style={S.statCard}><div style={S.statNum}>{stats.lateCount}</div><div style={S.statLabel}>⏰ 늦참</div></div>

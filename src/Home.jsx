@@ -244,7 +244,7 @@ export default function Home({ user, group, profileVersion, onOpenSettings, onMe
   function nameOf(uid) { const m = membersRef.current.find(x => x.user_id === uid); return m ? m.display_name : '?' }
   function colorOf(uid) { const m = membersRef.current.find(x => x.user_id === uid); return m ? m.color : '#888' }
   function sharesLoc(uid) { const m = membersRef.current.find(x => x.user_id === uid); return m ? m.share_location !== false : true }
-  function hasLoc(p) { return !!(p && p.lat != null && p.lng != null) }  // 그 모먼에 위치가 포함됐는지
+  function hasLoc(p) { return !!(p && p.lat != null && p.lng != null) }  // 그 안부에 위치가 포함됐는지
 
   async function drawPins() {
     const L = window.L, map = mapRef.current
@@ -258,7 +258,7 @@ export default function Home({ user, group, profileVersion, onOpenSettings, onMe
     for (const p of posts) {
       if (!activeIds.includes(p.moment_id)) continue
       if (p.lat == null || p.lng == null) continue
-      // 위치 포함 모먼만 핀 표시 (lat/lng 없으면 이미 위에서 skip)
+      // 위치 포함 안부만 핀 표시 (lat/lng 없으면 이미 위에서 skip)
       let imgUrl = signed[p.id] || ''
       if (!imgUrl && p.img_back) { let s = await supabase.storage.from('moments').createSignedUrl(p.img_back, 3600); if (!s.error && s.data) imgUrl = s.data.signedUrl }
       const color = colorOf(p.user_id)
@@ -284,10 +284,10 @@ export default function Home({ user, group, profileVersion, onOpenSettings, onMe
   }
 
   async function startMoment() {
-    if (!isOwner) { flash('그룹을 만든 사람만 모먼을 시작할 수 있어요'); return }
+    if (!isOwner) { flash('그룹을 만든 사람만 안부를 시작할 수 있어요'); return }
     setBusy(true)
     const now = new Date()
-    // 이미 열린 모먼이 있으면 새로 만들지 않고 재사용 (중복 방지)
+    // 이미 열린 안부 시간이 있으면 새로 만들지 않고 재사용 (중복 방지)
     let openRes = await supabase.from('moments').select('id')
       .eq('group_id', group.id)
       .lte('fired_at', now.toISOString())
@@ -296,7 +296,7 @@ export default function Home({ user, group, profileVersion, onOpenSettings, onMe
     if (openRes.data && openRes.data.length > 0) {
       setBusy(false)
       await loadMoments()
-      flash('이미 모먼이 진행 중이에요 📍')
+      flash('이미 안부 시간이 진행 중이에요 📍')
       try { fetch(window.location.origin + '/api/send-moment?groupId=' + group.id) } catch {}
       return
     }
@@ -312,15 +312,15 @@ export default function Home({ user, group, profileVersion, onOpenSettings, onMe
     const firedToday = todayRes.count || 0
     if (firedToday >= dailyLimit) {
       setBusy(false)
-      flash('오늘은 이미 모먼을 다 찍었어요 (하루 ' + dailyLimit + '회) 🌙')
+      flash('오늘은 이미 안부를 다 남겼어요 (하루 ' + dailyLimit + '회) 🌙')
       return
     }
     const deadline = new Date(now.getTime() + (group.window_min || 3) * 60000)
     let res = await supabase.from('moments').insert({ group_id: group.id, fired_at: now.toISOString(), deadline: deadline.toISOString() }).select().single()
     setBusy(false)
-    if (res.error) { flash('모먼 시작 실패: ' + res.error.message); return }
+    if (res.error) { flash('안부 시작 실패: ' + res.error.message); return }
     await loadMoments()
-    flash('📍 모먼 시작! 다 같이 안부를 전해요 (' + (group.window_min||3) + '분)')
+    flash('📍 안부 시간 시작! 다 같이 안부를 전해요 (' + (group.window_min||3) + '분)')
     try { fetch(window.location.origin + '/api/send-moment?groupId=' + group.id) } catch {}
   }
 
@@ -338,9 +338,9 @@ export default function Home({ user, group, profileVersion, onOpenSettings, onMe
       const path = `${group.id}/${postId}_back.jpg`
       let up = await supabase.storage.from('moments').upload(path, file, { upsert: true })
       if (up.error) { flash('업로드 실패: ' + up.error.message); setBusy(false); setUploadStep(''); return }
-      // 열린 모먼에만 제출 (열린 모먼 없으면 찍기 자체가 막혀있음)
+      // 열린 안부에만 제출 (열린 안부 없으면 찍기 자체가 막혀있음)
       const target = openMomentRef.current
-      if (!target) { flash('지금은 모먼 시간이 아니에요'); setBusy(false); setUploadStep(''); return }
+      if (!target) { flash('지금은 안부 시간이 아니에요'); setBusy(false); setUploadStep(''); return }
       const momentId = target.id
       const late = new Date() > new Date(target.deadline)
       setUploadStep('기록')
@@ -376,7 +376,7 @@ export default function Home({ user, group, profileVersion, onOpenSettings, onMe
       }, { onConflict: 'user_id,group_id,endpoint' })
       if (res.error) { flash('구독 저장 실패: ' + res.error.message); return }
       setPushOn(true)
-      flash('알림 켜짐! 이제 모먼 알림을 받아요 🔔')
+      flash('알림 켜짐! 이제 안부 알림을 받아요 🔔')
     } catch (e) { flash('알림 설정 실패: ' + (e.message || e)) }
   }
   async function disablePush() {
@@ -414,21 +414,21 @@ export default function Home({ user, group, profileVersion, onOpenSettings, onMe
     flash('초대 링크 복사됨! 카톡에 붙여넣기 ✨')
   }
 
-  // 열린 모먼 판정
+  // 열린 안부 판정
   const _now = new Date(nowTick)
   const openMoments = moments.filter(m => new Date(m.fired_at) <= _now && _now <= new Date(m.deadline))
-  // 사진 찍기용: 가장 먼저 시작된 열린 모먼으로 통일 (모두 같은 곳에 모이게)
+  // 사진 찍기용: 가장 먼저 시작된 열린 안부로 통일 (모두 같은 곳에 모이게)
   const openMoment = openMoments.slice().sort((a,b)=>new Date(a.fired_at)-new Date(b.fired_at))[0] || null
-  // 가장 최근 모먼 (열린 게 없을 때 '지난 결과'로 보여주기 위함)
+  // 가장 최근 안부 (열린 게 없을 때 '지난 결과'로 보여주기 위함)
   const recentMoment = moments.slice().sort((a,b)=>new Date(b.fired_at)-new Date(a.fired_at))[0] || null
-  // 표시용 모먼: 열린 모먼 있으면 그것들, 없으면 가장 최근 모먼 (사진은 다음 모먼 전까지 남김)
+  // 표시용 안부: 열린 안부 있으면 그것들, 없으면 가장 최근 안부 (사진은 다음 안부 전까지 남김)
   const displayMomentIds = openMoments.length ? openMoments.map(m=>m.id) : (recentMoment ? [recentMoment.id] : [])
-  // 참여/재촉용: 열린 모먼만 (지난 모먼은 재촉 안 함)
+  // 참여/재촉용: 열린 안부만 (지난 안부는 재촉 안 함)
   const activeMomentIds = openMoments.map(m=>m.id)
   const activeMomentId = activeMomentIds[0] || null
   // 표시용 posts (지도/한눈에/피드) — 지난 결과 포함
   const displayPosts = posts.filter(p => displayMomentIds.includes(p.moment_id))
-  // 참여 판정용 postByUser — 열린 모먼만 (재촉/현황 계산)
+  // 참여 판정용 postByUser — 열린 안부만 (재촉/현황 계산)
   const activePosts = posts.filter(p => activeMomentIds.includes(p.moment_id))
   const postByUser = {}
   activePosts.forEach(p => { if (!postByUser[p.user_id]) postByUser[p.user_id] = p })
@@ -456,7 +456,7 @@ export default function Home({ user, group, profileVersion, onOpenSettings, onMe
 
   useEffect(() => {
     if (!hasOpen || !allJoined || !openMoment) { prevAllJoinedRef.current = hasOpen && allJoined; return }
-    // 이 모먼에 대해 이미 축하했는지 확인 (설정 갔다 오거나 새로고침해도 재생 안 되게)
+    // 이 안부에 대해 이미 축하했는지 확인 (설정 갔다 오거나 새로고침해도 재생 안 되게)
     const celebKey = 'mp_celebrated_' + openMoment.id
     let alreadyCelebrated = false
     try { alreadyCelebrated = sessionStorage.getItem(celebKey) === '1' } catch {}
@@ -509,8 +509,8 @@ export default function Home({ user, group, profileVersion, onOpenSettings, onMe
           <div style={S.bTag}>{group.name}</div>
           {!hasOpen ? (
             <>
-              <div style={S.bBig}>🌙 지금은 모먼 시간이 아니에요</div>
-              <div style={S.bSmall}>{recentMoment ? '지난 안부를 둘러보세요 · 알림이 오면 다시 전해요' : '모먼 시간이 되면 알림이 와요'}</div>
+              <div style={S.bBig}>🌙 지금은 안부 시간이 아니에요</div>
+              <div style={S.bSmall}>{recentMoment ? '지난 안부를 둘러보세요 · 알림이 오면 다시 전해요' : '안부 시간이 되면 알림이 와요'}</div>
             </>
           ) : allJoined ? (
             <>
@@ -520,7 +520,7 @@ export default function Home({ user, group, profileVersion, onOpenSettings, onMe
           ) : !iJoined ? (
             <>
               <div style={S.bBig}>📍 아직 안부를 안 전했어요</div>
-              <div style={S.bSmall}>지금 모먼을 남겨보세요 · {joinedCount}/{members.length} 참여</div>
+              <div style={S.bSmall}>지금 안부를 남겨보세요 · {joinedCount}/{members.length} 참여</div>
             </>
           ) : (
             <>
@@ -593,8 +593,8 @@ export default function Home({ user, group, profileVersion, onOpenSettings, onMe
           <div style={S.feed}>
             {displayPosts.length === 0 ? (
               hasOpen
-                ? <div style={S.empty}>아직 아무도 안 남겼어요 📍<br/>이번 모먼의 첫 안부를 전해보세요</div>
-                : <div style={S.empty}>아직 나눈 안부가 없어요 🌙<br/>첫 모먼을 기다리고 있어요</div>
+                ? <div style={S.empty}>아직 아무도 안 남겼어요 📍<br/>이번 시간의 첫 안부를 전해보세요</div>
+                : <div style={S.empty}>아직 나눈 안부가 없어요 🌙<br/>첫 안부를 기다리고 있어요</div>
             ) :
               displayPosts.map(p => {
                 const url = signed[p.id]
@@ -637,19 +637,19 @@ export default function Home({ user, group, profileVersion, onOpenSettings, onMe
                       })}
                     </span>
                   </span>
-                : '📍 모먼 찍기'}
+                : '📍 안부 남기기'}
             </button>
           </>
         ) : (
           <div style={S.waitBox}>
-            <div style={S.waitTitle}>🌙 모먼을 기다리는 중</div>
+            <div style={S.waitTitle}>🌙 안부를 기다리는 중</div>
             <div style={S.waitSub}>시간이 되면 다 같이 안부를 나눠요</div>
           </div>
         ))}
 
         <div style={S.label}>멤버</div>
         {loading ? <MemberSkeleton /> : members.map(m => {
-          const pActive = postByUser[m.user_id]   // 열린 모먼 참여 여부 (✓/대기)
+          const pActive = postByUser[m.user_id]   // 열린 안부 참여 여부 (✓/대기)
           const pDisp = displayByUser[m.user_id]   // 표시용 (지난 결과 포함)
           const dist = pDisp && m.user_id !== user.id && hasLoc(pDisp) ? distLabel(myPosRef.current, pDisp) : ''
           return (
