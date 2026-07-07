@@ -88,6 +88,20 @@ export default function GroupGate({ user, onReady }) {
     }
     setMyGroups(groups.map(g => ({ ...g, active: activeSet.has(g.id) })))
     setLoading(false)
+
+    // 딥링크: URL에 ?group=ID가 있으면 해당 그룹으로 자동 진입
+    try {
+      const urlGroupId = new URLSearchParams(window.location.search).get('group')
+      if (urlGroupId) {
+        const target = groups.find(g => g.id === urlGroupId)
+        if (target) {
+          // URL 파라미터 제거 후 진입 (뒤로가기 시 다시 자동진입 방지)
+          window.history.replaceState({}, '', window.location.pathname)
+          onReady(target)
+          return
+        }
+      }
+    } catch {}
   }
 
   // 프로필(계정 단위) 저장 — 그룹 만들/참여 시 함께 저장
