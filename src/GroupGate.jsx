@@ -247,7 +247,7 @@ const S = {
   top: { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 'calc(env(safe-area-inset-top,0px) + 40px) 32px 32px' },
   form: { padding: '0 24px calc(env(safe-area-inset-bottom,0px) + 32px)' },
   logoRow: { display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 },
-  logoDot: { width: 40, height: 40, objectFit: 'contain' },
+  logoDot: { width: 64, height: 64, objectFit: 'contain' },
   logoName: { fontSize: 26, fontWeight: 700, letterSpacing: '-.5px', color: 'var(--mp-ink)' },
   h: { fontSize: 22, fontWeight: 700, letterSpacing: '-.4px', marginBottom: 8, color: 'var(--mp-ink)', textAlign: 'center' },
   sub: { fontSize: 14, color: 'var(--mp-muted)', textAlign: 'center' },

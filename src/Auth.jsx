@@ -99,7 +99,7 @@ const S = {
     padding: 'calc(env(safe-area-inset-top,0px) + 40px) 32px 32px' },
   form: { padding: '0 24px calc(env(safe-area-inset-bottom,0px) + 32px)' },
   logoRow: { display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 },
-  logoDot: { width: 44, height: 44, objectFit: 'contain' },
+  logoDot: { width: 72, height: 72, objectFit: 'contain' },
   logoName: { fontSize: 28, fontWeight: 700, letterSpacing: '-.5px', color: 'var(--mp-ink)', lineHeight: 1 },
   logoSub: { fontSize: 10, letterSpacing: 2, color: 'var(--mp-muted)', fontWeight: 600, marginTop: 3 },
   tagline: { fontSize: 18, fontWeight: 700, color: 'var(--mp-ink)', lineHeight: 1.6,
