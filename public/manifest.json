@@ -1,11 +1,11 @@
 {
-  "name": "모먼핀",
-  "short_name": "모먼핀",
-  "description": "멀리 있어도, 오늘 서로의 순간을 나눠요. 지도 위에서 안부를 묻는 우리만의 공간.",
+  "name": "닿음",
+  "short_name": "닿음",
+  "description": "지도 위에 안부를 묻다",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#fafafa",
-  "theme_color": "#ff4d5e",
+  "background_color": "#1c2340",
+  "theme_color": "#1c2340",
   "orientation": "portrait",
   "icons": [
     {
