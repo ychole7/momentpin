@@ -150,7 +150,7 @@ export default function GroupGate({ user, onReady }) {
       <div style={S.top}>
         <div style={S.logoRow}>
           <div style={S.logoDot} />
-          <div style={S.logoName}>모먼핀</div>
+          <div style={S.logoName}>닿음</div>
         </div>
         <div style={S.h}>그룹으로 시작해요</div>
         <div style={S.sub}>가족이나 친구와 함께 안부를 나눠요</div>

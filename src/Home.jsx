@@ -409,7 +409,7 @@ export default function Home({ user, group, profileVersion, onOpenSettings, onMe
   function flash(m) { setToast(m); setTimeout(() => setToast(''), 2600) }
   async function copyInviteLink() {
     const link = window.location.origin + '/?code=' + encodeURIComponent(group.invite_code)
-    const text = `우리 ${group.name} 모먼핀 같이 쓰자! 📍\n이 링크 누르고 가입하면 끝:\n${link}`
+    const text = `우리 ${group.name} 닿음 같이 쓰자! 📍\n이 링크 누르고 가입하면 끝:\n${link}`
     try { await navigator.clipboard.writeText(text) } catch {}
     flash('초대 링크 복사됨! 카톡에 붙여넣기 ✨')
   }
@@ -475,7 +475,7 @@ export default function Home({ user, group, profileVersion, onOpenSettings, onMe
         <div style={S.logoRow}>
           <div style={S.logoDot} />
           <div>
-            <div style={S.logoName}>모먼핀</div>
+            <div style={S.logoName}>닿음</div>
             <button style={S.groupSwitch} onClick={onOpenSwitcher}>{group.name} <span style={{ fontSize: 10, opacity: .6 }}>▾</span></button>
           </div>
         </div>

@@ -73,7 +73,7 @@ export default function App() {
     setShowSettings(false)
   }
 
-  if (booting) return <div style={center}>모먼핀 여는 중…</div>
+  if (booting) return <div style={center}>닿음 여는 중…</div>
   if (!session) return <Auth />
   if (showOnboarding) return <Onboarding onDone={finishOnboarding} />
   if (!group) return <GroupGate user={session.user} onReady={setGroup} />

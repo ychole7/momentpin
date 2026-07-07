@@ -53,7 +53,7 @@ export default function Auth() {
         <div style={S.logoRow}>
           <div style={S.logoDot} />
           <div>
-            <div style={S.logoName}>모먼핀</div>
+            <div style={S.logoName}>닿음</div>
             <div style={S.logoSub}>MOMENT · PIN</div>
           </div>
         </div>
