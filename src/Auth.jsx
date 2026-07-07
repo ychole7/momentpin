@@ -51,10 +51,10 @@ export default function Auth() {
       {/* 상단 로고 영역 */}
       <div style={S.top}>
         <div style={S.logoRow}>
-          <div style={S.logoDot} />
+          <img src="/logo.svg" alt="닿음" style={S.logoDot} />
           <div>
             <div style={S.logoName}>닿음</div>
-            <div style={S.logoSub}>MOMENT · PIN</div>
+            <div style={S.logoSub}>DAHEUM</div>
           </div>
         </div>
         <p style={S.tagline}>지도 위에 안부를 묻다<br/><span style={{ fontSize: 13, opacity: .7 }}>멀리 있어도, 오늘 서로의 순간을 나눠요</span></p>
@@ -99,8 +99,7 @@ const S = {
     padding: 'calc(env(safe-area-inset-top,0px) + 40px) 32px 32px' },
   form: { padding: '0 24px calc(env(safe-area-inset-bottom,0px) + 32px)' },
   logoRow: { display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 },
-  logoDot: { width: 44, height: 44, borderRadius: '13px 13px 13px 4px',
-    background: 'linear-gradient(135deg,#ff7a45,#ff4d5e)', boxShadow: '0 6px 18px rgba(255,77,94,.4)' },
+  logoDot: { width: 44, height: 44, objectFit: 'contain' },
   logoName: { fontSize: 28, fontWeight: 700, letterSpacing: '-.5px', color: 'var(--mp-ink)', lineHeight: 1 },
   logoSub: { fontSize: 10, letterSpacing: 2, color: 'var(--mp-muted)', fontWeight: 600, marginTop: 3 },
   tagline: { fontSize: 18, fontWeight: 700, color: 'var(--mp-ink)', lineHeight: 1.6,

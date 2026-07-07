@@ -473,7 +473,7 @@ export default function Home({ user, group, profileVersion, onOpenSettings, onMe
       {confetti && <Confetti />}
       <div style={S.top}>
         <div style={S.logoRow}>
-          <div style={S.logoDot} />
+          <img src="/logo.svg" alt="닿음" style={S.logoDot} />
           <div>
             <div style={S.logoName}>닿음</div>
             <button style={S.groupSwitch} onClick={onOpenSwitcher}>{group.name} <span style={{ fontSize: 10, opacity: .6 }}>▾</span></button>
@@ -790,7 +790,7 @@ const S = {
   app: { width: '100%', maxWidth: 480, margin: '0 auto', minHeight: '100dvh', background: 'var(--mp-bg)', fontFamily: "'Outfit','Gowun Dodum',sans-serif", color: 'var(--mp-ink)', paddingBottom: 30 },
   top: { position: 'sticky', top: 0, zIndex: 1000, background: 'var(--mp-topbar)', backdropFilter: 'blur(12px)', borderBottom: '1px solid var(--mp-line)', padding: '13px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
   logoRow: { display: 'flex', alignItems: 'center', gap: 8 },
-  logoDot: { width: 24, height: 24, borderRadius: '8px 8px 8px 3px', background: 'linear-gradient(135deg,#ff7a45,#ff4d5e)' },
+  logoDot: { width: 24, height: 24, objectFit: 'contain' },
   groupSwitch: { border: 'none', background: 'var(--mp-card2)', color: 'var(--mp-ink)', fontFamily: 'inherit', fontSize: 12, fontWeight: 700, padding: '3px 10px', borderRadius: 12, cursor: 'pointer', marginTop: 2, maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center' },
   logoName: { fontSize: 18, fontWeight: 700, letterSpacing: '-.4px', color: 'var(--mp-ink)' },
   codeBtn: { border: 'none', background: 'linear-gradient(135deg,#ff7a45,#ff4d5e)', color: '#fff', fontFamily: 'inherit', fontSize: 12, fontWeight: 700, padding: '8px 13px', borderRadius: 20, cursor: 'pointer', boxShadow: '0 4px 12px rgba(255,77,94,.3)' },

@@ -183,7 +183,7 @@ export default function GroupGate({ user, onReady }) {
     <div style={S.wrap}>
       <div style={S.top}>
         <div style={S.logoRow}>
-          <div style={S.logoDot} />
+          <img src="/logo.svg" alt="닿음" style={S.logoDot} />
           <div style={S.logoName}>닿음</div>
         </div>
         <div style={S.h}>그룹으로 시작해요</div>
@@ -247,7 +247,7 @@ const S = {
   top: { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 'calc(env(safe-area-inset-top,0px) + 40px) 32px 32px' },
   form: { padding: '0 24px calc(env(safe-area-inset-bottom,0px) + 32px)' },
   logoRow: { display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 },
-  logoDot: { width: 40, height: 40, borderRadius: '12px 12px 12px 4px', background: 'linear-gradient(135deg,#ff7a45,#ff4d5e)', boxShadow: '0 6px 16px rgba(255,77,94,.4)' },
+  logoDot: { width: 40, height: 40, objectFit: 'contain' },
   logoName: { fontSize: 26, fontWeight: 700, letterSpacing: '-.5px', color: 'var(--mp-ink)' },
   h: { fontSize: 22, fontWeight: 700, letterSpacing: '-.4px', marginBottom: 8, color: 'var(--mp-ink)', textAlign: 'center' },
   sub: { fontSize: 14, color: 'var(--mp-muted)', textAlign: 'center' },
