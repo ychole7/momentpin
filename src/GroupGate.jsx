@@ -73,7 +73,20 @@ export default function GroupGate({ user, onReady }) {
       .eq('user_id', user.id)
     const error = res.error
     if (error) { setMsg(error.message); setLoading(false); return }
-    setMyGroups((res.data || []).map(r => r.groups).filter(Boolean))
+    const groups = (res.data || []).map(r => r.groups).filter(Boolean)
+
+    // 진행중인 안부가 있는 그룹 ID 조회
+    const now = new Date().toISOString()
+    const gids = groups.map(g => g.id)
+    let activeSet = new Set()
+    if (gids.length) {
+      let mres = await supabase.from('moments').select('group_id')
+        .in('group_id', gids)
+        .lte('fired_at', now)
+        .gte('deadline', now)
+      if (!mres.error && mres.data) mres.data.forEach(m => activeSet.add(m.group_id))
+    }
+    setMyGroups(groups.map(g => ({ ...g, active: activeSet.has(g.id) })))
     setLoading(false)
   }
 
@@ -92,7 +105,14 @@ export default function GroupGate({ user, onReady }) {
     if (!name.trim() || !displayName.trim()) { setMsg('그룹 이름과 내 이름을 입력해 주세요.'); return }
     setBusy(true); setMsg('')
 
-    // 0) 프로필 저장 (계정 단위 이름·색)
+    // 0) 그룹 개수 제한 (최대 10개)
+    if (myGroups.length >= 10) { setMsg('그룹은 최대 10개까지 만들 수 있어요.'); setBusy(false); return }
+
+    // 0-1) 같은 이름 그룹 중복 체크
+    const dupName = myGroups.some(g => g.name.trim().toLowerCase() === name.trim().toLowerCase())
+    if (dupName) { setMsg('이미 같은 이름의 그룹이 있어요. 다른 이름을 써주세요.'); setBusy(false); return }
+
+    // 0-2) 프로필 저장 (계정 단위 이름·색)
     const pErr = await saveProfile()
     if (pErr) { setMsg('프로필 저장 실패: ' + pErr.message); setBusy(false); return }
 
@@ -161,8 +181,12 @@ export default function GroupGate({ user, onReady }) {
           <div style={{ marginBottom: 20 }}>
             <div style={S.label}>내 그룹</div>
             {myGroups.map(g => (
-              <button key={g.id} style={S.groupRow} onClick={() => onReady(g)}>
-                <span style={{ fontWeight: 700 }}>{g.name}</span>
+              <button key={g.id} style={{ ...S.groupRow, ...(g.active ? S.groupRowActive : {}) }} onClick={() => onReady(g)}>
+                <span style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  {g.active && <span style={S.activeDot}>📍</span>}
+                  {g.name}
+                  {g.active && <span style={S.activeBadge}>안부 진행중</span>}
+                </span>
                 <span style={S.codeChip}>{g.invite_code}</span>
               </button>
             ))}
@@ -215,6 +239,9 @@ const S = {
   sub: { fontSize: 14, color: 'var(--mp-muted)', textAlign: 'center' },
   label: { fontSize: 12, fontWeight: 600, color: 'var(--mp-muted)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: .4 },
   groupRow: { width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: '1.5px solid var(--mp-line)', background: 'var(--mp-card)', borderRadius: 14, padding: '13px 14px', marginBottom: 8, cursor: 'pointer', fontFamily: 'inherit', fontSize: 15, color: 'var(--mp-ink)' },
+  groupRowActive: { border: '1.5px solid #ff7a45', background: 'var(--mp-card)' },
+  activeDot: { fontSize: 14 },
+  activeBadge: { fontSize: 11, fontWeight: 700, color: '#ff7a45', background: 'rgba(255,122,69,.12)', borderRadius: 8, padding: '2px 7px' },
   codeChip: { fontSize: 12, fontWeight: 600, color: 'var(--mp-muted)', background: 'var(--mp-card2)', padding: '4px 9px', borderRadius: 20 },
   or: { textAlign: 'center', fontSize: 12, color: 'var(--mp-muted)', margin: '14px 0 0' },
   tabs: { display: 'flex', gap: 6, background: 'var(--mp-card2)', borderRadius: 24, padding: 4, marginBottom: 14 },

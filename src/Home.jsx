@@ -647,8 +647,9 @@ export default function Home({ user, group, profileVersion, onOpenSettings, onMe
           </div>
         ))}
 
-        <div style={S.label}>멤버</div>
+        {tab === 'map' && <div style={S.label}>멤버</div>}
         {loading ? <MemberSkeleton /> : members.map(m => {
+          if (tab !== 'map') return null   // 지도 탭에서만 멤버 리스트 표시
           const pActive = postByUser[m.user_id]   // 열린 안부 참여 여부 (✓/대기)
           const pDisp = displayByUser[m.user_id]   // 표시용 (지난 결과 포함)
           const dist = pDisp && m.user_id !== user.id && hasLoc(pDisp) ? distLabel(myPosRef.current, pDisp) : ''
