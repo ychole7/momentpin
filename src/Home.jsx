@@ -575,13 +575,19 @@ export default function Home({ user, group, profileVersion, onOpenSettings, onMe
               return (
                 <div key={m.id} style={S.gcell} onClick={() => p && setViewPost(p)}>
                   {url ? <img src={url} style={S.gimg} alt="" /> : <div style={S.gwait}>📷</div>}
+                  {/* 하단 그라데이션 오버레이 */}
+                  <div style={S.overlay} />
+                  {/* 이름 + 위치 — 좌하단 */}
                   <div style={S.gname}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                       <span style={{ ...S.gdot, background: m.color }} />
-                      {m.display_name}{hidden ? '' : (m.user_id !== user.id && p ? ' · ' + distLabel(myPosRef.current, p) : '')}
+                      <span style={{ fontSize: 13, fontWeight: 700 }}>{m.display_name}</span>
                     </div>
-                    <div style={S.gloc}>{!p ? (hasOpen ? '대기 중' : '·') : (hasLoc(p) ? (p.place_label || '위치') : '🔒 위치 없이')}</div>
+                    <div style={S.gloc}>
+                      {!p ? (hasOpen ? '⏳ 대기 중' : '') : (hasLoc(p) ? '📍 ' + (p.place_label || '위치') : '🔒 위치 없이')}
+                    </div>
                   </div>
+                  {/* 시간 — 우상단 */}
                   {p && <div style={S.gtime}>{hhmm(p.created_at)}</div>}
                 </div>
               )
@@ -603,18 +609,20 @@ export default function Home({ user, group, profileVersion, onOpenSettings, onMe
                   <div key={p.id} style={S.card} onClick={() => setViewPost(p)}>
                     <div style={S.cardPhoto}>
                       {url ? <img src={url} style={S.cardImg} alt="" /> : <div style={S.cardNo}>📷</div>}
-                      {/* 이름+위치 — 좌하단 오버레이 (한눈에 스타일) */}
-                      <div style={S.cardOverlayBot}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontWeight: 700, fontSize: 12 }}>
+                      {/* 하단 그라데이션 오버레이 */}
+                      <div style={S.overlay} />
+                      {/* 이름 + 위치 — 좌하단 (한눈에와 동일 구조) */}
+                      <div style={S.gname}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                           <span style={{ ...S.gdot, background: colorOf(p.user_id) }} />
-                          {nameOf(p.user_id)}{p.user_id === user.id && <span style={{ ...S.meTag, fontSize: 10 }}>나</span>}
+                          <span style={{ fontSize: 13, fontWeight: 700 }}>{nameOf(p.user_id)}{p.user_id === user.id && <span style={{ ...S.meTag, fontSize: 10, marginLeft: 3 }}>나</span>}</span>
                         </div>
-                        <div style={{ fontSize: 11, opacity: .92 }}>{!hasLoc(p) ? '🔒 위치 없이' : '📍 ' + (p.place_label || '위치') + (p.user_id !== user.id ? ' · ' + distLabel(myPosRef.current, p) : '')}</div>
+                        <div style={S.gloc}>{!hasLoc(p) ? '🔒 위치 없이' : '📍 ' + (p.place_label || '위치') + (p.user_id !== user.id ? ' · ' + distLabel(myPosRef.current, p) : '')}</div>
                       </div>
-                      {/* 시간 — 우상단 오버레이 (한눈에 스타일) */}
+                      {/* 시간 — 우상단 */}
                       <div style={S.gtime}>{p.is_late ? '⏰ · ' : ''}{hhmm(p.created_at)}</div>
                     </div>
-                    {/* 하단: 좋아요만 */}
+                    {/* 하단: 경과시간 + 좋아요 */}
                     <div style={S.cardFoot}>
                       <span style={{ fontSize: 12, color: 'var(--mp-muted)' }}>{ago(p.created_at)}</span>
                       {(() => { const li = likeInfo(p.id); return (
@@ -667,12 +675,12 @@ export default function Home({ user, group, profileVersion, onOpenSettings, onMe
                 {hasOpen && <span style={{ ...S.statusDot, background: pActive ? '#13bca4' : '#d8d8de' }}>{pActive ? '✓' : ''}</span>}
               </div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+                <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
                   {m.display_name}{m.user_id === group.created_by && <span style={S.crown} title="그룹장">👑</span>}{m.user_id === user.id && <span style={S.meTag}>나</span>}
                   {dist && <span style={S.distTag}>{dist}</span>}
-                </div>
-                <div style={{ fontSize: 11, color: 'var(--mp-muted)', marginTop: 2 }}>
-                  {hasOpen && !pActive ? '⏳ 대기 중' : (!pDisp ? '' : (hasLoc(pDisp) ? '📍 ' + (pDisp.place_label || '위치') : '🔒 위치 없이'))}
+                  <span style={{ fontSize: 11, color: 'var(--mp-muted)', fontWeight: 500 }}>
+                    {hasOpen && !pActive ? '⏳ 대기 중' : (!pDisp ? '' : (hasLoc(pDisp) ? '· 📍 ' + (pDisp.place_label || '위치') : '· 🔒 위치 없이'))}
+                  </span>
                 </div>
               </div>
             </div>
@@ -835,10 +843,11 @@ const S = {
   gcell: { position: 'relative', aspectRatio: '3/4', borderRadius: 16, overflow: 'hidden', background: 'var(--mp-card2)', cursor: 'pointer', boxShadow: '0 4px 16px rgba(20,20,30,.08)' },
   gimg: { width: '100%', height: '100%', objectFit: 'cover' },
   gwait: { width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, color: '#c4c4cc' },
-  gname: { position: 'absolute', left: 7, bottom: 7, right: 7, display: 'flex', flexDirection: 'column', gap: 2, fontSize: 11, fontWeight: 700, color: '#fff', textShadow: '0 1px 4px rgba(0,0,0,.7)' },
-  gloc: { fontSize: 10, fontWeight: 600, opacity: .92 },
-  gdot: { width: 7, height: 7, borderRadius: '50%', flex: 'none' },
-  gtime: { position: 'absolute', right: 7, top: 7, background: 'rgba(0,0,0,.5)', color: '#fff', fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 12 },
+  gname: { position: 'absolute', left: 10, bottom: 10, right: 48, display: 'flex', flexDirection: 'column', gap: 3, color: '#fff', textShadow: '0 1px 6px rgba(0,0,0,.9)', zIndex: 2 },
+  gloc: { fontSize: 12, fontWeight: 600, opacity: .95 },
+  gdot: { width: 8, height: 8, borderRadius: '50%', flex: 'none' },
+  gtime: { position: 'absolute', right: 8, top: 8, background: 'rgba(0,0,0,.52)', color: '#fff', fontSize: 12, fontWeight: 600, padding: '3px 9px', borderRadius: 14, zIndex: 2 },
+  overlay: { position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,.62) 0%, rgba(0,0,0,.18) 45%, transparent 70%)', zIndex: 1, pointerEvents: 'none' },
   feed: { display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 16 },
   empty: { textAlign: 'center', color: 'var(--mp-muted)', padding: '40px 20px', fontSize: 14, lineHeight: 1.6 },
   card: { background: 'var(--mp-card)', borderRadius: 20, overflow: 'hidden', boxShadow: '0 4px 24px rgba(20,20,30,.08)', cursor: 'pointer' },
