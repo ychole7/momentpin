@@ -603,12 +603,19 @@ export default function Home({ user, group, profileVersion, onOpenSettings, onMe
                   <div key={p.id} style={S.card} onClick={() => setViewPost(p)}>
                     <div style={S.cardPhoto}>
                       {url ? <img src={url} style={S.cardImg} alt="" /> : <div style={S.cardNo}>📷</div>}
-                      <div style={S.cardLoc}>{!hasLoc(p) ? '🔒 위치 없이' : '📍 ' + (p.place_label || '위치') + (p.user_id !== user.id ? ' · ' + distLabel(myPosRef.current, p) : '')}</div>
-                      <div style={S.cardTime}>{p.is_late ? '⏰ 늦참 · ' : ''}{hhmm(p.created_at)}</div>
+                      {/* 이름+위치 — 좌하단 오버레이 (한눈에 스타일) */}
+                      <div style={S.cardOverlayBot}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontWeight: 700, fontSize: 12 }}>
+                          <span style={{ ...S.gdot, background: colorOf(p.user_id) }} />
+                          {nameOf(p.user_id)}{p.user_id === user.id && <span style={{ ...S.meTag, fontSize: 10 }}>나</span>}
+                        </div>
+                        <div style={{ fontSize: 11, opacity: .92 }}>{!hasLoc(p) ? '🔒 위치 없이' : '📍 ' + (p.place_label || '위치') + (p.user_id !== user.id ? ' · ' + distLabel(myPosRef.current, p) : '')}</div>
+                      </div>
+                      {/* 시간 — 우상단 오버레이 (한눈에 스타일) */}
+                      <div style={S.gtime}>{p.is_late ? '⏰ · ' : ''}{hhmm(p.created_at)}</div>
                     </div>
+                    {/* 하단: 좋아요만 */}
                     <div style={S.cardFoot}>
-                      <div style={{ ...S.avatar, width: 30, height: 30, background: colorOf(p.user_id) }}>{nameOf(p.user_id)[0]}</div>
-                      <span style={{ fontWeight: 700, fontSize: 14 }}>{nameOf(p.user_id)}{p.user_id === user.id && <span style={S.meTag}>나</span>}</span>
                       <span style={{ fontSize: 12, color: 'var(--mp-muted)' }}>{ago(p.created_at)}</span>
                       {(() => { const li = likeInfo(p.id); return (
                         <button style={{ ...S.likeBtn, marginLeft: 'auto', ...(li.mine ? S.likeBtnOn : {}) }} onClick={(e) => { e.stopPropagation(); toggleLike(p) }}>
@@ -659,11 +666,15 @@ export default function Home({ user, group, profileVersion, onOpenSettings, onMe
                 <div style={{ ...S.avatar, background: m.color, opacity: pDisp ? 1 : 0.4 }}>{m.display_name[0]}</div>
                 {hasOpen && <span style={{ ...S.statusDot, background: pActive ? '#13bca4' : '#d8d8de' }}>{pActive ? '✓' : ''}</span>}
               </div>
-              <div style={{ flex: 1, fontWeight: 600 }}>
-                {m.display_name}{m.user_id === group.created_by && <span style={S.crown} title="그룹장">👑</span>}{m.user_id === user.id && <span style={S.meTag}>나</span>}
-                {dist && <span style={S.distTag}>{dist}</span>}
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+                  {m.display_name}{m.user_id === group.created_by && <span style={S.crown} title="그룹장">👑</span>}{m.user_id === user.id && <span style={S.meTag}>나</span>}
+                  {dist && <span style={S.distTag}>{dist}</span>}
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--mp-muted)', marginTop: 2 }}>
+                  {hasOpen && !pActive ? '⏳ 대기 중' : (!pDisp ? '' : (hasLoc(pDisp) ? '📍 ' + (pDisp.place_label || '위치') : '🔒 위치 없이'))}
+                </div>
               </div>
-              <span style={S.shareTag}>{hasOpen && !pActive ? '⏳ 대기 중' : (!pDisp ? '·' : (hasLoc(pDisp) ? '📍 ' + (pDisp.place_label || '위치') : '🔒 위치 없이'))}</span>
             </div>
           )
         })}
@@ -836,6 +847,7 @@ const S = {
   cardNo: { width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 60 },
   cardLoc: { position: 'absolute', left: 12, bottom: 12, background: 'rgba(0,0,0,.45)', backdropFilter: 'blur(8px)', color: '#fff', fontSize: 12.5, fontWeight: 500, padding: '7px 12px', borderRadius: 30 },
   cardTime: { position: 'absolute', right: 12, bottom: 12, background: 'rgba(0,0,0,.45)', backdropFilter: 'blur(8px)', color: '#fff', fontSize: 12.5, fontWeight: 600, padding: '7px 12px', borderRadius: 30 },
+  cardOverlayBot: { position: 'absolute', left: 8, bottom: 8, right: 8, display: 'flex', flexDirection: 'column', gap: 2, color: '#fff', textShadow: '0 1px 4px rgba(0,0,0,.7)', fontSize: 12, fontWeight: 700 },
   likeBtn: { display: 'inline-flex', alignItems: 'center', gap: 4, border: 'none', background: 'var(--mp-card2)', borderRadius: 20, padding: '6px 11px', fontFamily: 'inherit', fontSize: 14, cursor: 'pointer', color: 'var(--mp-ink)' },
   likeBtnOn: { background: '#fff1f2' },
   likeCount: { fontSize: 12, fontWeight: 700, color: '#e0395a' },
