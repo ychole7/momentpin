@@ -577,7 +577,7 @@ export default function Home({ user, group, profileVersion, onOpenSettings, onMe
                   {url ? <img src={url} style={S.gimg} alt="" /> : <div style={S.gwait}>📷</div>}
                   {/* 하단 그라데이션 오버레이 */}
                   <div style={S.overlay} />
-                  {/* 이름 + 위치 — 좌하단 */}
+                  {/* 이름 + 위치 + 시간 — 전부 좌하단 */}
                   <div style={S.gname}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                       <span style={{ ...S.gdot, background: m.color }} />
@@ -586,9 +586,8 @@ export default function Home({ user, group, profileVersion, onOpenSettings, onMe
                     <div style={S.gloc}>
                       {!p ? (hasOpen ? '⏳ 대기 중' : '') : (hasLoc(p) ? '📍 ' + (p.place_label || '위치') : '🔒 위치 없이')}
                     </div>
+                    {p && <div style={S.gtime2}>{hhmm(p.created_at)}</div>}
                   </div>
-                  {/* 시간 — 우상단 */}
-                  {p && <div style={S.gtime}>{hhmm(p.created_at)}</div>}
                 </div>
               )
             })}
@@ -611,16 +610,15 @@ export default function Home({ user, group, profileVersion, onOpenSettings, onMe
                       {url ? <img src={url} style={S.cardImg} alt="" /> : <div style={S.cardNo}>📷</div>}
                       {/* 하단 그라데이션 오버레이 */}
                       <div style={S.overlay} />
-                      {/* 이름 + 위치 — 좌하단 (한눈에와 동일 구조) */}
+                      {/* 이름 + 위치 + 시간 — 전부 좌하단 */}
                       <div style={S.gname}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                           <span style={{ ...S.gdot, background: colorOf(p.user_id) }} />
                           <span style={{ fontSize: 13, fontWeight: 700 }}>{nameOf(p.user_id)}{p.user_id === user.id && <span style={{ ...S.meTag, fontSize: 10, marginLeft: 3 }}>나</span>}</span>
                         </div>
                         <div style={S.gloc}>{!hasLoc(p) ? '🔒 위치 없이' : '📍 ' + (p.place_label || '위치') + (p.user_id !== user.id ? ' · ' + distLabel(myPosRef.current, p) : '')}</div>
+                        <div style={S.gtime2}>{p.is_late ? '⏰ · ' : ''}{hhmm(p.created_at)}</div>
                       </div>
-                      {/* 시간 — 우상단 */}
-                      <div style={S.gtime}>{p.is_late ? '⏰ · ' : ''}{hhmm(p.created_at)}</div>
                     </div>
                     {/* 하단: 경과시간 + 좋아요 */}
                     <div style={S.cardFoot}>
@@ -847,6 +845,7 @@ const S = {
   gloc: { fontSize: 12, fontWeight: 600, opacity: .95 },
   gdot: { width: 8, height: 8, borderRadius: '50%', flex: 'none' },
   gtime: { position: 'absolute', right: 8, top: 8, background: 'rgba(0,0,0,.52)', color: '#fff', fontSize: 12, fontWeight: 600, padding: '3px 9px', borderRadius: 14, zIndex: 2 },
+  gtime2: { fontSize: 11.5, fontWeight: 600, opacity: .85, marginTop: 1 },
   overlay: { position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,.62) 0%, rgba(0,0,0,.18) 45%, transparent 70%)', zIndex: 1, pointerEvents: 'none' },
   feed: { display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 16 },
   empty: { textAlign: 'center', color: 'var(--mp-muted)', padding: '40px 20px', fontSize: 14, lineHeight: 1.6 },
