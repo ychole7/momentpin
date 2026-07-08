@@ -290,7 +290,7 @@ export default function MyPage({ user, group, members, onClose, onOpenStats, onG
         {/* 탭 */}
         <div style={S.tabs}>
           <button style={{ ...S.tab, ...(tab === 'me' ? S.tabOn : {}) }} onClick={() => setTab('me')}>내 설정</button>
-          <button style={{ ...S.tab, ...(tab === 'group' ? S.tabOn : {}) }} onClick={() => setTab('group')}>그룹</button>
+          <button style={{ ...S.tab, ...(tab === 'group' ? S.tabOn : {}) }} onClick={() => setTab('group')}>그룹 설정</button>
         </div>
 
         {tab === 'me' ? (
