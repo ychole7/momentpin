@@ -575,18 +575,12 @@ export default function Home({ user, group, profileVersion, onOpenSettings, onMe
               return (
                 <div key={m.id} style={S.gcell} onClick={() => p && setViewPost(p)}>
                   {url ? <img src={url} style={S.gimg} alt="" /> : <div style={S.gwait}>📷</div>}
-                  {/* 하단 그라데이션 오버레이 */}
-                  <div style={S.overlay} />
-                  {/* 이름 + 위치 + 시간 — 전부 좌하단 */}
-                  <div style={S.gname}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                      <span style={{ ...S.gdot, background: m.color }} />
-                      <span style={{ fontSize: 13, fontWeight: 700 }}>{m.display_name}</span>
-                    </div>
-                    <div style={S.gloc}>
-                      {!p ? (hasOpen ? '⏳ 대기 중' : '') : (hasLoc(p) ? '📍 ' + (p.place_label || '위치') : '🔒 위치 없이')}
-                    </div>
-                    {p && <div style={S.gtime2}>{hhmm(p.created_at)}</div>}
+                  <div style={S.gMeta}>
+                    <span style={{ ...S.gdot, background: m.color }} />
+                    <span style={S.gMetaName}>{m.display_name}</span>
+                    {p && hasLoc(p) && <><span style={S.gMetaSep}>·</span><span style={S.gMetaLoc}>📍 {p.place_label || '위치'}</span></>}
+                    {!p && hasOpen && <><span style={S.gMetaSep}>·</span><span style={S.gMetaLoc}>⏳ 대기 중</span></>}
+                    {p && <span style={S.gMetaTime}>{hhmm(p.created_at)}</span>}
                   </div>
                 </div>
               )
@@ -608,17 +602,12 @@ export default function Home({ user, group, profileVersion, onOpenSettings, onMe
                   <div key={p.id} style={S.card} onClick={() => setViewPost(p)}>
                     <div style={S.cardPhoto}>
                       {url ? <img src={url} style={S.cardImg} alt="" /> : <div style={S.cardNo}>📷</div>}
-                      {/* 하단 그라데이션 오버레이 */}
-                      <div style={S.overlay} />
-                      {/* 이름 + 위치 + 시간 — 전부 좌하단 */}
-                      <div style={S.gname}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                          <span style={{ ...S.gdot, background: colorOf(p.user_id) }} />
-                          <span style={{ fontSize: 13, fontWeight: 700 }}>{nameOf(p.user_id)}{p.user_id === user.id && <span style={{ ...S.meTag, fontSize: 10, marginLeft: 3 }}>나</span>}</span>
-                        </div>
-                        <div style={S.gloc}>{!hasLoc(p) ? '🔒 위치 없이' : '📍 ' + (p.place_label || '위치') + (p.user_id !== user.id ? ' · ' + distLabel(myPosRef.current, p) : '')}</div>
-                        <div style={S.gtime2}>{p.is_late ? '⏰ · ' : ''}{hhmm(p.created_at)}</div>
-                      </div>
+                    </div>
+                    <div style={S.gMeta}>
+                      <span style={{ ...S.gdot, background: colorOf(p.user_id) }} />
+                      <span style={S.gMetaName}>{nameOf(p.user_id)}{p.user_id === user.id && <span style={S.meTag}>나</span>}</span>
+                      {hasLoc(p) && <><span style={S.gMetaSep}>·</span><span style={S.gMetaLoc}>📍 {p.place_label || '위치'}</span></>}
+                      <span style={S.gMetaTime}>{p.is_late ? '⏰ · ' : ''}{hhmm(p.created_at)}</span>
                     </div>
                     {/* 하단: 경과시간 + 좋아요 */}
                     <div style={S.cardFoot}>
@@ -841,12 +830,12 @@ const S = {
   gcell: { position: 'relative', aspectRatio: '3/4', borderRadius: 16, overflow: 'hidden', background: 'var(--mp-card2)', cursor: 'pointer', boxShadow: '0 4px 16px rgba(20,20,30,.08)' },
   gimg: { width: '100%', height: '100%', objectFit: 'cover' },
   gwait: { width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, color: '#c4c4cc' },
-  gname: { position: 'absolute', left: 10, bottom: 10, right: 48, display: 'flex', flexDirection: 'column', gap: 3, color: '#fff', textShadow: '0 1px 6px rgba(0,0,0,.9)', zIndex: 2 },
-  gloc: { fontSize: 12, fontWeight: 600, opacity: .95 },
   gdot: { width: 8, height: 8, borderRadius: '50%', flex: 'none' },
-  gtime: { position: 'absolute', right: 8, top: 8, background: 'rgba(0,0,0,.52)', color: '#fff', fontSize: 12, fontWeight: 600, padding: '3px 9px', borderRadius: 14, zIndex: 2 },
-  gtime2: { fontSize: 11.5, fontWeight: 600, opacity: .85, marginTop: 1 },
-  overlay: { position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,.62) 0%, rgba(0,0,0,.18) 45%, transparent 70%)', zIndex: 1, pointerEvents: 'none' },
+  gMeta: { display: 'flex', alignItems: 'center', gap: 5, padding: '7px 10px', background: 'var(--mp-card)' },
+  gMetaName: { fontSize: 13, fontWeight: 700, color: 'var(--mp-ink)', whiteSpace: 'nowrap' },
+  gMetaSep: { color: 'var(--mp-muted)', fontSize: 11 },
+  gMetaLoc: { fontSize: 12, color: 'var(--mp-sub)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  gMetaTime: { fontSize: 12, color: 'var(--mp-muted)', whiteSpace: 'nowrap', marginLeft: 'auto' },
   feed: { display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 16 },
   empty: { textAlign: 'center', color: 'var(--mp-muted)', padding: '40px 20px', fontSize: 14, lineHeight: 1.6 },
   card: { background: 'var(--mp-card)', borderRadius: 20, overflow: 'hidden', boxShadow: '0 4px 24px rgba(20,20,30,.08)', cursor: 'pointer' },
