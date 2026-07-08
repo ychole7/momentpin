@@ -573,8 +573,10 @@ export default function Home({ user, group, profileVersion, onOpenSettings, onMe
               const url = p ? signed[p.id] : ''
               const hidden = p && !hasLoc(p)
               return (
-                <div key={m.id} style={S.gcell} onClick={() => p && setViewPost(p)}>
-                  {url ? <img src={url} style={S.gimg} alt="" /> : <div style={S.gwait}>📷</div>}
+                <div key={m.id} style={S.gcellWrap} onClick={() => p && setViewPost(p)}>
+                  <div style={S.gcell}>
+                    {url ? <img src={url} style={S.gimg} alt="" /> : <div style={S.gwait}>📷</div>}
+                  </div>
                   <div style={S.gMeta}>
                     <span style={{ ...S.gdot, background: m.color }} />
                     <span style={S.gMetaName}>{m.display_name}</span>
@@ -827,7 +829,8 @@ const S = {
   sKey: { color: 'var(--mp-muted)', fontWeight: 500 },
   sSep: { width: 1, height: 14, background: '#efeff2' },
   grid: { display: 'grid', gap: 8, marginBottom: 16 },
-  gcell: { position: 'relative', aspectRatio: '3/4', borderRadius: 16, overflow: 'hidden', background: 'var(--mp-card2)', cursor: 'pointer', boxShadow: '0 4px 16px rgba(20,20,30,.08)' },
+  gcellWrap: { display: 'flex', flexDirection: 'column', cursor: 'pointer', borderRadius: 16, overflow: 'hidden', boxShadow: '0 4px 16px rgba(20,20,30,.08)', background: 'var(--mp-card2)' },
+  gcell: { position: 'relative', aspectRatio: '3/4', overflow: 'hidden' },
   gimg: { width: '100%', height: '100%', objectFit: 'cover' },
   gwait: { width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, color: '#c4c4cc' },
   gdot: { width: 8, height: 8, borderRadius: '50%', flex: 'none' },
