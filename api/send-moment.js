@@ -113,6 +113,7 @@ export default async function handler(req, res) {
       const payload = JSON.stringify({
         title: '📍 안부를 전할 시간이에요',
         body: `${gname} · 지금 다 같이 안부를 나눠요`,
+        url: `/?group=${gid}`,   // 딥링크: 알림 클릭 시 해당 그룹으로 바로 이동
         url: '/',
       })
 
