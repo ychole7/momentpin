@@ -166,6 +166,11 @@ export default function MyPage({ user, group, members, onClose, onOpenStats, onG
     if (times.length >= 3) { flash('최대 3개까지예요'); return }
     if (!newTime) return
     if (times.includes(newTime)) { flash('이미 있는 시간이에요'); return }
+    // 시간 중복 체크: 기존 시간과 window_min 이내면 겹침
+    const toMin = t => { const [h,m] = t.split(':').map(Number); return h*60+m }
+    const newMin = toMin(newTime)
+    const overlap = times.find(t => Math.abs(toMin(t) - newMin) < windowMin)
+    if (overlap) { flash(`${overlap}과 ${windowMin}분 이내로 겹쳐요. 다른 시간을 선택해 주세요`); return }
     setTimes([...times, newTime].sort())
   }
   function removeTime(t) { setTimes(times.filter(x => x !== t)) }

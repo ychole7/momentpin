@@ -53,6 +53,27 @@ export default function App() {
     if (group) localStorage.setItem('mp_group', group.id)
   }, [group])
 
+  // 딥링크: 앱이 열린 상태에서도 ?group=ID 감지해서 해당 그룹으로 전환
+  useEffect(() => {
+    if (!session) return
+    try {
+      const urlGroupId = new URLSearchParams(window.location.search).get('group')
+      if (!urlGroupId) return
+      // 내가 속한 그룹인지 확인 후 전환
+      supabase.from('members')
+        .select('groups(id,name,invite_code,created_by,alarm_mode,fixed_times,random_start,random_end,window_min)')
+        .eq('user_id', session.user.id)
+        .then(({ data }) => {
+          const groups = (data || []).map(r => r.groups).filter(Boolean)
+          const target = groups.find(g => g.id === urlGroupId)
+          if (target) {
+            window.history.replaceState({}, '', window.location.pathname)
+            setGroup(target)
+          }
+        })
+    } catch {}
+  }, [session])
+
   useEffect(() => {
     if (session) {
       try { if (!localStorage.getItem('mp_onboarded')) setShowOnboarding(true) } catch {}

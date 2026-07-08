@@ -211,7 +211,7 @@ export default function Home({ user, group, profileVersion, onOpenSettings, onMe
 
   async function loadMoments() {
     let res = await supabase.from('moments').select('id,fired_at,deadline').eq('group_id', group.id).order('fired_at', { ascending: false }).limit(20)
-    if (!res.error) setMoments(res.data || [])
+    if (!res.error) { setMoments(res.data || []); setNowTick(Date.now()) }  // moments 로드 후 즉시 리렌더
   }
 
     async function resolveSigned() {
