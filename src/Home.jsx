@@ -537,17 +537,6 @@ export default function Home({ user, group, profileVersion, onOpenSettings, onMe
         ))}
       </div>
 
-      {canShoot && tab === 'map' && (
-        <div style={S.timerPillWrap}>
-          <button
-            style={S.timerPill}
-            onClick={() => { if (tab !== 'map') setTab('map') }}
-          >
-            <span>⏱️ <b>{remainLabel}</b> 남음</span>
-            {tab !== 'map' && <span style={S.timerPillGo}>지도에서 찍기 →</span>}
-          </button>
-        </div>
-      )}
 
       <div style={S.body}>
         {tab === 'map' && (
