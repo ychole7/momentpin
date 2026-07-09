@@ -53,25 +53,40 @@ export default function App() {
     if (group) localStorage.setItem('mp_group', group.id)
   }, [group])
 
-  // 딥링크: 앱이 열린 상태에서도 ?group=ID 감지해서 해당 그룹으로 전환
+  // 딥링크: ?group=ID 또는 SW 알림 클릭 메시지로 해당 그룹 전환
   useEffect(() => {
     if (!session) return
-    try {
-      const urlGroupId = new URLSearchParams(window.location.search).get('group')
-      if (!urlGroupId) return
-      // 내가 속한 그룹인지 확인 후 전환
-      supabase.from('members')
+
+    async function goToGroup(groupId) {
+      if (!groupId) return
+      const { data } = await supabase.from('members')
         .select('groups(id,name,invite_code,created_by,alarm_mode,fixed_times,random_start,random_end,window_min)')
         .eq('user_id', session.user.id)
-        .then(({ data }) => {
-          const groups = (data || []).map(r => r.groups).filter(Boolean)
-          const target = groups.find(g => g.id === urlGroupId)
-          if (target) {
-            window.history.replaceState({}, '', window.location.pathname)
-            setGroup(target)
-          }
-        })
+      const groups = (data || []).map(r => r.groups).filter(Boolean)
+      const target = groups.find(g => g.id === groupId)
+      if (target) {
+        window.history.replaceState({}, '', window.location.pathname)
+        setGroup(target)
+      }
+    }
+
+    // (1) 앱 처음 열릴 때 URL 파라미터 확인
+    try {
+      const urlGroupId = new URLSearchParams(window.location.search).get('group')
+      if (urlGroupId) goToGroup(urlGroupId)
     } catch {}
+
+    // (2) 이미 열린 앱에서 알림 클릭 시 SW가 보낸 메시지 수신
+    function onSWMessage(e) {
+      if (e.data && e.data.type === 'deeplink' && e.data.url) {
+        try {
+          const gid = new URLSearchParams(e.data.url.split('?')[1] || '').get('group')
+          if (gid) goToGroup(gid)
+        } catch {}
+      }
+    }
+    navigator.serviceWorker?.addEventListener('message', onSWMessage)
+    return () => navigator.serviceWorker?.removeEventListener('message', onSWMessage)
   }, [session])
 
   useEffect(() => {

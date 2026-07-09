@@ -537,7 +537,7 @@ export default function Home({ user, group, profileVersion, onOpenSettings, onMe
         ))}
       </div>
 
-      {canShoot && (
+      {canShoot && tab === 'map' && (
         <div style={S.timerPillWrap}>
           <button
             style={S.timerPill}
