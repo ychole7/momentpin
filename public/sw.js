@@ -1,7 +1,7 @@
 // public/sw.js - 푸시 알림 + 자동 갱신 서비스 워커
 
 // 버전: 배포할 때마다 올리면 옛 캐시가 정리됩니다 (날짜/숫자 아무거나)
-const SW_VERSION = '2026-07-08-1'
+const SW_VERSION = '2026-07-09-1'
 
 // 새 서비스 워커가 설치되면 기다리지 않고 바로 활성화
 self.addEventListener('install', (event) => {
@@ -50,7 +50,12 @@ self.addEventListener('notificationclick', (event) => {
     (async () => {
       const all = await clients.matchAll({ type: 'window', includeUncontrolled: true })
       for (const c of all) {
-        if ('focus' in c) { c.navigate(targetUrl); return c.focus() }
+        if ('focus' in c) {
+          c.navigate(targetUrl)
+          // React 앱에 딥링크 URL을 알려줌 (navigate만으론 useEffect가 안 돌기 때문)
+          c.postMessage({ type: 'deeplink', url: targetUrl })
+          return c.focus()
+        }
       }
       if (clients.openWindow) return clients.openWindow(targetUrl)
     })()
