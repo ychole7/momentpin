@@ -107,8 +107,18 @@ export default async function handler(req, res) {
         })
       }
 
-      let subs = await supabase.from('push_subscriptions').select('*').eq('group_id', gid)
-      const list = subs.data || []
+      // 이 그룹의 멤버 user_id 목록 → 그 멤버들이 켜둔 모든 구독으로 발송
+      let memRes = await supabase.from('members').select('user_id').eq('group_id', gid)
+      const memberIds = (memRes.data || []).map(m => m.user_id).filter(Boolean)
+
+      let list = []
+      if (memberIds.length) {
+        let subs = await supabase.from('push_subscriptions').select('*').in('user_id', memberIds)
+        list = subs.data || []
+      }
+      // endpoint 중복 제거 (안전장치)
+      const seenEp = new Set()
+      list = list.filter(s => { if (seenEp.has(s.endpoint)) return false; seenEp.add(s.endpoint); return true })
 
       const payload = JSON.stringify({
         title: '📍 안부를 전할 시간이에요',
