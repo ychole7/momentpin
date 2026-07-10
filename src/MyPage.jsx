@@ -237,11 +237,21 @@ export default function MyPage({ user, group, members, onClose, onOpenStats, onG
       flash('그룹장은 먼저 다른 멤버에게 넘기거나 그룹을 삭제해 주세요')
       return
     }
-    if (!confirm('정말 이 그룹에서 나갈까요?')) return
+    // 나 혼자만 남은 그룹이면, 나가기 = 그룹 삭제 (유령 그룹 방지)
+    const lastOne = members.length <= 1
+    if (lastOne && !confirm('이 그룹엔 나만 있어요. 나가면 그룹이 삭제되고 모든 기록이 사라져요. 계속할까요?')) return
+    if (!lastOne && !confirm('정말 이 그룹에서 나갈까요?')) return
     setBusy(true)
-    let res = await supabase.from('members').delete().eq('group_id', group.id).eq('user_id', user.id)
-    setBusy(false)
-    if (res.error) { flash('나가기 실패: ' + res.error.message); return }
+    if (lastOne) {
+      // groups 삭제 → members/moments/posts 등 CASCADE로 함께 정리
+      let res = await supabase.from('groups').delete().eq('id', group.id)
+      setBusy(false)
+      if (res.error) { flash('나가기 실패: ' + res.error.message); return }
+    } else {
+      let res = await supabase.from('members').delete().eq('group_id', group.id).eq('user_id', user.id)
+      setBusy(false)
+      if (res.error) { flash('나가기 실패: ' + res.error.message); return }
+    }
     if (onLeaveGroup) onLeaveGroup()
   }
 
@@ -249,9 +259,8 @@ export default function MyPage({ user, group, members, onClose, onOpenStats, onG
     if (!confirm('정말 그룹을 삭제할까요?\n모든 안부와 사진이 사라지고 되돌릴 수 없어요.')) return
     if (!confirm('한 번 더 확인할게요. 정말 삭제하시겠어요?')) return
     setBusy(true)
-    await supabase.from('posts').delete().eq('group_id', group.id)
-    await supabase.from('moments').delete().eq('group_id', group.id)
-    await supabase.from('members').delete().eq('group_id', group.id)
+    // group_id fkey가 모두 ON DELETE CASCADE라 groups 삭제 한 번으로
+    // posts/moments/members/push_subscriptions 등이 함께 정리됨
     let res = await supabase.from('groups').delete().eq('id', group.id)
     setBusy(false)
     if (res.error) { flash('삭제 실패: ' + res.error.message); return }
