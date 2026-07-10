@@ -430,9 +430,9 @@ export default function Home({ user, group, profileVersion, onOpenSettings, onMe
       const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(vapid) })
       const json = sub.toJSON()
       let res = await supabase.from('push_subscriptions').upsert({
-        user_id: user.id, group_id: group.id,
+        user_id: user.id,
         endpoint: json.endpoint, p256dh: json.keys.p256dh, auth: json.keys.auth,
-      }, { onConflict: 'user_id,group_id,endpoint' })
+      }, { onConflict: 'endpoint' })
       if (res.error) { flash('구독 저장 실패: ' + res.error.message); return }
       setPushOn(true)
       flash('알림 켜짐! 이제 안부 알림을 받아요 🔔')
@@ -446,7 +446,7 @@ export default function Home({ user, group, profileVersion, onOpenSettings, onMe
         if (sub) {
           const ep = sub.endpoint
           await sub.unsubscribe()
-          await supabase.from('push_subscriptions').delete().eq('user_id', user.id).eq('group_id', group.id).eq('endpoint', ep)
+          await supabase.from('push_subscriptions').delete().eq('endpoint', ep)
         }
       }
       setPushOn(false)
