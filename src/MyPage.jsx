@@ -242,6 +242,22 @@ export default function MyPage({ user, group, members, onClose, onOpenStats, onG
       flash('그룹장은 먼저 다른 멤버에게 넘기거나 그룹을 삭제해 주세요')
       return
     }
+    // 마지막 1명이 나가는 경우 → 그룹+데이터 완전 삭제
+    const isLastMember = members.length <= 1
+    if (isLastMember) {
+      if (!confirm('혼자 남은 그룹이에요. 나가면 그룹과 모든 안부·사진이 삭제돼요. 계속할까요?')) return
+      setBusy(true)
+      await supabase.from('posts').delete().eq('group_id', group.id)
+      await supabase.from('moments').delete().eq('group_id', group.id)
+      await supabase.from('push_subscriptions').delete().eq('group_id', group.id)
+      await supabase.from('members').delete().eq('group_id', group.id)
+      let res = await supabase.from('groups').delete().eq('id', group.id)
+      setBusy(false)
+      if (res.error) { flash('나가기 실패: ' + res.error.message); return }
+      if (onLeaveGroup) onLeaveGroup()
+      return
+    }
+    // 다른 멤버가 남아있으면 → 본인만 나감
     if (!confirm('정말 이 그룹에서 나갈까요?')) return
     setBusy(true)
     let res = await supabase.from('members').delete().eq('group_id', group.id).eq('user_id', user.id)
