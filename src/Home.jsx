@@ -55,6 +55,8 @@ function ago(ts) { const d = (Date.now() - new Date(ts).getTime()) / 1000; if (d
 export default function Home({ user, group, profileVersion, onOpenSettings, onMembersLoaded, onOpenSwitcher }) {
   const [members, setMembers] = useState([])
   const [posts, setPosts] = useState([])
+  const [streak, setStreak] = useState(null)          // 스트릭: {count, best, week, missing, todayDone}
+  const [showStreak, setShowStreak] = useState(false) // 스트릭 상세 모달
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [uploadStep, setUploadStep] = useState('')  // '위치', '업로드', '기록'
@@ -174,6 +176,7 @@ export default function Home({ user, group, profileVersion, onOpenSettings, onMe
     setMembers(list); membersRef.current = list
     setLoading(false)
     drawPins()
+    loadStreak()
     if (onMembersLoaded) onMembersLoaded(list)
   }
 
@@ -183,6 +186,62 @@ export default function Home({ user, group, profileVersion, onOpenSettings, onMe
     const seen = {}, latest = []
     for (const p of (res.data || [])) { if (seen[p.user_id]) continue; seen[p.user_id] = true; latest.push(p) }
     setPosts(latest)
+    loadStreak()
+  }
+
+  // ── 스트릭: 그룹 전원이 그날 안부를 남기면 1일 적립 ──
+  async function loadStreak() {
+    // 최근 120일치 (날짜, user_id)만 가볍게 조회
+    const since = new Date(Date.now() - 120 * 86400000).toISOString()
+    let res = await supabase.from('posts').select('user_id,created_at').eq('group_id', group.id).gte('created_at', since)
+    if (res.error) return
+    const mems = membersRef.current
+    if (!mems.length) return
+    const memberIds = new Set(mems.map(m => m.user_id))
+
+    // KST 날짜별 참여 유저셋
+    const byDay = {}
+    for (const p of (res.data || [])) {
+      const kst = new Date(new Date(p.created_at).getTime() + 9 * 3600000)
+      const key = kst.toISOString().slice(0, 10)
+      if (!byDay[key]) byDay[key] = new Set()
+      if (memberIds.has(p.user_id)) byDay[key].add(p.user_id)
+    }
+    const isFull = key => byDay[key] && byDay[key].size >= memberIds.size
+
+    // 오늘(KST) 키
+    const todayKey = new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10)
+    const dayKey = offset => new Date(Date.now() + 9 * 3600000 - offset * 86400000).toISOString().slice(0, 10)
+
+    // 연속일: 오늘 완료면 오늘부터, 아니면 어제부터 역산
+    let count = 0
+    let start = isFull(todayKey) ? 0 : 1
+    for (let i = start; i < 120; i++) {
+      if (isFull(dayKey(i))) count++
+      else break
+    }
+
+    // 최고 기록 (120일 범위 내)
+    let best = 0, run = 0
+    for (let i = 119; i >= 0; i--) {
+      if (isFull(dayKey(i))) { run++; if (run > best) best = run }
+      else run = 0
+    }
+
+    // 이번 주 (월~일) 달성 현황
+    const kstNow = new Date(Date.now() + 9 * 3600000)
+    const dow = (kstNow.getUTCDay() + 6) % 7  // 월=0
+    const week = []
+    for (let i = 0; i < 7; i++) {
+      const key = dayKey(dow - i)
+      week.push({ label: ['월','화','수','목','금','토','일'][i], key, done: isFull(key), isToday: key === todayKey, future: i > dow })
+    }
+
+    // 오늘 아직 안 남긴 멤버 수
+    const todaySet = byDay[todayKey] || new Set()
+    const missing = mems.filter(m => !todaySet.has(m.user_id)).length
+
+    setStreak({ count, best, week, missing, todayDone: isFull(todayKey) })
   }
 
   async function loadLikes() {
@@ -531,6 +590,18 @@ export default function Home({ user, group, profileVersion, onOpenSettings, onMe
         </div>
       </div>
 
+      {/* 스트릭 배너 */}
+      {streak && streak.count > 0 && (
+        <button style={S.streakBanner} onClick={() => setShowStreak(true)}>
+          <span style={{ fontSize: 20 }}>🔥</span>
+          <span style={{ flex: 1, textAlign: 'left' }}>
+            <span style={{ fontWeight: 700, fontSize: 14 }}>{streak.count}일 연속 안부</span>
+            <span style={{ display: 'block', fontSize: 11.5, color: 'var(--mp-muted)', marginTop: 1 }}>{group.name}이(가) 함께 이어온 기록이에요</span>
+          </span>
+          <span style={{ color: '#ff7a45', fontSize: 12, fontWeight: 700 }}>D+{streak.count}</span>
+        </button>
+      )}
+
       <div style={S.toggle}>
         {[['map', '📍 지도'], ['grid', '▦ 한눈에'], ['feed', '☰ 피드']].map(([k, label]) => (
           <button key={k} style={{ ...S.tBtn, ...(tab === k ? S.tBtnOn : {}) }} onClick={() => setTab(k)}>{label}</button>
@@ -687,6 +758,51 @@ export default function Home({ user, group, profileVersion, onOpenSettings, onMe
         </div>
       )}
 
+      {/* 스트릭 상세 모달 */}
+      {showStreak && streak && (
+        <div style={S.pop} onClick={() => setShowStreak(false)}>
+          <div style={{ ...S.popCard, padding: '24px 20px' }} onClick={e => e.stopPropagation()}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 44, lineHeight: 1 }}>🔥</div>
+              <div style={{ fontSize: 26, fontWeight: 800, marginTop: 8 }}>{streak.count}일 연속</div>
+              <div style={{ fontSize: 12.5, color: 'var(--mp-muted)', marginTop: 3 }}>{group.name} · 최고 기록 {streak.best}일</div>
+            </div>
+
+            {/* 이번 주 달성 현황 */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 4, margin: '18px 0 14px' }}>
+              {streak.week.map(d => (
+                <div key={d.key} style={{ textAlign: 'center', flex: 1 }}>
+                  <div style={{
+                    width: 32, height: 32, borderRadius: '50%', margin: '0 auto',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, boxSizing: 'border-box',
+                    background: d.done ? '#ff7a45' : 'var(--mp-card2)',
+                    border: d.isToday && !d.done ? '2px dashed #ff7a45' : 'none',
+                    color: d.done ? '#fff' : (d.isToday ? '#ff7a45' : 'var(--mp-muted)'),
+                  }}>{d.done ? '✓' : (d.isToday ? '오늘' : '')}</div>
+                  <div style={{ fontSize: 10, marginTop: 3, color: d.isToday ? 'var(--mp-ink)' : 'var(--mp-muted)', fontWeight: d.isToday ? 700 : 400 }}>{d.label}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* 오늘 미참여 안내 */}
+            {!streak.todayDone && streak.missing > 0 && (
+              <div style={{ background: 'var(--mp-card2)', borderRadius: 10, padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5 }}>
+                <span>⏰</span>
+                <span>오늘 아직 <b style={{ color: '#ff7a45' }}>{streak.missing}명</b>이 안부를 안 남겼어요 — 기록을 지켜주세요!</span>
+              </div>
+            )}
+            {streak.todayDone && (
+              <div style={{ background: 'var(--mp-card2)', borderRadius: 10, padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5 }}>
+                <span>🎉</span>
+                <span>오늘도 모두의 안부가 닿았어요!</span>
+              </div>
+            )}
+
+            <button style={{ ...S.popX, position: 'absolute', top: 14, right: 14 }} onClick={() => setShowStreak(false)}>✕</button>
+          </div>
+        </div>
+      )}
+
       {toast && <div style={S.toast}>{toast}</div>}
     </div>
   )
@@ -807,6 +923,7 @@ const S = {
   bTag: { fontSize: 11, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase', opacity: .8, padding: '18px 20px 0' },
   bBig: { fontSize: 24, fontWeight: 700, letterSpacing: '-.5px', padding: '3px 20px 0' },
   bSmall: { fontSize: 13, opacity: .85, padding: '3px 20px 18px' },
+  streakBanner: { display: 'flex', alignItems: 'center', gap: 10, width: 'calc(100% - 28px)', margin: '12px 14px 0', padding: '11px 14px', background: 'var(--mp-card)', border: '1px solid var(--mp-line)', borderRadius: 14, cursor: 'pointer', fontFamily: 'inherit', color: 'var(--mp-ink)' },
   toggle: { display: 'flex', gap: 6, background: 'var(--mp-card2)', borderRadius: 24, padding: 4, margin: '14px 14px 0' },
   tBtn: { flex: 1, border: 'none', background: 'none', fontFamily: 'inherit', fontSize: 13, fontWeight: 600, color: 'var(--mp-muted)', padding: 9, borderRadius: 20, cursor: 'pointer' },
   tBtnOn: { background: 'var(--mp-card)', color: 'var(--mp-ink)', boxShadow: '0 2px 8px rgba(0,0,0,.08)' },
@@ -871,7 +988,7 @@ const S = {
   actions: { display: 'flex', gap: 10, marginTop: 24 },
   ghost: { flex: 1, border: '1.5px solid var(--mp-line)', background: 'var(--mp-card)', color: 'var(--mp-ink)', borderRadius: 14, padding: 13, fontFamily: 'inherit', fontSize: 14, fontWeight: 600, cursor: 'pointer' },
   pop: { position: 'fixed', inset: 0, zIndex: 3000, background: 'rgba(10,10,14,.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 },
-  popCard: { width: '100%', maxWidth: 360, background: 'var(--mp-card)', borderRadius: 24, overflow: 'hidden', boxShadow: '0 24px 60px rgba(0,0,0,.5)' },
+  popCard: { position: 'relative', width: '100%', maxWidth: 360, background: 'var(--mp-card)', borderRadius: 24, overflow: 'hidden', boxShadow: '0 24px 60px rgba(0,0,0,.5)' },
   popPhoto: { aspectRatio: '4/5', background: '#222', display: 'flex', alignItems: 'center', justifyContent: 'center' },
   popImg: { width: '100%', height: '100%', objectFit: 'cover' },
   popLoading: { color: '#fff', fontSize: 13 },
