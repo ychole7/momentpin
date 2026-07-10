@@ -70,7 +70,7 @@ export default function MyPage({ user, group, members, onClose, onOpenStats, onG
     try {
       if (pushOn) {
         const reg = await navigator.serviceWorker.getRegistration()
-        if (reg) { const sub = await reg.pushManager.getSubscription(); if (sub) { const ep = sub.endpoint; await sub.unsubscribe(); await supabase.from('push_subscriptions').delete().eq('user_id', user.id).eq('group_id', group.id).eq('endpoint', ep) } }
+        if (reg) { const sub = await reg.pushManager.getSubscription(); if (sub) { const ep = sub.endpoint; await sub.unsubscribe(); await supabase.from('push_subscriptions').delete().eq('endpoint', ep) } }
         setPushOn(false); flash('알림을 껐어요 🔕')
       } else {
         if (!('serviceWorker' in navigator) || !('PushManager' in window)) { flash('이 브라우저는 푸시 미지원 (폰은 홈화면 추가 후)'); return }
@@ -82,7 +82,7 @@ export default function MyPage({ user, group, members, onClose, onOpenStats, onG
         if (!vapid) { flash('VAPID 키 없음'); return }
         const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlB64(vapid) })
         const j = sub.toJSON()
-        let res = await supabase.from('push_subscriptions').upsert({ user_id: user.id, group_id: group.id, endpoint: j.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth }, { onConflict: 'user_id,group_id,endpoint' })
+        let res = await supabase.from('push_subscriptions').upsert({ user_id: user.id, endpoint: j.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth }, { onConflict: 'endpoint' })
         if (res.error) { flash('구독 실패: ' + res.error.message); return }
         setPushOn(true); flash('알림 켜짐! 🔔')
       }
@@ -166,11 +166,6 @@ export default function MyPage({ user, group, members, onClose, onOpenStats, onG
     if (times.length >= 3) { flash('최대 3개까지예요'); return }
     if (!newTime) return
     if (times.includes(newTime)) { flash('이미 있는 시간이에요'); return }
-    // 시간 중복 체크: 기존 시간과 window_min 이내면 겹침
-    const toMin = t => { const [h,m] = t.split(':').map(Number); return h*60+m }
-    const newMin = toMin(newTime)
-    const overlap = times.find(t => Math.abs(toMin(t) - newMin) < windowMin)
-    if (overlap) { flash(`${overlap}과 ${windowMin}분 이내로 겹쳐요. 다른 시간을 선택해 주세요`); return }
     setTimes([...times, newTime].sort())
   }
   function removeTime(t) { setTimes(times.filter(x => x !== t)) }
@@ -242,22 +237,6 @@ export default function MyPage({ user, group, members, onClose, onOpenStats, onG
       flash('그룹장은 먼저 다른 멤버에게 넘기거나 그룹을 삭제해 주세요')
       return
     }
-    // 마지막 1명이 나가는 경우 → 그룹+데이터 완전 삭제
-    const isLastMember = members.length <= 1
-    if (isLastMember) {
-      if (!confirm('혼자 남은 그룹이에요. 나가면 그룹과 모든 안부·사진이 삭제돼요. 계속할까요?')) return
-      setBusy(true)
-      await supabase.from('posts').delete().eq('group_id', group.id)
-      await supabase.from('moments').delete().eq('group_id', group.id)
-      await supabase.from('push_subscriptions').delete().eq('group_id', group.id)
-      await supabase.from('members').delete().eq('group_id', group.id)
-      let res = await supabase.from('groups').delete().eq('id', group.id)
-      setBusy(false)
-      if (res.error) { flash('나가기 실패: ' + res.error.message); return }
-      if (onLeaveGroup) onLeaveGroup()
-      return
-    }
-    // 다른 멤버가 남아있으면 → 본인만 나감
     if (!confirm('정말 이 그룹에서 나갈까요?')) return
     setBusy(true)
     let res = await supabase.from('members').delete().eq('group_id', group.id).eq('user_id', user.id)
@@ -311,7 +290,7 @@ export default function MyPage({ user, group, members, onClose, onOpenStats, onG
         {/* 탭 */}
         <div style={S.tabs}>
           <button style={{ ...S.tab, ...(tab === 'me' ? S.tabOn : {}) }} onClick={() => setTab('me')}>내 설정</button>
-          <button style={{ ...S.tab, ...(tab === 'group' ? S.tabOn : {}) }} onClick={() => setTab('group')}>그룹 설정</button>
+          <button style={{ ...S.tab, ...(tab === 'group' ? S.tabOn : {}) }} onClick={() => setTab('group')}>그룹</button>
         </div>
 
         {tab === 'me' ? (
