@@ -103,6 +103,18 @@ export default function App() {
   }
 
   async function signOut() {
+    // 로그아웃 시 이 기기의 알림 구독도 함께 해제 (로그아웃 후 알림이 계속 오는 것 방지)
+    try {
+      const reg = await navigator.serviceWorker.getRegistration()
+      if (reg) {
+        const sub = await reg.pushManager.getSubscription()
+        if (sub) {
+          const ep = sub.endpoint
+          await sub.unsubscribe()
+          await supabase.from('push_subscriptions').delete().eq('endpoint', ep)
+        }
+      }
+    } catch {}
     await supabase.auth.signOut()
     localStorage.removeItem('mp_group')
     setGroup(null)
