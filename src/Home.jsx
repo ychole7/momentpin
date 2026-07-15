@@ -26,27 +26,13 @@ const SIDO_SHORT = {
 }
 async function reverseGeocode(lat, lng) {
   try {
-    const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=16&accept-language=ko`
-    const r = await fetch(url, { headers: { 'Accept': 'application/json' } })
+    // 서버의 /api/geocode 프록시를 거쳐 카카오 로컬 API로 행정동 이름을 받아옴
+    // (카카오 REST API 키를 클라이언트에 노출하지 않기 위함)
+    const url = `/api/geocode?lat=${lat}&lng=${lng}`
+    const r = await fetch(url)
+    if (!r.ok) return '위치'
     const j = await r.json()
-    const a = j.address || {}
-    // 시/도 (짧게): province/state, 혹은 광역시는 city에 올 수도 있음
-    let sido = SIDO_SHORT[a.province] || SIDO_SHORT[a.state] || SIDO_SHORT[a.city] || ''
-    if (!sido) sido = a.province || a.state || ''
-    // 시/군/구
-    const cityIsSido = !!SIDO_SHORT[a.city]   // city가 광역시면 시/도로 쓴 것
-    const city = cityIsSido ? '' : (a.city || a.town || a.county || '')
-    const gu = a.city_district || a.borough || a.district || ''
-    // 동: 하나만
-    const dong = a.quarter || a.neighbourhood || a.suburb || a.village || ''
-    // 조합: [시/도] [시 또는 구] [동], 중복 제거
-    const parts = []
-    if (sido) parts.push(sido)
-    const mid = gu || city
-    if (mid && mid !== sido) parts.push(mid)
-    if (dong && dong !== mid) parts.push(dong)
-    const label = parts.join(' ')
-    return label || city || sido || '위치'
+    return j.label || '위치'
   } catch { return '위치' }
 }
 function hhmm(ts) { const d = new Date(ts); return d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0') }
