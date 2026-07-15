@@ -130,9 +130,18 @@ export default function App() {
           return
         }
 
-        // 그룹이 없다 → 기본 그룹 생성
+        // 그룹이 0개다. 단, 프로필이 이미 있으면(=한 번이라도 앱을 써본 사용자)
+        // 자동 생성하지 않는다. (그룹을 일부러 다 지운 경우/탈퇴 시 무한 재생성 방지)
+        let pres = await supabase.from('profiles').select('user_id').eq('user_id', session.user.id).maybeSingle()
+        if (cancelled) return
+        if (pres.data) {
+          // 기존 사용자인데 그룹이 없음 → 자동 생성 없이 그룹 관문으로
+          setEnsuringGroup(false)
+          return
+        }
+
+        // 진짜 신규 사용자 → 기본 그룹 "첫 닿음" 생성
         const defaultName = (session.user.email || '').split('@')[0]?.slice(0, 12) || '나'
-        // 프로필(계정 단위 이름) 저장
         await supabase.from('profiles').upsert({
           user_id: session.user.id,
           display_name: defaultName,
@@ -188,15 +197,9 @@ export default function App() {
   if (!group) {
     // 기본 그룹 자동 생성이 진행 중이면 로딩 표시
     if (ensuringGroup) return <div style={center}>닿음 준비 중…</div>
-    // 초대 링크(?code= 또는 ?group=)로 들어온 경우엔 참여 관문(GroupGate)을 보여줌
-    let isInvite = false
-    try {
-      const q = new URLSearchParams(window.location.search)
-      isInvite = !!(q.get('code') || q.get('group'))
-    } catch {}
-    if (isInvite) return <GroupGate user={session.user} onReady={g => { setGroup(g); setActiveTab('home') }} />
-    // 그 외(자동 생성이 곧 시작/완료됨)는 잠깐 로딩
-    return <div style={center}>닿음 준비 중…</div>
+    // 자동 생성 대상이 아닌 경우(초대 진입, 기존 사용자의 그룹 0개 등)엔
+    // 그룹 관문(GroupGate)을 보여줌 — 여기서 그룹 만들기/참여/회원탈퇴 가능
+    return <GroupGate user={session.user} onReady={g => { setGroup(g); setActiveTab('home') }} />
   }
 
   // 서브 화면들(설정 안 하단탭 없이 전체화면, 뒤로가기로 복귀)
