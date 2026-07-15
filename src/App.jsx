@@ -1,5 +1,5 @@
 // src/App.jsx
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from './supabaseClient'
 import Auth from './Auth'
 import GroupGate from './GroupGate'
@@ -32,6 +32,7 @@ export default function App() {
   const [showPrivacy, setShowPrivacy] = useState(false)
   const [showTerms, setShowTerms] = useState(false)
   const [ensuringGroup, setEnsuringGroup] = useState(false)  // 기본 그룹 자동 생성 진행 중
+  const ensureStartedRef = useRef(null)  // 자동생성을 시도한 user_id (계정당 한 번만)
 
   useEffect(() => {
     let mounted = true
@@ -101,15 +102,18 @@ export default function App() {
     setShowOnboarding(false)
   }
 
-  // 최초 사용자(그룹 0개)에게 기본 그룹 "첫 닿음"을 자동 생성해 빈 화면을 없앰
+  // 최초 사용자(그룹 0개)에게 기본 그룹 "첫 닿음"을 자동 생성해 빈 화면을 없앰.
+  // 계정당 한 번만 시도(ensureStartedRef)해서 StrictMode 이중 실행/무한 재생성을 막는다.
   useEffect(() => {
-    if (!session || group || ensuringGroup) return
+    if (!session || group) return
+    if (ensureStartedRef.current === session.user.id) return  // 이 계정은 이미 시도함
     // 딥링크(?group=... 또는 ?code=...)로 들어온 경우엔 자동 생성하지 않음
     try {
       const q = new URLSearchParams(window.location.search)
-      if (q.get('group') || q.get('code')) return
+      if (q.get('group') || q.get('code')) { ensureStartedRef.current = session.user.id; return }
     } catch {}
 
+    ensureStartedRef.current = session.user.id  // 시도 표시 (동기적으로 즉시 잠금)
     let cancelled = false
     ;(async () => {
       setEnsuringGroup(true)
@@ -121,7 +125,6 @@ export default function App() {
         const existing = (mres.data || []).map(r => r.groups).filter(Boolean)
         if (cancelled) return
         if (existing.length > 0) {
-          // 마지막 사용 그룹 복원, 없으면 첫 그룹
           let saved = null
           try { saved = localStorage.getItem('mp_group') } catch {}
           const target = existing.find(g => g.id === saved) || existing[0]
@@ -135,19 +138,12 @@ export default function App() {
         let pres = await supabase.from('profiles').select('user_id').eq('user_id', session.user.id).maybeSingle()
         if (cancelled) return
         if (pres.data) {
-          // 기존 사용자인데 그룹이 없음 → 자동 생성 없이 그룹 관문으로
           setEnsuringGroup(false)
           return
         }
 
         // 진짜 신규 사용자 → 기본 그룹 "첫 닿음" 생성
         const defaultName = (session.user.email || '').split('@')[0]?.slice(0, 12) || '나'
-        await supabase.from('profiles').upsert({
-          user_id: session.user.id,
-          display_name: defaultName,
-          color: '#ff4d5e',
-          updated_at: new Date().toISOString(),
-        }, { onConflict: 'user_id' })
 
         let created = null
         for (let attempt = 0; attempt < 3 && !created; attempt++) {
@@ -163,6 +159,13 @@ export default function App() {
             group_id: created.id, user_id: session.user.id,
             display_name: defaultName, color: '#ff4d5e',
           })
+          // 프로필은 그룹 생성 성공 후에 저장 (경합 시에도 프로필만 남는 상황 방지)
+          await supabase.from('profiles').upsert({
+            user_id: session.user.id,
+            display_name: defaultName,
+            color: '#ff4d5e',
+            updated_at: new Date().toISOString(),
+          }, { onConflict: 'user_id' })
           if (!cancelled) { setGroup(created); setActiveTab('home') }
         }
       } catch {}
