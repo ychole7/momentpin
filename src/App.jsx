@@ -151,9 +151,11 @@ export default function App() {
             .insert({ name: '첫 닿음', invite_code: makeCode(), created_by: session.user.id })
             .select().single()
           if (!res.error) { created = res.data; break }
+          console.error('[첫닿음 생성 실패]', res.error)  // 디버깅용
           if (!String(res.error.message).includes('duplicate')) break
         }
         if (cancelled) return
+        if (!created) { console.error('[첫닿음] 그룹 생성 최종 실패 — GroupGate로 전환') }
         if (created) {
           await supabase.from('members').insert({
             group_id: created.id, user_id: session.user.id,
