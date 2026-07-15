@@ -576,6 +576,18 @@ export default function Home({ user, group, profileVersion, onOpenSettings, onMe
         </div>
       </div>
 
+      {/* 혼자일 때 초대 유도 배너 (콜드 스타트 해소) */}
+      {members.length <= 1 && (
+        <button style={S.inviteBanner} onClick={copyInviteLink}>
+          <span style={S.inviteIcon}>💌</span>
+          <span style={{ flex: 1, textAlign: 'left' }}>
+            <span style={{ fontWeight: 700, fontSize: 14, color: '#7a2e14' }}>가족·친구를 초대해보세요</span>
+            <span style={{ display: 'block', fontSize: 11.5, color: '#9e5a3e', marginTop: 2 }}>함께여야 안부를 나눌 수 있어요 · 탭하면 초대 링크 복사</span>
+          </span>
+          <span style={S.inviteArrow}>🔗</span>
+        </button>
+      )}
+
       {/* 스트릭 배너 */}
       {streak && streak.count > 0 && (
         <button style={S.streakBanner} onClick={() => setShowStreak(true)}>
@@ -910,6 +922,9 @@ const S = {
   bBig: { fontSize: 24, fontWeight: 700, letterSpacing: '-.5px', padding: '3px 20px 0' },
   bSmall: { fontSize: 13, opacity: .85, padding: '3px 20px 18px' },
   streakBanner: { display: 'flex', alignItems: 'center', gap: 10, width: 'calc(100% - 28px)', margin: '12px 14px 0', padding: '11px 14px', background: 'var(--mp-card)', border: '1px solid var(--mp-line)', borderRadius: 14, cursor: 'pointer', fontFamily: 'inherit', color: 'var(--mp-ink)' },
+  inviteBanner: { display: 'flex', alignItems: 'center', gap: 12, width: 'calc(100% - 28px)', margin: '12px 14px 0', padding: '14px 16px', background: 'linear-gradient(135deg,#fff1ed,#ffe9e0)', border: '1.5px solid #ffd9cc', borderRadius: 16, cursor: 'pointer', fontFamily: 'inherit', boxShadow: '0 6px 18px rgba(255,122,69,.12)' },
+  inviteIcon: { fontSize: 24, flex: 'none' },
+  inviteArrow: { fontSize: 16, flex: 'none' },
   toggle: { display: 'flex', gap: 6, background: 'var(--mp-card2)', borderRadius: 24, padding: 4, margin: '14px 14px 0' },
   tBtn: { flex: 1, border: 'none', background: 'none', fontFamily: 'inherit', fontSize: 13, fontWeight: 600, color: 'var(--mp-muted)', padding: 9, borderRadius: 20, cursor: 'pointer' },
   tBtnOn: { background: 'var(--mp-card)', color: 'var(--mp-ink)', boxShadow: '0 2px 8px rgba(0,0,0,.08)' },

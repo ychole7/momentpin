@@ -12,6 +12,14 @@ import Onboarding from './Onboarding'
 import Privacy from './Privacy'
 import Terms from './Terms'
 
+// 초대코드 생성 (혼동 문자 제외)
+function makeCode() {
+  const ch = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+  let s = ''
+  for (let i = 0; i < 4; i++) s += ch[Math.floor(Math.random() * ch.length)]
+  return 'MP-' + s
+}
+
 export default function App() {
   const [session, setSession] = useState(null)
   const [group, setGroup] = useState(null)
@@ -23,6 +31,7 @@ export default function App() {
   const [showOnboarding, setShowOnboarding] = useState(false)
   const [showPrivacy, setShowPrivacy] = useState(false)
   const [showTerms, setShowTerms] = useState(false)
+  const [ensuringGroup, setEnsuringGroup] = useState(false)  // 기본 그룹 자동 생성 진행 중
 
   useEffect(() => {
     let mounted = true
@@ -92,6 +101,68 @@ export default function App() {
     setShowOnboarding(false)
   }
 
+  // 최초 사용자(그룹 0개)에게 기본 그룹 "첫 닿음"을 자동 생성해 빈 화면을 없앰
+  useEffect(() => {
+    if (!session || group || ensuringGroup) return
+    // 딥링크(?group=... 또는 ?code=...)로 들어온 경우엔 자동 생성하지 않음
+    try {
+      const q = new URLSearchParams(window.location.search)
+      if (q.get('group') || q.get('code')) return
+    } catch {}
+
+    let cancelled = false
+    ;(async () => {
+      setEnsuringGroup(true)
+      try {
+        // 이미 속한 그룹이 있으면 자동 생성 안 함
+        let mres = await supabase.from('members')
+          .select('group_id, groups(id,name,invite_code,created_by,alarm_mode,fixed_times,random_start,random_end,window_min)')
+          .eq('user_id', session.user.id)
+        const existing = (mres.data || []).map(r => r.groups).filter(Boolean)
+        if (cancelled) return
+        if (existing.length > 0) {
+          // 마지막 사용 그룹 복원, 없으면 첫 그룹
+          let saved = null
+          try { saved = localStorage.getItem('mp_group') } catch {}
+          const target = existing.find(g => g.id === saved) || existing[0]
+          setGroup(target)
+          setEnsuringGroup(false)
+          return
+        }
+
+        // 그룹이 없다 → 기본 그룹 생성
+        const defaultName = (session.user.email || '').split('@')[0]?.slice(0, 12) || '나'
+        // 프로필(계정 단위 이름) 저장
+        await supabase.from('profiles').upsert({
+          user_id: session.user.id,
+          display_name: defaultName,
+          color: '#ff4d5e',
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'user_id' })
+
+        let created = null
+        for (let attempt = 0; attempt < 3 && !created; attempt++) {
+          let res = await supabase.from('groups')
+            .insert({ name: '첫 닿음', invite_code: makeCode(), created_by: session.user.id })
+            .select().single()
+          if (!res.error) { created = res.data; break }
+          if (!String(res.error.message).includes('duplicate')) break
+        }
+        if (cancelled) return
+        if (created) {
+          await supabase.from('members').insert({
+            group_id: created.id, user_id: session.user.id,
+            display_name: defaultName, color: '#ff4d5e',
+          })
+          if (!cancelled) { setGroup(created); setActiveTab('home') }
+        }
+      } catch {}
+      if (!cancelled) setEnsuringGroup(false)
+    })()
+
+    return () => { cancelled = true }
+  }, [session, group])
+
   async function signOut() {
     // 로그아웃 시 이 기기의 알림 구독도 함께 해제 (로그아웃 후 알림이 계속 오는 것 방지)
     try {
@@ -114,7 +185,19 @@ export default function App() {
   if (booting) return <div style={center}>닿음 여는 중…</div>
   if (!session) return <Auth />
   if (showOnboarding) return <Onboarding onDone={finishOnboarding} />
-  if (!group) return <GroupGate user={session.user} onReady={g => { setGroup(g); setActiveTab('home') }} />
+  if (!group) {
+    // 기본 그룹 자동 생성이 진행 중이면 로딩 표시
+    if (ensuringGroup) return <div style={center}>닿음 준비 중…</div>
+    // 초대 링크(?code= 또는 ?group=)로 들어온 경우엔 참여 관문(GroupGate)을 보여줌
+    let isInvite = false
+    try {
+      const q = new URLSearchParams(window.location.search)
+      isInvite = !!(q.get('code') || q.get('group'))
+    } catch {}
+    if (isInvite) return <GroupGate user={session.user} onReady={g => { setGroup(g); setActiveTab('home') }} />
+    // 그 외(자동 생성이 곧 시작/완료됨)는 잠깐 로딩
+    return <div style={center}>닿음 준비 중…</div>
+  }
 
   // 서브 화면들(설정 안 하단탭 없이 전체화면, 뒤로가기로 복귀)
   if (showPrivacy) return <Privacy onClose={() => { setShowPrivacy(false); setActiveTab('mypage') }} />
