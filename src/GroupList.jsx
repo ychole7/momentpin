@@ -1,12 +1,38 @@
-// src/GroupList.jsx — 하단 탭 "그룹": 내 그룹 목록, 전환, 새 그룹 만들기/참여 진입
+// src/GroupList.jsx — 하단 탭 "그룹": 내 그룹 목록·전환 + 만들기/참여를 한 화면에서
 import { useEffect, useState } from 'react'
 import { supabase } from './supabaseClient'
 
-export default function GroupList({ user, currentGroup, onSelectGroup, onCreateNew }) {
+const COLORS = ['#ff4d5e', '#13bca4', '#e0972e', '#5b8def', '#9c4dcc', '#2a9d5a']
+const randColor = () => COLORS[Math.floor(Math.random() * COLORS.length)]
+
+function makeCode() {
+  const ch = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+  let s = ''
+  for (let i = 0; i < 4; i++) s += ch[Math.floor(Math.random() * ch.length)]
+  return 'MP-' + s
+}
+
+export default function GroupList({ user, currentGroup, onSelectGroup }) {
   const [groups, setGroups] = useState([])
   const [loading, setLoading] = useState(true)
+  const [adding, setAdding] = useState(false)        // 추가 폼 펼침 여부
+  const [tab, setTab] = useState('create')            // 'create' | 'join'
+  const [name, setName] = useState('')
+  const [code, setCode] = useState('')
+  const [displayName, setDisplayName] = useState('')
+  const [myColor, setMyColor] = useState(randColor())
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState('')
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { load(); loadProfile() }, [])
+
+  async function loadProfile() {
+    let res = await supabase.from('profiles').select('display_name,color').eq('user_id', user.id).maybeSingle()
+    if (!res.error && res.data) {
+      if (res.data.display_name) setDisplayName(res.data.display_name)
+      if (res.data.color) setMyColor(res.data.color)
+    }
+  }
 
   async function load() {
     setLoading(true)
@@ -17,7 +43,6 @@ export default function GroupList({ user, currentGroup, onSelectGroup, onCreateN
     if (res.error) { setLoading(false); return }
     const list = (res.data || []).map(r => r.groups).filter(Boolean)
 
-    // 진행중인 안부가 있는 그룹 표시
     const now = new Date().toISOString()
     const gids = list.map(g => g.id)
     let activeSet = new Set()
@@ -30,7 +55,63 @@ export default function GroupList({ user, currentGroup, onSelectGroup, onCreateN
     setLoading(false)
   }
 
-  if (loading) return <div style={S.center}>불러오는 중…</div>
+  async function saveProfile() {
+    let res = await supabase.from('profiles').upsert({
+      user_id: user.id,
+      display_name: displayName.trim().slice(0, 12),
+      color: myColor,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'user_id' })
+    return res.error
+  }
+
+  async function createGroup() {
+    if (!name.trim() || !displayName.trim()) { setMsg('그룹 이름과 내 이름을 입력해 주세요.'); return }
+    setBusy(true); setMsg('')
+    if (groups.length >= 10) { setMsg('그룹은 최대 10개까지 만들 수 있어요.'); setBusy(false); return }
+    const dup = groups.some(g => g.name.trim().toLowerCase() === name.trim().toLowerCase())
+    if (dup) { setMsg('이미 같은 이름의 그룹이 있어요.'); setBusy(false); return }
+    const pErr = await saveProfile()
+    if (pErr) { setMsg('프로필 저장 실패: ' + pErr.message); setBusy(false); return }
+
+    let group = null
+    for (let attempt = 0; attempt < 3 && !group; attempt++) {
+      let res = await supabase.from('groups')
+        .insert({ name: name.trim(), invite_code: makeCode(), created_by: user.id })
+        .select().single()
+      if (!res.error) { group = res.data; break }
+      if (!String(res.error.message).includes('duplicate')) { setMsg(res.error.message); setBusy(false); return }
+    }
+    if (!group) { setMsg('초대코드 생성에 실패했어요. 다시 시도해 주세요.'); setBusy(false); return }
+
+    let res2 = await supabase.from('members')
+      .insert({ group_id: group.id, user_id: user.id, display_name: displayName.trim().slice(0, 12), color: myColor })
+    if (res2.error) { setMsg(res2.error.message); setBusy(false); return }
+
+    setBusy(false); setName(''); setAdding(false)
+    onSelectGroup(group)
+  }
+
+  async function joinGroup() {
+    if (!code.trim() || !displayName.trim()) { setMsg('초대코드와 내 이름을 입력해 주세요.'); return }
+    setBusy(true); setMsg('')
+    const pErr = await saveProfile()
+    if (pErr) { setMsg('프로필 저장 실패: ' + pErr.message); setBusy(false); return }
+
+    let res = await supabase.from('groups')
+      .select('id,name,invite_code,created_by,alarm_mode,fixed_times,random_start,random_end,window_min')
+      .eq('invite_code', code.trim().toUpperCase())
+      .single()
+    if (res.error || !res.data) { setMsg('그 코드의 그룹을 찾을 수 없어요.'); setBusy(false); return }
+    const group = res.data
+
+    let res2 = await supabase.from('members')
+      .insert({ group_id: group.id, user_id: user.id, display_name: displayName.trim().slice(0, 12), color: myColor })
+    if (res2.error && !String(res2.error.message).includes('duplicate')) { setMsg(res2.error.message); setBusy(false); return }
+
+    setBusy(false); setCode(''); setAdding(false)
+    onSelectGroup(group)
+  }
 
   return (
     <div style={S.app}>
@@ -39,45 +120,109 @@ export default function GroupList({ user, currentGroup, onSelectGroup, onCreateN
       </div>
 
       <div style={S.body}>
-        {groups.map(g => (
-          <button key={g.id} style={{ ...S.row, ...(g.id === currentGroup?.id ? S.rowActive : {}) }}
-            onClick={() => onSelectGroup(g)}>
-            <div style={S.rowMain}>
-              <span style={S.rowName}>
-                {g.active && <span style={S.activeDot}>📍</span>}
-                {g.name}
-              </span>
-              <span style={S.rowMeta}>
-                {g.id === currentGroup?.id && <span style={S.current}>현재</span>}
-                {g.created_by === user.id && <span style={S.owner}>👑</span>}
-                {g.active && <span style={S.activeBadge}>안부 진행중</span>}
-              </span>
-            </div>
-            <span style={S.codeChip}>{g.invite_code}</span>
-          </button>
-        ))}
+        {loading ? (
+          <div style={S.center}>불러오는 중…</div>
+        ) : (
+          <>
+            {groups.map(g => {
+              const isCurrent = g.id === currentGroup?.id
+              return (
+                <button key={g.id} style={{ ...S.row, ...(isCurrent ? S.rowActive : {}) }}
+                  onClick={() => onSelectGroup(g)}>
+                  <div style={S.rowLeft}>
+                    <div style={{ ...S.avatar, ...(g.active ? S.avatarActive : {}) }}>
+                      {g.active ? '📍' : g.name.slice(0, 1)}
+                    </div>
+                    <div style={S.rowInfo}>
+                      <div style={S.rowName}>
+                        {g.name}
+                        {g.created_by === user.id && <span style={S.owner}>👑</span>}
+                      </div>
+                      <div style={S.rowSub}>
+                        {g.active
+                          ? <span style={S.activeBadge}>안부 진행중</span>
+                          : <span style={S.codeText}>{g.invite_code}</span>}
+                      </div>
+                    </div>
+                  </div>
+                  {isCurrent
+                    ? <span style={S.currentChip}>현재</span>
+                    : <span style={S.goArrow}>›</span>}
+                </button>
+              )
+            })}
 
-        <button style={S.addBtn} onClick={onCreateNew}>＋ 새 그룹 만들기 / 참여하기</button>
+            {!adding ? (
+              <button style={S.addBtn} onClick={() => { setAdding(true); setMsg('') }}>
+                <span style={S.addPlus}>＋</span> 새 그룹 만들기 / 참여하기
+              </button>
+            ) : (
+              <div style={S.addCard}>
+                <div style={S.addHead}>
+                  <div style={S.addTitle}>새 그룹</div>
+                  <button style={S.addClose} onClick={() => { setAdding(false); setMsg('') }}>✕</button>
+                </div>
+
+                <div style={S.tabs}>
+                  <button style={{ ...S.tab, ...(tab === 'create' ? S.tabOn : {}) }} onClick={() => { setTab('create'); setMsg('') }}>만들기</button>
+                  <button style={{ ...S.tab, ...(tab === 'join' ? S.tabOn : {}) }} onClick={() => { setTab('join'); setMsg('') }}>초대코드로 참여</button>
+                </div>
+
+                <input style={S.input} placeholder="내 이름 (예: 아빠, 민지)" maxLength={12}
+                  value={displayName} onChange={e => setDisplayName(e.target.value.slice(0, 12))} />
+
+                {tab === 'create' ? (
+                  <input style={S.input} placeholder="그룹 이름 (예: 우리가족)" maxLength={10}
+                    value={name} onChange={e => setName(e.target.value.slice(0, 10))} />
+                ) : (
+                  <input style={{ ...S.input, textTransform: 'uppercase' }} placeholder="초대코드 (예: MP-4F2K)"
+                    value={code} onChange={e => setCode(e.target.value)} />
+                )}
+
+                {msg && <div style={S.msg}>{msg}</div>}
+
+                <button style={{ ...S.primary, opacity: busy ? .6 : 1 }} disabled={busy}
+                  onClick={tab === 'create' ? createGroup : joinGroup}>
+                  {busy ? '잠시만요…' : (tab === 'create' ? '그룹 만들기' : '참여하기')}
+                </button>
+              </div>
+            )}
+          </>
+        )}
       </div>
     </div>
   )
 }
 
 const S = {
-  center: { minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--mp-muted)', fontFamily: "'Outfit',sans-serif" },
+  center: { textAlign: 'center', color: 'var(--mp-muted)', padding: 40, fontSize: 14 },
   app: { width: '100%', maxWidth: 480, margin: '0 auto', minHeight: '100dvh', background: 'var(--mp-bg)', fontFamily: "'Outfit','Gowun Dodum',sans-serif", color: 'var(--mp-ink)', paddingBottom: 90 },
-  top: { position: 'sticky', top: 0, zIndex: 100, background: 'var(--mp-topbar)', backdropFilter: 'blur(12px)', borderBottom: '1px solid var(--mp-line)', padding: 'max(calc(env(safe-area-inset-top,0px) + 13px), 13px) 18px 13px' },
+  top: { position: 'sticky', top: 0, zIndex: 100, background: 'var(--mp-topbar)', backdropFilter: 'blur(12px)', borderBottom: '1px solid var(--mp-line)', padding: 'max(calc(env(safe-area-inset-top,0px) + 14px), 14px) 18px 14px' },
   title: { fontWeight: 700, fontSize: 20, letterSpacing: '-.4px' },
   body: { padding: 16 },
-  row: { width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: '1.5px solid var(--mp-line)', background: 'var(--mp-card)', borderRadius: 16, padding: '16px 16px', marginBottom: 10, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' },
-  rowActive: { border: '1.5px solid #ff7a45' },
-  rowMain: { display: 'flex', flexDirection: 'column', gap: 6 },
-  rowName: { fontWeight: 700, fontSize: 16, color: 'var(--mp-ink)', display: 'flex', alignItems: 'center', gap: 6 },
-  rowMeta: { display: 'flex', alignItems: 'center', gap: 6 },
-  activeDot: { fontSize: 14 },
-  activeBadge: { fontSize: 11, fontWeight: 700, color: '#ff7a45', background: 'rgba(255,122,69,.12)', borderRadius: 8, padding: '2px 7px' },
-  current: { fontSize: 11, fontWeight: 700, color: '#ff4d5e', background: '#fff1ed', padding: '2px 8px', borderRadius: 8 },
+  row: { width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: '1.5px solid var(--mp-line)', background: 'var(--mp-card)', borderRadius: 16, padding: '14px 16px', marginBottom: 10, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' },
+  rowActive: { borderColor: '#ff7a45', boxShadow: '0 4px 16px rgba(255,122,69,.12)' },
+  rowLeft: { display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0 },
+  avatar: { width: 44, height: 44, borderRadius: 14, background: 'var(--mp-card2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 17, fontWeight: 700, color: 'var(--mp-sub)', flex: 'none' },
+  avatarActive: { background: 'rgba(255,122,69,.14)' },
+  rowInfo: { minWidth: 0 },
+  rowName: { fontWeight: 700, fontSize: 16, color: 'var(--mp-ink)', display: 'flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
   owner: { fontSize: 13 },
-  codeChip: { fontSize: 12, fontWeight: 600, color: 'var(--mp-muted)', background: 'var(--mp-card2)', padding: '4px 9px', borderRadius: 20, flex: 'none', marginLeft: 10 },
-  addBtn: { width: '100%', border: '1.5px dashed var(--mp-line2)', background: 'var(--mp-card)', color: 'var(--mp-sub)', borderRadius: 16, padding: 16, marginTop: 6, fontFamily: 'inherit', fontSize: 14, fontWeight: 600, cursor: 'pointer' },
+  rowSub: { marginTop: 3 },
+  codeText: { fontSize: 12.5, color: 'var(--mp-muted)', fontWeight: 600, letterSpacing: .3 },
+  activeBadge: { fontSize: 11, fontWeight: 700, color: '#ff7a45', background: 'rgba(255,122,69,.12)', borderRadius: 8, padding: '2px 8px' },
+  currentChip: { fontSize: 11, fontWeight: 700, color: '#ff4d5e', background: '#fff1ed', padding: '4px 10px', borderRadius: 10, flex: 'none' },
+  goArrow: { fontSize: 22, color: 'var(--mp-line2)', fontWeight: 400, flex: 'none', paddingRight: 2 },
+  addBtn: { width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, border: '1.5px dashed var(--mp-line2)', background: 'var(--mp-card)', color: 'var(--mp-sub)', borderRadius: 16, padding: 16, marginTop: 4, fontFamily: 'inherit', fontSize: 14, fontWeight: 600, cursor: 'pointer' },
+  addPlus: { fontSize: 17, fontWeight: 700 },
+  addCard: { border: '1.5px solid var(--mp-line)', background: 'var(--mp-card)', borderRadius: 16, padding: 16, marginTop: 4 },
+  addHead: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 },
+  addTitle: { fontWeight: 700, fontSize: 16 },
+  addClose: { width: 28, height: 28, border: 'none', background: 'var(--mp-card2)', borderRadius: '50%', fontSize: 13, cursor: 'pointer', color: 'var(--mp-muted)' },
+  tabs: { display: 'flex', gap: 6, background: 'var(--mp-card2)', borderRadius: 24, padding: 4, marginBottom: 14 },
+  tab: { flex: 1, border: 'none', background: 'none', fontFamily: 'inherit', fontSize: 13, fontWeight: 600, color: 'var(--mp-muted)', padding: 9, borderRadius: 20, cursor: 'pointer' },
+  tabOn: { background: 'var(--mp-card)', color: 'var(--mp-ink)', boxShadow: '0 2px 8px rgba(0,0,0,.08)' },
+  input: { width: '100%', border: '1.5px solid var(--mp-line)', background: 'var(--mp-card)', color: 'var(--mp-ink)', borderRadius: 14, padding: '14px 16px', fontSize: 15, fontFamily: 'inherit', marginBottom: 10, outline: 'none', boxSizing: 'border-box' },
+  msg: { fontSize: 13, color: 'var(--mp-coral)', background: 'var(--mp-card2)', border: '1px solid var(--mp-line)', padding: '10px 12px', borderRadius: 10, margin: '4px 0 12px' },
+  primary: { width: '100%', border: 'none', borderRadius: 14, padding: 15, fontSize: 15, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer', color: '#fff', background: 'linear-gradient(135deg,#ff7a45,#ff4d5e)', boxShadow: '0 8px 20px rgba(255,77,94,.3)' },
 }

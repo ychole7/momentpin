@@ -147,7 +147,6 @@ export default function App() {
             user={session.user}
             currentGroup={group}
             onSelectGroup={(g) => { setGroup(g); localStorage.setItem('mp_group', g.id); setActiveTab('home') }}
-            onCreateNew={() => setGroup(null)}
           />
         )}
 
