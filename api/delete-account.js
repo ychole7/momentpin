@@ -25,22 +25,45 @@ export default async function handler(req, res) {
     // 2) service_role 클라이언트로 삭제 진행
     const admin = createClient(url, serviceKey)
 
-    // 2-1) 이 사용자가 '그룹장(created_by)'인 그룹들 — 멤버가 본인뿐이면 그룹째 삭제,
-    //      다른 멤버가 있으면 탈퇴 막기 (먼저 위임/삭제 필요)
+    // 2-1) 이 사용자가 '그룹장(created_by)'인 그룹들 처리
+    //  - 멤버가 본인뿐 → 아래에서 그룹째 삭제
+    //  - 다른 멤버가 있고 + 나도 그 그룹의 멤버다 → 탈퇴 막기(먼저 위임/삭제 필요)
+    //  - 다른 멤버가 있지만 + 나는 이미 그 그룹을 나갔다(멤버 아님) → 소유권을 남은 멤버에게 자동 이전
     let ownedRes = await admin.from('groups').select('id').eq('created_by', userId)
     const ownedGroups = ownedRes.data || []
+    const soloOwnedGroups = []  // 본인뿐인 소유 그룹(삭제 대상)
+
     for (const g of ownedGroups) {
       let mem = await admin.from('members').select('user_id').eq('group_id', g.id)
-      const memberCount = (mem.data || []).length
-      if (memberCount > 1) {
+      const memberIds = (mem.data || []).map(m => m.user_id)
+      const memberCount = memberIds.length
+      const iAmMember = memberIds.includes(userId)
+
+      if (memberCount <= 1) {
+        // 나 혼자거나 아무도 없음 → 삭제 대상
+        soloOwnedGroups.push(g)
+        continue
+      }
+
+      // 멤버가 2명 이상
+      if (iAmMember) {
+        // 내가 아직 이 그룹의 멤버 → 먼저 위임/삭제하도록 막음
         return res.status(409).json({
           error: 'owner_has_members',
           message: '회원님이 그룹장인 그룹에 다른 멤버가 있어요. 먼저 그룹을 삭제하거나 넘겨주세요.'
         })
+      } else {
+        // 나는 이미 이 그룹을 나감 → 소유권을 남은 멤버 중 한 명에게 이전
+        const nextOwner = memberIds.find(id => id !== userId)
+        if (nextOwner) {
+          await admin.from('groups').update({ created_by: nextOwner }).eq('id', g.id)
+        }
+        // 이전 후에는 이 그룹을 삭제 대상에 넣지 않음 (다른 멤버가 계속 사용)
       }
     }
+
     // 본인뿐인 소유 그룹은 통째로 삭제
-    for (const g of ownedGroups) {
+    for (const g of soloOwnedGroups) {
       await admin.from('post_likes').delete().eq('group_id', g.id)
       await admin.from('posts').delete().eq('group_id', g.id)
       await admin.from('moments').delete().eq('group_id', g.id)
