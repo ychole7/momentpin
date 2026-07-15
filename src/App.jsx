@@ -117,17 +117,14 @@ export default function App() {
     let cancelled = false
     ;(async () => {
       setEnsuringGroup(true)
-      console.log('[첫닿음] 자동생성 시작 user=', session.user.id)
       try {
         // 이미 속한 그룹이 있으면 자동 생성 안 함
         let mres = await supabase.from('members')
           .select('group_id, groups(id,name,invite_code,created_by,alarm_mode,fixed_times,random_start,random_end,window_min)')
           .eq('user_id', session.user.id)
-        console.log('[첫닿음] members 조회', mres.error || mres.data)
         const existing = (mres.data || []).map(r => r.groups).filter(Boolean)
         if (cancelled) return
         if (existing.length > 0) {
-          console.log('[첫닿음] 이미 그룹 있음 → 복원')
           let saved = null
           try { saved = localStorage.getItem('mp_group') } catch {}
           const target = existing.find(g => g.id === saved) || existing[0]
@@ -139,16 +136,13 @@ export default function App() {
         // 그룹이 0개다. "진짜 신규 사용자"만 자동 생성한다.
         let onboarded = false
         try { onboarded = localStorage.getItem('mp_onboarded') === '1' } catch {}
-        console.log('[첫닿음] onboarded 플래그=', onboarded)
         if (onboarded) {
-          console.log('[첫닿음] 온보딩 완료 사용자 → 자동생성 스킵')
           setEnsuringGroup(false)
           return
         }
 
         // 진짜 신규 사용자 → 기본 그룹 "첫 닿음" 생성
         const defaultName = (session.user.email || '').split('@')[0]?.slice(0, 12) || '나'
-        console.log('[첫닿음] 그룹 생성 시도, name=', defaultName)
 
         let created = null
         for (let attempt = 0; attempt < 3 && !created; attempt++) {
@@ -156,13 +150,11 @@ export default function App() {
             .insert({ name: '첫 닿음', invite_code: makeCode(), created_by: session.user.id })
             .select().single()
           if (!res.error) { created = res.data; break }
-          console.error('[첫닿음 생성 실패]', res.error)  // 디버깅용
           if (!String(res.error.message).includes('duplicate')) break
         }
         if (cancelled) return
         if (!created) { console.error('[첫닿음] 그룹 생성 최종 실패 — GroupGate로 전환') }
         if (created) {
-          console.log('[첫닿음] 그룹 생성 성공', created.id)
           let mem = await supabase.from('members').insert({
             group_id: created.id, user_id: session.user.id,
             display_name: defaultName, color: '#ff4d5e',
@@ -175,7 +167,7 @@ export default function App() {
             color: '#ff4d5e',
             updated_at: new Date().toISOString(),
           }, { onConflict: 'user_id' })
-          if (!cancelled) { console.log('[첫닿음] 완료 → 홈 전환'); setGroup(created); setActiveTab('home') }
+          if (!cancelled) { setGroup(created); setActiveTab('home') }
         }
       } catch (e) { console.error('[첫닿음] 예외', e) }
       if (!cancelled) setEnsuringGroup(false)
