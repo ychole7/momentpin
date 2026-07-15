@@ -8,7 +8,7 @@ export default function Terms({ onClose }) {
         <div style={{ width: 32 }} />
       </div>
       <div style={S.body}>
-        <p style={S.date}>시행일: 2026년 ○월 ○일</p>
+        <p style={S.date}>시행일: 2026년 7월 15일</p>
         <p style={S.intro}>본 약관은 닿음(이하 "서비스")의 이용과 관련하여 서비스와 이용자 간의 권리, 의무 및 책임 사항을 규정합니다.</p>
 
         <Sec n="제1조" t="목적">
@@ -56,7 +56,7 @@ export default function Terms({ onClose }) {
           본 약관은 대한민국 법령에 따라 해석되며, 분쟁은 관련 법령이 정한 절차에 따릅니다.
         </Sec>
         <Sec n="제14조" t="문의">
-          · 문의 이메일: ○○○@○○○
+          · 문의 이메일: ycbucks@gmail.com
         </Sec>
 
         <p style={S.note}>본 약관은 표준 양식 기반 초안이며, 출시 전 법률 전문가 검토를 권장합니다.</p>
@@ -75,7 +75,7 @@ function Sec({ n, t, children }) {
 }
 
 const S = {
-  app: { width: '100%', maxWidth: 480, margin: '0 auto', minHeight: '100vh', background: 'var(--mp-bg)', fontFamily: "'Outfit','Gowun Dodum',sans-serif", color: 'var(--mp-ink)', paddingBottom: 40 },
+  app: { width: '100%', maxWidth: 480, margin: '0 auto', minHeight: '100vh', background: 'var(--mp-bg)', fontFamily: "'Outfit','Gowun Dodum',sans-serif", color: 'var(--mp-ink)', paddingBottom: 40, textAlign: 'left' },
   top: { position: 'sticky', top: 0, zIndex: 100, background: 'var(--mp-topbar)', backdropFilter: 'blur(12px)', borderBottom: '1px solid var(--mp-line)', padding: 'max(calc(env(safe-area-inset-top, 0px) + 13px), 13px) 14px 13px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
   back: { width: 32, height: 32, border: 'none', background: 'var(--mp-card2)', borderRadius: '50%', fontSize: 18, cursor: 'pointer', color: 'var(--mp-ink)' },
   title: { fontWeight: 700, fontSize: 16 },

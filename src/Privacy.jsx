@@ -8,7 +8,7 @@ export default function Privacy({ onClose }) {
         <div style={{ width: 32 }} />
       </div>
       <div style={S.body}>
-        <p style={S.date}>시행일: 2026년 ○월 ○일</p>
+        <p style={S.date}>시행일: 2026년 7월 15일</p>
         <p style={S.intro}>닿음(이하 "서비스")은 이용자의 개인정보를 중요하게 생각하며, 「개인정보 보호법」 및 「위치정보의 보호 및 이용 등에 관한 법률」 등 관련 법령을 준수합니다.</p>
 
         <Sec n="1" t="수집하는 개인정보 항목">
@@ -40,7 +40,7 @@ export default function Privacy({ onClose }) {
           서비스는 만 14세 미만 아동의 회원가입을 받지 않습니다. 가입 시 만 14세 이상임을 확인하며, 만 14세 미만임이 확인될 경우 해당 계정과 정보는 파기됩니다.
         </Sec>
         <Sec n="10" t="개인정보 보호책임자 및 문의처">
-          · 보호책임자: ○○○<br/>· 문의 이메일: ○○○@○○○
+          · 보호책임자: 닿음 운영팀<br/>· 문의 이메일: ycbucks@gmail.com
         </Sec>
         <Sec n="11" t="고지의 의무">
           본 방침 변경 시 서비스 내 공지를 통해 안내합니다.
@@ -62,7 +62,7 @@ function Sec({ n, t, children }) {
 }
 
 const S = {
-  app: { width: '100%', maxWidth: 480, margin: '0 auto', minHeight: '100vh', background: 'var(--mp-bg)', fontFamily: "'Outfit','Gowun Dodum',sans-serif", color: 'var(--mp-ink)', paddingBottom: 40 },
+  app: { width: '100%', maxWidth: 480, margin: '0 auto', minHeight: '100vh', background: 'var(--mp-bg)', fontFamily: "'Outfit','Gowun Dodum',sans-serif", color: 'var(--mp-ink)', paddingBottom: 40, textAlign: 'left' },
   top: { position: 'sticky', top: 0, zIndex: 100, background: 'var(--mp-topbar)', backdropFilter: 'blur(12px)', borderBottom: '1px solid var(--mp-line)', padding: 'max(calc(env(safe-area-inset-top, 0px) + 13px), 13px) 14px 13px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
   back: { width: 32, height: 32, border: 'none', background: 'var(--mp-card2)', borderRadius: '50%', fontSize: 18, cursor: 'pointer', color: 'var(--mp-ink)' },
   title: { fontWeight: 700, fontSize: 16 },
