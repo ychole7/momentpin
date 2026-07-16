@@ -133,10 +133,18 @@ export default function App() {
           return
         }
 
-        // 그룹이 0개다. "진짜 신규 사용자"만 자동 생성한다.
-        let onboarded = false
-        try { onboarded = localStorage.getItem('mp_onboarded') === '1' } catch {}
-        if (onboarded) {
+        // 그룹이 0개다. "진짜 신규 가입 직후"만 자동 생성한다.
+        // 판단 기준: auth 계정의 created_at이 지금으로부터 아주 최근(2분 이내)인가.
+        // localStorage나 profiles 존재 여부는 탈퇴 후 재가입, 브라우저 잔재 등으로
+        // 오판되기 쉬워서(실제로 겪었음) 계정 생성 시각처럼 조작 불가능한 값을 쓴다.
+        let isFreshSignup = false
+        try {
+          const createdAt = new Date(session.user.created_at).getTime()
+          isFreshSignup = (Date.now() - createdAt) < 2 * 60 * 1000  // 2분 이내
+        } catch {}
+        if (!isFreshSignup) {
+          // 가입한 지 오래된 계정인데 그룹이 없음(탈퇴 시도 중이거나 데이터 이슈)
+          // → 자동 생성 없이 그룹 관문(GroupGate)으로 안전하게 보냄
           setEnsuringGroup(false)
           return
         }
