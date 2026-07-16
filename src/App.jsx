@@ -52,6 +52,11 @@ export default function App() {
     if (group) localStorage.setItem('mp_group', group.id)
   }, [group])
 
+  // 하단 탭 전환 시 스크롤 위치를 맨 위로 리셋 (이전 탭의 스크롤이 남아 보이는 문제 방지)
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [activeTab])
+
   // 딥링크: ?group=ID 또는 SW 알림 클릭 메시지로 해당 그룹 전환
   useEffect(() => {
     if (!session) return
@@ -243,6 +248,8 @@ export default function App() {
             user={session.user}
             currentGroup={group}
             onSelectGroup={(g) => { setGroup(g); localStorage.setItem('mp_group', g.id); setActiveTab('home') }}
+            onGroupUpdate={(g) => setGroup(g)}
+            onCurrentGroupLeave={() => setGroup(null)}
           />
         )}
 
@@ -253,9 +260,7 @@ export default function App() {
             members={statsMembers}
             onClose={() => setActiveTab('home')}
             onOpenStats={(m) => { setStatsMembers(m || []); setShowStats(true) }}
-            onGroupUpdate={(g) => setGroup(g)}
             onProfileUpdate={() => setProfileVersion(v => v + 1)}
-            onLeaveGroup={() => { setGroup(null); setActiveTab('home') }}
             onSignOut={signOut}
             onOpenPrivacy={() => setShowPrivacy(true)}
             onOpenTerms={() => setShowTerms(true)}

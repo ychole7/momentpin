@@ -1,6 +1,7 @@
-// src/GroupList.jsx — 하단 탭 "그룹": 내 그룹 목록·전환 + 만들기/참여를 한 화면에서
+// src/GroupList.jsx — 하단 탭 "그룹": 내 그룹 목록·전환 + 만들기/참여 + 그룹별 설정을 한 화면에서
 import { useEffect, useState } from 'react'
 import { supabase } from './supabaseClient'
+import GroupSettings from './GroupSettings'
 
 const COLORS = ['#ff4d5e', '#13bca4', '#e0972e', '#5b8def', '#9c4dcc', '#2a9d5a']
 const randColor = () => COLORS[Math.floor(Math.random() * COLORS.length)]
@@ -12,7 +13,7 @@ function makeCode() {
   return 'MP-' + s
 }
 
-export default function GroupList({ user, currentGroup, onSelectGroup }) {
+export default function GroupList({ user, currentGroup, onSelectGroup, onGroupUpdate, onCurrentGroupLeave }) {
   const [groups, setGroups] = useState([])
   const [loading, setLoading] = useState(true)
   const [adding, setAdding] = useState(false)        // 추가 폼 펼침 여부
@@ -23,6 +24,7 @@ export default function GroupList({ user, currentGroup, onSelectGroup }) {
   const [myColor, setMyColor] = useState(randColor())
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
+  const [settingsGroup, setSettingsGroup] = useState(null)  // 설정 화면에서 보고 있는 그룹 (null이면 목록)
 
   useEffect(() => { load(); loadProfile() }, [])
 
@@ -113,6 +115,30 @@ export default function GroupList({ user, currentGroup, onSelectGroup }) {
     onSelectGroup(group)
   }
 
+  // 설정 화면 보는 중이면 GroupSettings를 렌더 (같은 "그룹" 탭 안에서 화면만 전환)
+  if (settingsGroup) {
+    return (
+      <GroupSettings
+        user={user}
+        group={settingsGroup}
+        onClose={() => setSettingsGroup(null)}
+        onGroupUpdate={(updated) => {
+          setSettingsGroup(updated)
+          setGroups(prev => prev.map(g => g.id === updated.id ? { ...g, ...updated } : g))
+          if (onGroupUpdate && currentGroup?.id === updated.id) onGroupUpdate(updated)
+        }}
+        onLeaveGroup={() => {
+          const leftId = settingsGroup.id
+          setSettingsGroup(null)
+          setGroups(prev => prev.filter(g => g.id !== leftId))
+          // 지금 활성 중인 그룹을 나갔다면 상위(App)에 알려 홈 상태를 정리
+          if (onCurrentGroupLeave && currentGroup?.id === leftId) onCurrentGroupLeave()
+          load()
+        }}
+      />
+    )
+  }
+
   return (
     <div style={S.app}>
       <div style={S.top}>
@@ -127,28 +153,28 @@ export default function GroupList({ user, currentGroup, onSelectGroup }) {
             {groups.map(g => {
               const isCurrent = g.id === currentGroup?.id
               return (
-                <button key={g.id} style={{ ...S.row, ...(isCurrent ? S.rowActive : {}) }}
-                  onClick={() => onSelectGroup(g)}>
-                  <div style={S.rowLeft}>
-                    <div style={{ ...S.avatar, ...(g.active ? S.avatarActive : {}) }}>
-                      {g.active ? '📍' : g.name.slice(0, 1)}
-                    </div>
-                    <div style={S.rowInfo}>
-                      <div style={S.rowName}>
-                        {g.name}
-                        {g.created_by === user.id && <span style={S.owner}>👑</span>}
+                <div key={g.id} style={{ ...S.row, ...(isCurrent ? S.rowActive : {}) }}>
+                  <button style={S.rowMain} onClick={() => onSelectGroup(g)}>
+                    <div style={S.rowLeft}>
+                      <div style={{ ...S.avatar, ...(g.active ? S.avatarActive : {}) }}>
+                        {g.active ? '📍' : g.name.slice(0, 1)}
                       </div>
-                      <div style={S.rowSub}>
-                        {g.active
-                          ? <span style={S.activeBadge}>안부 진행중</span>
-                          : <span style={S.codeText}>{g.invite_code}</span>}
+                      <div style={S.rowInfo}>
+                        <div style={S.rowName}>
+                          {g.name}
+                          {g.created_by === user.id && <span style={S.owner}>👑</span>}
+                        </div>
+                        <div style={S.rowSub}>
+                          {g.active
+                            ? <span style={S.activeBadge}>안부 진행중</span>
+                            : <span style={S.codeText}>{g.invite_code}</span>}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  {isCurrent
-                    ? <span style={S.currentChip}>현재</span>
-                    : <span style={S.goArrow}>›</span>}
-                </button>
+                    {isCurrent && <span style={S.currentChip}>현재</span>}
+                  </button>
+                  <button style={S.gearBtn} onClick={() => setSettingsGroup(g)} aria-label="그룹 설정">⚙️</button>
+                </div>
               )
             })}
 
@@ -200,8 +226,10 @@ const S = {
   top: { position: 'sticky', top: 0, zIndex: 100, background: 'var(--mp-topbar)', backdropFilter: 'blur(12px)', borderBottom: '1px solid var(--mp-line)', padding: 'max(calc(env(safe-area-inset-top,0px) + 14px), 14px) 18px 14px' },
   title: { fontWeight: 700, fontSize: 20, letterSpacing: '-.4px' },
   body: { padding: 16 },
-  row: { width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: '1.5px solid var(--mp-line)', background: 'var(--mp-card)', borderRadius: 16, padding: '14px 16px', marginBottom: 10, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' },
+  row: { width: '100%', display: 'flex', alignItems: 'center', gap: 6, border: '1.5px solid var(--mp-line)', background: 'var(--mp-card)', borderRadius: 16, padding: '6px 8px 6px 14px', marginBottom: 10 },
   rowActive: { borderColor: '#ff7a45', boxShadow: '0 4px 16px rgba(255,122,69,.12)' },
+  rowMain: { flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: 'none', background: 'none', fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left', padding: '8px 4px' },
+  gearBtn: { flex: 'none', width: 40, height: 40, border: 'none', background: 'var(--mp-card2)', borderRadius: 12, fontSize: 16, cursor: 'pointer' },
   rowLeft: { display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0 },
   avatar: { width: 44, height: 44, borderRadius: 14, background: 'var(--mp-card2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 17, fontWeight: 700, color: 'var(--mp-sub)', flex: 'none' },
   avatarActive: { background: 'rgba(255,122,69,.14)' },
