@@ -4,7 +4,7 @@ import { supabase } from './supabaseClient'
 
 const COLORS = ['#ff4d5e', '#13bca4', '#e0972e', '#5b8def', '#9c4dcc', '#2a9d5a']
 
-export default function GroupSettings({ user, group, onClose, onGroupUpdate, onLeaveGroup }) {
+export default function GroupSettings({ user, group, onClose, onGroupUpdate, onLeaveGroup, onMemberUpdate }) {
   const isOwner = group.created_by === user.id
   const [members, setMembers] = useState([])
   const [myName, setMyName] = useState('')
@@ -79,6 +79,7 @@ export default function GroupSettings({ user, group, onClose, onGroupUpdate, onL
     setBusy(false)
     if (res.error) { flash('저장 실패: ' + res.error.message); return }
     flash(useGroupName ? '이 그룹 이름 저장됨 ✨' : '기본 프로필로 되돌렸어요')
+    if (onMemberUpdate) onMemberUpdate()  // Home의 멤버 리스트가 최신 이름/색을 반영하도록 알림
   }
 
   function addTime() {

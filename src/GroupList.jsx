@@ -13,7 +13,7 @@ function makeCode() {
   return 'MP-' + s
 }
 
-export default function GroupList({ user, currentGroup, onSelectGroup, onGroupUpdate, onCurrentGroupLeave }) {
+export default function GroupList({ user, currentGroup, onSelectGroup, onGroupUpdate, onCurrentGroupLeave, onMemberUpdate }) {
   const [groups, setGroups] = useState([])
   const [loading, setLoading] = useState(true)
   const [adding, setAdding] = useState(false)        // 추가 폼 펼침 여부
@@ -135,6 +135,7 @@ export default function GroupList({ user, currentGroup, onSelectGroup, onGroupUp
           if (onCurrentGroupLeave && currentGroup?.id === leftId) onCurrentGroupLeave()
           load()
         }}
+        onMemberUpdate={() => { if (onMemberUpdate) onMemberUpdate() }}
       />
     )
   }

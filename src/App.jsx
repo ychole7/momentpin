@@ -250,6 +250,7 @@ export default function App() {
             onSelectGroup={(g) => { setGroup(g); localStorage.setItem('mp_group', g.id); setActiveTab('home') }}
             onGroupUpdate={(g) => setGroup(g)}
             onCurrentGroupLeave={() => setGroup(null)}
+            onMemberUpdate={() => setProfileVersion(v => v + 1)}
           />
         )}
 
