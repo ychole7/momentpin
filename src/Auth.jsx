@@ -56,6 +56,16 @@ export default function Auth() {
     setBusy(false)
   }
 
+  async function signInWithGoogle() {
+    setMsg('')
+    let res = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: window.location.origin },
+    })
+    if (res.error) setMsg(toKoreanAuthError(res.error.message))
+    // 성공 시 구글 로그인 페이지로 리다이렉트됨 (여기서 할 일 없음)
+  }
+
   if (showPrivacy) return <Privacy onClose={() => setShowPrivacy(false)} />
   if (showTerms) return <Terms onClose={() => setShowTerms(false)} />
 
@@ -75,6 +85,22 @@ export default function Auth() {
 
       {/* 하단 입력 영역 */}
       <div style={S.form}>
+        <button type="button" style={S.googleBtn} onClick={signInWithGoogle} disabled={busy}>
+          <svg width="18" height="18" viewBox="0 0 18 18" style={{ flex: 'none' }}>
+            <path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84c-.21 1.13-.85 2.08-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.87 2.68-6.62z"/>
+            <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.81.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.96v2.33C2.44 15.98 5.48 18 9 18z"/>
+            <path fill="#FBBC05" d="M3.97 10.72c-.18-.54-.28-1.12-.28-1.72s.1-1.18.28-1.72V4.95H.96A8.996 8.996 0 0 0 0 9c0 1.45.35 2.83.96 4.05l3.01-2.33z"/>
+            <path fill="#EA4335" d="M9 3.58c1.32 0 2.51.45 3.44 1.35l2.59-2.59C13.46.89 11.43 0 9 0 5.48 0 2.44 2.02.96 4.95l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58z"/>
+          </svg>
+          Google로 계속하기
+        </button>
+
+        <div style={S.dividerRow}>
+          <span style={S.dividerLine} />
+          <span style={S.dividerText}>또는</span>
+          <span style={S.dividerLine} />
+        </div>
+
         <input style={S.input} type="email" placeholder="이메일"
           value={email} onChange={e => setEmail(e.target.value)} autoComplete="email" />
         <input style={S.input} type="password" placeholder="비밀번호"
@@ -111,6 +137,12 @@ const S = {
   top: { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
     padding: 'calc(env(safe-area-inset-top,0px) + 40px) 32px 32px' },
   form: { padding: '0 24px calc(env(safe-area-inset-bottom,0px) + 32px)' },
+  googleBtn: { width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+    border: '1.5px solid var(--mp-line)', borderRadius: 14, padding: '13px 16px', marginBottom: 16,
+    background: 'var(--mp-card)', color: 'var(--mp-ink)', fontFamily: 'inherit', fontSize: 15, fontWeight: 600, cursor: 'pointer' },
+  dividerRow: { display: 'flex', alignItems: 'center', gap: 10, margin: '2px 0 16px' },
+  dividerLine: { flex: 1, height: 1, background: 'var(--mp-line)' },
+  dividerText: { fontSize: 12, color: 'var(--mp-muted)', fontWeight: 500 },
   logoRow: { display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 },
   logoDot: { width: 72, height: 72, objectFit: 'contain' },
   logoName: { fontSize: 28, fontWeight: 700, letterSpacing: '-.5px', color: 'var(--mp-ink)', lineHeight: 1 },
