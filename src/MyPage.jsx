@@ -116,8 +116,10 @@ export default function MyPage({ user, group, members, onClose, onOpenStats, onS
         if (j.error === 'owner_has_members') { flash(j.message); setBusy(false); return }
         flash('탈퇴 실패: ' + (j.message || j.error || '알 수 없는 오류')); setBusy(false); return
       }
-      // 성공 → 완료 안내를 보여주고, 확인을 누르면 로그아웃 처리
-      await supabase.auth.signOut()
+      // 성공 → 계정은 서버에서 이미 삭제됨. signOut은 아직 하지 않고
+      // 완료 화면을 먼저 보여준 뒤, 사용자가 "확인"을 누를 때 로그아웃 처리한다.
+      // (여기서 signOut을 먼저 하면 App.jsx가 세션 소실을 감지해 이 화면 자체가
+      //  즉시 언마운트되어 완료 안내를 볼 틈도 없이 로그인 화면으로 튕겨버림)
       localStorage.removeItem('mp_group')
       setBusy(false)
       setDeletedDone(true)
@@ -133,7 +135,7 @@ export default function MyPage({ user, group, members, onClose, onOpenStats, onS
           <div style={S.doneIcon}>✅</div>
           <div style={S.doneTitle}>탈퇴가 완료됐어요</div>
           <div style={S.doneBody}>그동안 닿음을 이용해 주셔서 감사했어요.<br/>계정과 모든 기록이 삭제됐어요.</div>
-          <button style={S.doneBtn} onClick={() => { window.location.href = '/' }}>확인</button>
+          <button style={S.doneBtn} onClick={async () => { try { await supabase.auth.signOut() } catch {} window.location.href = '/' }}>확인</button>
         </div>
       </div>
     )
