@@ -336,7 +336,6 @@ export default function MyPage({ user, group, members, onClose, onOpenStats, onG
             {/* 계정 */}
             <div style={S.secLabel}>계정</div>
             <div style={S.card}>
-              <button style={S.linkRow} onClick={onLeaveGroup}>🔄 다른 그룹으로</button>
               <button style={{ ...S.linkRow, color: 'var(--mp-coral)', borderBottom: 'none' }} onClick={onSignOut}>🚪 로그아웃</button>
             </div>
 

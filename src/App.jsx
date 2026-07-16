@@ -234,9 +234,7 @@ export default function App() {
             user={session.user}
             group={group}
             profileVersion={profileVersion}
-            onOpenSettings={() => setActiveTab('mypage')}
             onMembersLoaded={(m) => setStatsMembers(m || [])}
-            onOpenSwitcher={() => setActiveTab('group')}
           />
         )}
 

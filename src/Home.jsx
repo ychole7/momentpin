@@ -38,7 +38,7 @@ async function reverseGeocode(lat, lng) {
 function hhmm(ts) { const d = new Date(ts); return d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0') }
 function ago(ts) { const d = (Date.now() - new Date(ts).getTime()) / 1000; if (d < 60) return '방금'; if (d < 3600) return Math.floor(d / 60) + '분 전'; return Math.floor(d / 3600) + '시간 전' }
 
-export default function Home({ user, group, profileVersion, onOpenSettings, onMembersLoaded, onOpenSwitcher }) {
+export default function Home({ user, group, profileVersion, onMembersLoaded }) {
   const [members, setMembers] = useState([])
   const [posts, setPosts] = useState([])
   const [streak, setStreak] = useState(null)          // 스트릭: {count, best, week, missing, todayDone}
@@ -521,12 +521,11 @@ export default function Home({ user, group, profileVersion, onOpenSettings, onMe
           <img src="/logo.svg" alt="닿음" style={S.logoDot} />
           <div>
             <div style={S.logoName}>닿음</div>
-            <button style={S.groupSwitch} onClick={onOpenSwitcher}>{group.name} <span style={{ fontSize: 10, opacity: .6 }}>▾</span></button>
+            <div style={S.groupLabel}>{group.name}</div>
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <button style={S.codeBtn} onClick={copyInviteLink}>🔗 초대</button>
-          <button style={S.codeBtn} onClick={onOpenSettings}>⚙️</button>
         </div>
       </div>
 
@@ -902,7 +901,7 @@ const S = {
   top: { position: 'sticky', top: 0, zIndex: 1000, background: 'var(--mp-topbar)', backdropFilter: 'blur(12px)', borderBottom: '1px solid var(--mp-line)', padding: '13px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
   logoRow: { display: 'flex', alignItems: 'center', gap: 8 },
   logoDot: { width: 36, height: 36, objectFit: 'contain' },
-  groupSwitch: { border: 'none', background: 'var(--mp-card2)', color: 'var(--mp-ink)', fontFamily: 'inherit', fontSize: 12, fontWeight: 700, padding: '3px 10px', borderRadius: 12, cursor: 'pointer', marginTop: 2, maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center' },
+  groupLabel: { fontSize: 12, fontWeight: 600, color: 'var(--mp-muted)', marginTop: 2, maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
   logoName: { fontSize: 18, fontWeight: 700, letterSpacing: '-.4px', color: 'var(--mp-ink)' },
   codeBtn: { border: 'none', background: 'linear-gradient(135deg,#ff7a45,#ff4d5e)', color: '#fff', fontFamily: 'inherit', fontSize: 12, fontWeight: 700, padding: '8px 13px', borderRadius: 20, cursor: 'pointer', boxShadow: '0 4px 12px rgba(255,77,94,.3)' },
   xmasBanner: { display: 'flex', alignItems: 'center', gap: 12, margin: '10px 14px 0', padding: '13px 16px', borderRadius: 16, textDecoration: 'none', background: 'linear-gradient(135deg,#c0392b,#7d1f1f)', boxShadow: '0 8px 22px rgba(140,20,20,.35)', border: '1px solid rgba(255,217,138,.35)' },
