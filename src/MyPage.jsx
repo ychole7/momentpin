@@ -16,6 +16,7 @@ export default function MyPage({ user, group, members, onClose, onOpenStats, onS
   const [busy, setBusy] = useState(false)
   const [toast, setToast] = useState('')
   const [pushOn, setPushOn] = useState(false)
+  const [deletedDone, setDeletedDone] = useState(false)  // 회원 탈퇴 완료 안내 표시
   function flash(m) { setToast(m); setTimeout(() => setToast(''), 2400) }
 
   useEffect(() => { loadMe(); loadMyStats(); checkPush() }, [])
@@ -115,13 +116,27 @@ export default function MyPage({ user, group, members, onClose, onOpenStats, onS
         if (j.error === 'owner_has_members') { flash(j.message); setBusy(false); return }
         flash('탈퇴 실패: ' + (j.message || j.error || '알 수 없는 오류')); setBusy(false); return
       }
-      // 성공 → 로그아웃 처리
+      // 성공 → 완료 안내를 보여주고, 확인을 누르면 로그아웃 처리
       await supabase.auth.signOut()
       localStorage.removeItem('mp_group')
-      window.location.href = '/'
+      setBusy(false)
+      setDeletedDone(true)
     } catch (e) {
       flash('탈퇴 중 오류: ' + (e.message || e)); setBusy(false)
     }
+  }
+
+  if (deletedDone) {
+    return (
+      <div style={S.doneWrap}>
+        <div style={S.doneCard}>
+          <div style={S.doneIcon}>✅</div>
+          <div style={S.doneTitle}>탈퇴가 완료됐어요</div>
+          <div style={S.doneBody}>그동안 닿음을 이용해 주셔서 감사했어요.<br/>계정과 모든 기록이 삭제됐어요.</div>
+          <button style={S.doneBtn} onClick={() => { window.location.href = '/' }}>확인</button>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -182,20 +197,17 @@ export default function MyPage({ user, group, members, onClose, onOpenStats, onS
           </div>
         </div>
 
-        {/* 계정 */}
-        <div style={S.secLabel}>계정</div>
-        <div style={S.card}>
-          <button style={{ ...S.linkRow, color: 'var(--mp-coral)', borderBottom: 'none' }} onClick={onSignOut}>🚪 로그아웃</button>
-        </div>
-
-        <div style={{ ...S.secLabel, marginTop: 20 }}>약관·정책</div>
+        {/* 약관·정책 */}
+        <div style={S.secLabel}>약관·정책</div>
         <div style={S.card}>
           <button style={{ ...S.linkRow, fontSize: 13.5 }} onClick={onOpenPrivacy}>📄 개인정보처리방침</button>
           <button style={{ ...S.linkRow, fontSize: 13.5, borderBottom: 'none' }} onClick={onOpenTerms}>📋 이용약관</button>
         </div>
 
-        <div style={{ ...S.secLabel, marginTop: 20 }}>위험 구역</div>
+        {/* 계정: 로그아웃/회원탈퇴를 한 묶음으로 맨 아래에 */}
+        <div style={{ ...S.secLabel, marginTop: 20 }}>계정</div>
         <div style={S.card}>
+          <button style={{ ...S.linkRow, color: 'var(--mp-coral)' }} onClick={onSignOut}>🚪 로그아웃</button>
           <button style={{ ...S.linkRow, color: 'var(--mp-muted)', borderBottom: 'none', fontSize: 13 }} onClick={deleteAccount}>회원 탈퇴</button>
         </div>
       </div>
@@ -246,4 +258,10 @@ const S = {
   dangerNote: { fontSize: 12, color: 'var(--mp-coral)', textAlign: 'center', marginTop: 8 },
   ownerNote: { background: 'var(--mp-card2)', borderRadius: 10, padding: '13px 15px', fontSize: 13, color: 'var(--mp-sub)', textAlign: 'center', lineHeight: 1.5 },
   toast: { position: 'fixed', bottom: 28, left: '50%', transform: 'translateX(-50%)', background: 'var(--mp-ink)', color: 'var(--mp-bg)', padding: '12px 20px', borderRadius: 30, fontSize: 13, fontWeight: 600, boxShadow: '0 10px 30px rgba(0,0,0,.3)', zIndex: 4000 },
+  doneWrap: { minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--mp-bg)', padding: 24, fontFamily: "'Outfit','Gowun Dodum',sans-serif" },
+  doneCard: { width: '100%', maxWidth: 360, background: 'var(--mp-card)', borderRadius: 20, padding: '36px 28px', textAlign: 'center', boxShadow: '0 10px 40px rgba(0,0,0,.08)' },
+  doneIcon: { fontSize: 40, marginBottom: 14 },
+  doneTitle: { fontSize: 19, fontWeight: 700, color: 'var(--mp-ink)', marginBottom: 10 },
+  doneBody: { fontSize: 14, color: 'var(--mp-sub)', lineHeight: 1.6, marginBottom: 26 },
+  doneBtn: { width: '100%', border: 'none', borderRadius: 14, padding: 15, fontFamily: 'inherit', fontSize: 15, fontWeight: 700, cursor: 'pointer', color: '#fff', background: 'linear-gradient(135deg,#ff7a45,#ff4d5e)', boxShadow: '0 8px 20px rgba(255,77,94,.3)' },
 }

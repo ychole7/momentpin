@@ -4,6 +4,19 @@ import { supabase } from './supabaseClient'
 import Privacy from './Privacy'
 import Terms from './Terms'
 
+// Supabase Auth 에러 메시지를 한글로 변환
+function toKoreanAuthError(message) {
+  const m = (message || '').toLowerCase()
+  if (m.includes('invalid login credentials')) return '이메일 또는 비밀번호가 올바르지 않아요.'
+  if (m.includes('email not confirmed')) return '이메일 인증이 아직 완료되지 않았어요. 받은 편지함을 확인해 주세요.'
+  if (m.includes('user already registered') || m.includes('already registered')) return '이미 가입된 이메일이에요. 로그인해 주세요.'
+  if (m.includes('password should be at least')) return '비밀번호는 최소 8자 이상이어야 해요.'
+  if (m.includes('unable to validate email') || m.includes('invalid email')) return '올바른 이메일 형식이 아니에요.'
+  if (m.includes('rate limit') || m.includes('too many requests')) return '요청이 너무 많아요. 잠시 후 다시 시도해 주세요.'
+  if (m.includes('network')) return '네트워크 연결을 확인해 주세요.'
+  return '문제가 발생했어요. 잠시 후 다시 시도해 주세요.'
+}
+
 export default function Auth() {
   const [mode, setMode] = useState('login') // 'login' | 'signup'
   const [showPrivacy, setShowPrivacy] = useState(false)
@@ -28,7 +41,7 @@ export default function Auth() {
       // ⚠️ CRM 빌드 경고 회피: { error } 구조분해 대신 res.error 사용
       let res = await supabase.auth.signUp({ email, password: pw })
       const error = res.error
-      if (error) { setMsg(error.message); setBusy(false); return }
+      if (error) { setMsg(toKoreanAuthError(error.message)); setBusy(false); return }
       // 이메일 확인이 꺼져 있으면 바로 로그인됨. 켜져 있으면 안내.
       if (!res.data.session) {
         setMsg('가입 완료! 메일 인증이 필요하면 받은 편지함을 확인해 주세요.')
@@ -37,7 +50,7 @@ export default function Auth() {
     } else {
       let res = await supabase.auth.signInWithPassword({ email, password: pw })
       const error = res.error
-      if (error) { setMsg(error.message); setBusy(false); return }
+      if (error) { setMsg(toKoreanAuthError(error.message)); setBusy(false); return }
     }
     // 성공 시 onAuthStateChange가 App에서 세션을 감지 → 화면 전환
     setBusy(false)
