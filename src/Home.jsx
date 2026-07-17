@@ -38,7 +38,7 @@ async function reverseGeocode(lat, lng) {
 function hhmm(ts) { const d = new Date(ts); return d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0') }
 function ago(ts) { const d = (Date.now() - new Date(ts).getTime()) / 1000; if (d < 60) return '방금'; if (d < 3600) return Math.floor(d / 60) + '분 전'; return Math.floor(d / 3600) + '시간 전' }
 
-export default function Home({ user, group, profileVersion, onMembersLoaded }) {
+export default function Home({ user, group, profileVersion, isActive, onMembersLoaded }) {
   const [members, setMembers] = useState([])
   const [posts, setPosts] = useState([])
   const [streak, setStreak] = useState(null)          // 스트릭: {count, best, week, missing, todayDone}
@@ -74,6 +74,25 @@ export default function Home({ user, group, profileVersion, onMembersLoaded }) {
   useEffect(() => { if (profileVersion) loadMembers() }, [profileVersion])
   useEffect(() => { loadMoments() }, [group.id])
   useEffect(() => { loadLikes() }, [group.id])
+  // 앱이 백그라운드에 있다가 다시 화면에 보이게 될 때(예: 알림 클릭으로 복귀) 최신 안부 상태를 재조회.
+  // 실시간 구독이 백그라운드 동안 이벤트를 놓쳤을 수 있어, 포그라운드 복귀 시점에 한 번 더 확인한다.
+  useEffect(() => {
+    function onVisible() {
+      if (document.visibilityState === 'visible') {
+        loadMoments(); loadPosts(); loadLikes()
+      }
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('focus', onVisible)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('focus', onVisible)
+    }
+  }, [group.id])
+  // 다른 탭(그룹/마이페이지)에 있다가 홈 탭으로 다시 돌아올 때도 최신화
+  useEffect(() => {
+    if (isActive) { loadMoments(); loadPosts(); loadLikes() }
+  }, [isActive])
   useEffect(() => {
     const t = setInterval(() => setNowTick(Date.now()), 1000)
     return () => clearInterval(t)

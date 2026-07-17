@@ -239,6 +239,7 @@ export default function App() {
             user={session.user}
             group={group}
             profileVersion={profileVersion}
+            isActive={activeTab === 'home'}
             onMembersLoaded={(m) => setStatsMembers(m || [])}
           />
         </div>
