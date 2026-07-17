@@ -13,7 +13,7 @@ function makeCode() {
   return 'MP-' + s
 }
 
-export default function GroupList({ user, currentGroup, onSelectGroup, onGroupUpdate, onCurrentGroupLeave, onMemberUpdate }) {
+export default function GroupList({ user, currentGroup, isActive, onSelectGroup, onGroupUpdate, onCurrentGroupLeave, onMemberUpdate }) {
   const [groups, setGroups] = useState([])
   const [loading, setLoading] = useState(true)
   const [adding, setAdding] = useState(false)        // 추가 폼 펼침 여부
@@ -28,6 +28,13 @@ export default function GroupList({ user, currentGroup, onSelectGroup, onGroupUp
 
   useEffect(() => { load(); loadProfile() }, [])
 
+  // 컴포넌트는 계속 마운트 상태로 유지되므로(탭 전환 시 언마운트 안 됨),
+  // "그룹" 탭이 다시 활성화될 때마다 안부 진행 상태 등 최신 정보를 조용히 재조회한다.
+  // (loading 화면 없이 백그라운드로 갱신 — 이미 본 목록이 깜빡이지 않게)
+  useEffect(() => {
+    if (isActive && !settingsGroup) load({ silent: true })
+  }, [isActive])
+
   async function loadProfile() {
     let res = await supabase.from('profiles').select('display_name,color').eq('user_id', user.id).maybeSingle()
     if (!res.error && res.data) {
@@ -36,13 +43,14 @@ export default function GroupList({ user, currentGroup, onSelectGroup, onGroupUp
     }
   }
 
-  async function load() {
-    setLoading(true)
+  async function load(opts) {
+    const silent = opts && opts.silent
+    if (!silent) setLoading(true)
     let res = await supabase
       .from('members')
       .select('group_id, groups(id,name,invite_code,created_by,alarm_mode,fixed_times,random_start,random_end,window_min)')
       .eq('user_id', user.id)
-    if (res.error) { setLoading(false); return }
+    if (res.error) { if (!silent) setLoading(false); return }
     const list = (res.data || []).map(r => r.groups).filter(Boolean)
 
     const now = new Date().toISOString()

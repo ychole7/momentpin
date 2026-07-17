@@ -247,6 +247,7 @@ export default function App() {
           <GroupList
             user={session.user}
             currentGroup={group}
+            isActive={activeTab === 'group'}
             onSelectGroup={(g) => { setGroup(g); localStorage.setItem('mp_group', g.id); setActiveTab('home') }}
             onGroupUpdate={(g) => setGroup(g)}
             onCurrentGroupLeave={() => setGroup(null)}
