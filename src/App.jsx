@@ -234,16 +234,16 @@ export default function App() {
   return (
     <>
       <div style={{ paddingBottom: 74 }}>
-        {activeTab === 'home' && (
+        <div style={{ display: activeTab === 'home' ? 'block' : 'none' }}>
           <Home
             user={session.user}
             group={group}
             profileVersion={profileVersion}
             onMembersLoaded={(m) => setStatsMembers(m || [])}
           />
-        )}
+        </div>
 
-        {activeTab === 'group' && (
+        <div style={{ display: activeTab === 'group' ? 'block' : 'none' }}>
           <GroupList
             user={session.user}
             currentGroup={group}
@@ -252,9 +252,9 @@ export default function App() {
             onCurrentGroupLeave={() => setGroup(null)}
             onMemberUpdate={() => setProfileVersion(v => v + 1)}
           />
-        )}
+        </div>
 
-        {activeTab === 'mypage' && (
+        <div style={{ display: activeTab === 'mypage' ? 'block' : 'none' }}>
           <MyPage
             user={session.user}
             group={group}
@@ -266,7 +266,7 @@ export default function App() {
             onOpenPrivacy={() => setShowPrivacy(true)}
             onOpenTerms={() => setShowTerms(true)}
           />
-        )}
+        </div>
       </div>
 
       <BottomNav active={activeTab} onChange={setActiveTab} />
