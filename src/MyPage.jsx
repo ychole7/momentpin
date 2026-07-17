@@ -17,6 +17,12 @@ export default function MyPage({ user, group, members, onClose, onOpenStats, onS
   const [toast, setToast] = useState('')
   const [pushOn, setPushOn] = useState(false)
   const [deletedDone, setDeletedDone] = useState(false)  // 회원 탈퇴 완료 안내 표시
+  // 비밀번호 변경 (이메일/비밀번호로 가입한 계정만 표시 — 구글 등 소셜 로그인은 비밀번호가 없음)
+  const isPasswordAccount = (user.app_metadata?.providers || [user.app_metadata?.provider]).includes('email')
+  const [showPwForm, setShowPwForm] = useState(false)
+  const [newPw, setNewPw] = useState('')
+  const [newPw2, setNewPw2] = useState('')
+  const [pwBusy, setPwBusy] = useState(false)
   function flash(m) { setToast(m); setTimeout(() => setToast(''), 2400) }
 
   useEffect(() => { loadMe(); loadMyStats(); checkPush() }, [])
@@ -97,6 +103,18 @@ export default function MyPage({ user, group, members, onClose, onOpenStats, onS
     if (res.error) { flash('저장 실패: ' + res.error.message); return }
     flash('프로필 저장됨 ✨')
     if (onProfileUpdate) onProfileUpdate({ display_name: myName.trim().slice(0, 12), color: myColor })
+  }
+
+  async function changePassword() {
+    if (!newPw || newPw.length < 8) { flash('비밀번호는 8자 이상이어야 해요'); return }
+    if (!/[a-zA-Z]/.test(newPw) || !/[0-9]/.test(newPw)) { flash('영문과 숫자를 함께 포함해 주세요'); return }
+    if (newPw !== newPw2) { flash('비밀번호가 서로 달라요'); return }
+    setPwBusy(true)
+    let res = await supabase.auth.updateUser({ password: newPw })
+    setPwBusy(false)
+    if (res.error) { flash('변경 실패: ' + res.error.message); return }
+    setShowPwForm(false); setNewPw(''); setNewPw2('')
+    flash('비밀번호가 변경됐어요 ✨')
   }
 
   async function deleteAccount() {
@@ -198,6 +216,31 @@ export default function MyPage({ user, group, members, onClose, onOpenStats, onS
             </button>
           </div>
         </div>
+
+        {/* 보안: 비밀번호 변경 (이메일/비밀번호 계정만) */}
+        {isPasswordAccount && (
+          <>
+            <div style={S.secLabel}>보안</div>
+            <div style={S.card}>
+              {!showPwForm ? (
+                <button style={{ ...S.linkRow, borderBottom: 'none' }} onClick={() => setShowPwForm(true)}>🔒 비밀번호 변경</button>
+              ) : (
+                <>
+                  <div style={S.rowLabel}>새 비밀번호</div>
+                  <input style={S.input} type="password" value={newPw} onChange={e => setNewPw(e.target.value)} placeholder="영문+숫자 조합 8자 이상" autoComplete="new-password" />
+                  <div style={{ ...S.rowLabel, marginTop: 12 }}>새 비밀번호 확인</div>
+                  <input style={S.input} type="password" value={newPw2} onChange={e => setNewPw2(e.target.value)} placeholder="다시 입력해 주세요" autoComplete="new-password" />
+                  <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
+                    <button style={{ ...S.smallBtn, flex: 1 }} onClick={() => { setShowPwForm(false); setNewPw(''); setNewPw2('') }}>취소</button>
+                    <button style={{ ...S.save, flex: 2, marginTop: 0, opacity: pwBusy ? .6 : 1 }} disabled={pwBusy} onClick={changePassword}>
+                      {pwBusy ? '변경 중…' : '변경하기'}
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </>
+        )}
 
         {/* 약관·정책 */}
         <div style={S.secLabel}>약관·정책</div>
