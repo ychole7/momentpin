@@ -308,12 +308,18 @@ export default function Home({ user, group, profileVersion, onMembersLoaded }) {
       if (!imgUrl && p.img_back) { let s = await supabase.storage.from('moments').createSignedUrl(p.img_back, 3600); if (!s.error && s.data) imgUrl = s.data.signedUrl }
       const color = colorOf(p.user_id)
       const nm = nameOf(p.user_id)
-      const inner = imgUrl
-        ? `<div style="width:48px;height:48px;border-radius:50%;border:3px solid #fff;box-shadow:0 4px 12px rgba(0,0,0,.3);background-image:url('${imgUrl}');background-size:cover;background-position:center;"></div>`
-        : `<div style="width:44px;height:44px;border-radius:50%;border:3px solid #fff;background:${color};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.3);">${nm[0]}</div>`
-      const label = `<div style="margin-top:3px;background:#16161a;color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.3);">${nm}</div>`
+      const pinBg = imgUrl
+        ? `background-image:url('${imgUrl}');background-size:cover;background-position:center;`
+        : `background:${color};`
+      // 물방울(핀) 모양: 원 + 아래로 뾰족한 꼬리. clip-path로 형태를 잡고 사진/색은 배경으로 채움
+      const inner = `
+        <div style="position:relative;width:46px;height:58px;filter:drop-shadow(0 4px 10px rgba(0,0,0,.35));">
+          <div style="position:absolute;inset:0;background:#fff;clip-path:path('M23 0C10.3 0 0 10.3 0 23c0 15 23 35 23 35s23-20 23-35C46 10.3 35.7 0 23 0Z');"></div>
+          <div style="position:absolute;top:3px;left:3px;right:3px;bottom:13px;border-radius:50%;${pinBg}display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:16px;">${imgUrl ? '' : nm[0]}</div>
+        </div>`
+      const label = `<div style="margin-top:2px;background:#16161a;color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.3);">${nm}</div>`
       const html = `<div style="display:flex;flex-direction:column;align-items:center;">${inner}${label}</div>`
-      const icon = L.divIcon({ html, className: '', iconSize: [60, 70], iconAnchor: [30, 30] })
+      const icon = L.divIcon({ html, className: '', iconSize: [60, 82], iconAnchor: [30, 58] })
       const mk = L.marker([p.lat, p.lng], { icon }).addTo(map)
       mk.on('click', () => setViewPost(p))
       markersRef.current.push(mk)
