@@ -17,13 +17,6 @@ function distLabel(myPos, loc) {
   return d.toFixed(1) + 'km'
 }
 const fmtKm = (d) => d < 1 ? Math.round(d * 1000) + 'm' : d.toFixed(1) + 'km'
-const SIDO_SHORT = {
-  '서울특별시':'서울','부산광역시':'부산','대구광역시':'대구','인천광역시':'인천',
-  '광주광역시':'광주','대전광역시':'대전','울산광역시':'울산','세종특별자치시':'세종',
-  '경기도':'경기','강원특별자치도':'강원','강원도':'강원','충청북도':'충북','충청남도':'충남',
-  '전북특별자치도':'전북','전라북도':'전북','전라남도':'전남','경상북도':'경북','경상남도':'경남',
-  '제주특별자치도':'제주'
-}
 async function reverseGeocode(lat, lng) {
   try {
     // 서버의 /api/geocode 프록시를 거쳐 카카오 로컬 API로 행정동 이름을 받아옴
@@ -1009,7 +1002,7 @@ const S = {
   statusDot: { position: 'absolute', right: -2, bottom: -2, width: 16, height: 16, borderRadius: '50%', border: '2px solid #fafafa', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: '#fff', fontWeight: 700 },
   distTag: { fontSize: 12, color: '#13bca4', fontWeight: 700, marginLeft: 7 },
   shareTag: { fontSize: 12, color: 'var(--mp-muted)', fontWeight: 500 },
-  statsBtn: { width: '100%', border: 'none', borderRadius: 14, padding: 14, fontFamily: 'inherit', fontSize: 14, fontWeight: 700, cursor: 'pointer', color: 'var(--mp-ink)', background: 'linear-gradient(135deg,#fff1ed,#ffe9e0)', border: '1.5px solid #ffd9cc', marginTop: 24 },
+  statsBtn: { width: '100%', borderRadius: 14, padding: 14, fontFamily: 'inherit', fontSize: 14, fontWeight: 700, cursor: 'pointer', color: 'var(--mp-ink)', background: 'linear-gradient(135deg,#fff1ed,#ffe9e0)', border: '1.5px solid #ffd9cc', marginTop: 24 },
   actions: { display: 'flex', gap: 10, marginTop: 24 },
   ghost: { flex: 1, border: '1.5px solid var(--mp-line)', background: 'var(--mp-card)', color: 'var(--mp-ink)', borderRadius: 14, padding: 13, fontFamily: 'inherit', fontSize: 14, fontWeight: 600, cursor: 'pointer' },
   pop: { position: 'fixed', inset: 0, zIndex: 3000, background: 'rgba(10,10,14,.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 },
