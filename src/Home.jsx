@@ -387,20 +387,20 @@ export default function Home({ user, group, profileVersion, isActive, onMembersL
       const pinBg = imgUrl
         ? `background-image:url('${imgUrl}');background-size:cover;background-position:center;`
         : `background:${color};`
-      // 닿음 전용 마커: 기존 지도 핀에 브랜드의 'ㅎ'을 결합.
+      // 닿음 전용 미니 마커:
+      // 지도에서는 사진 대신 브랜드 심볼 'ㅎ'을 보여주고,
+      // 탭하면 기존 상세 보기(setViewPost)로 사진을 확인합니다.
       const inner = `
-        <div style="position:relative;width:50px;height:62px;filter:drop-shadow(0 5px 10px rgba(30,39,70,.24));">
-          <div style="position:absolute;inset:0;background:#fff;border:3px solid #1e2746;border-radius:25px 25px 25px 8px;transform:rotate(-45deg);"></div>
-          <div style="position:absolute;top:7px;left:7px;width:36px;height:36px;border-radius:50%;overflow:hidden;background:#1e2746;display:flex;align-items:center;justify-content:center;">
-            ${imgUrl ? `<div style="position:absolute;inset:0;${pinBg}"></div>` : ''}
-            <span style="position:relative;color:#fff;font-size:16px;font-weight:800;line-height:1;">${imgUrl ? '' : 'ㅎ'}</span>
+        <div style="position:relative;width:46px;height:56px;filter:drop-shadow(0 4px 7px rgba(30,39,70,.22));">
+          <div style="position:absolute;left:2px;top:1px;width:42px;height:42px;border-radius:13px 13px 13px 4px;background:#1e2746;border:3px solid #fff;transform:rotate(-45deg);box-sizing:border-box;display:flex;align-items:center;justify-content:center;">
+            <span style="display:block;color:#fff;font-size:22px;font-weight:900;line-height:1;transform:rotate(45deg);font-family:Arial,sans-serif;">ㅎ</span>
           </div>
-          <div style="position:absolute;left:19px;bottom:3px;width:12px;height:12px;border-radius:50%;background:#d6b46a;border:2px solid #fff;"></div>
+          <div style="position:absolute;left:18px;top:39px;width:9px;height:9px;border-radius:50%;background:#d6b46a;border:2px solid #fff;box-sizing:content-box;"></div>
         </div>`
-      const label = `<div style="margin-top:-1px;background:#1e2746;color:#fff;font-size:10px;font-weight:700;padding:3px 8px;border-radius:10px;white-space:nowrap;box-shadow:0 3px 8px rgba(30,39,70,.18);">${nm}</div>`
-      const html = `<div style="display:flex;flex-direction:column;align-items:center;">${inner}${label}</div>`
-      const icon = L.divIcon({ html, className: '', iconSize: [64, 84], iconAnchor: [32, 62] })
+      const html = `<div style="display:flex;align-items:center;justify-content:center;width:46px;height:56px;">${inner}</div>`
+      const icon = L.divIcon({ html, className: '', iconSize: [46, 56], iconAnchor: [23, 52] })
       const mk = L.marker([p.lat, p.lng], { icon }).addTo(map)
+      mk.bindTooltip(nm, { direction: 'top', offset: [0, -40], opacity: 0.95 })
       mk.on('click', () => setViewPost(p))
       markersRef.current.push(mk)
     }
