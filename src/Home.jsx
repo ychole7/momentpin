@@ -117,7 +117,9 @@ export default function Home({ user, group, profileVersion, isActive, onMembersL
       markersRef.current = []
     }
   }, [tab])
-  useEffect(() => { drawPins() }, [posts, members])
+  // 지도/안부/멤버/사진 URL이 각각 비동기로 로드되므로,
+  // 재실행 직후 어느 것이 먼저 도착하더라도 핀이 다시 그려지게 합니다.
+  useEffect(() => { drawPins() }, [posts, members, moments, signed])
   useEffect(() => { resolveSigned() }, [posts])
 
   // 현재 푸시 구독 상태 확인
@@ -285,6 +287,11 @@ export default function Home({ user, group, profileVersion, isActive, onMembersL
     }
     setSigned(map)
   }
+
+  // signed URL 갱신이 끝난 뒤 지도 핀도 최신 사진으로 다시 렌더링
+  useEffect(() => {
+    if (mapRef.current && tab === 'map') drawPins()
+  }, [signed, tab])
 
   function initMap() {
     const L = window.L
