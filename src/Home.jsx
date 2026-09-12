@@ -17,6 +17,7 @@ function distLabel(myPos, loc) {
   return d.toFixed(1) + 'km'
 }
 const fmtKm = (d) => d < 1 ? Math.round(d * 1000) + 'm' : d.toFixed(1) + 'km'
+function escapeAttr(v) { return String(v).replace(/&/g, '&amp;').replace(/\"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/'/g, '&#39;') }
 async function reverseGeocode(lat, lng) {
   try {
     // 서버의 /api/geocode 프록시를 거쳐 카카오 로컬 API로 행정동 이름을 받아옴
@@ -407,6 +408,7 @@ export default function Home({ user, group, profileVersion, isActive, onMembersL
         </div>`
       const html = `<div style="display:flex;align-items:center;justify-content:center;width:58px;height:68px;">${inner}</div>`
       const icon = L.divIcon({ html, className: '', iconSize: [58, 68], iconAnchor: [29, 64] })
+      const mk = L.marker([p.lat, p.lng], { icon }).addTo(map)
       mk.on('click', () => setViewPost(p))
       markersRef.current.push(mk)
     }
