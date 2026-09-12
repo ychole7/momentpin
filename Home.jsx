@@ -39,8 +39,6 @@ export default function Home({ user, group, profileVersion, isActive, onMembersL
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [uploadStep, setUploadStep] = useState('')  // '위치', '업로드', '기록'
-  const [selectedFile, setSelectedFile] = useState(null)
-  const [previewUrl, setPreviewUrl] = useState('')
   const [toast, setToast] = useState('')
   const [tab, setTab] = useState('map')
   const [viewPost, setViewPost] = useState(null)
@@ -389,20 +387,20 @@ export default function Home({ user, group, profileVersion, isActive, onMembersL
       const pinBg = imgUrl
         ? `background-image:url('${imgUrl}');background-size:cover;background-position:center;`
         : `background:${color};`
-      // 닿음 전용 마커: 기존 지도 핀에 브랜드의 'ㅎ'을 결합.
+      // 닿음 전용 미니 마커:
+      // 지도에서는 사진 대신 브랜드 심볼 'ㅎ'을 보여주고,
+      // 탭하면 기존 상세 보기(setViewPost)로 사진을 확인합니다.
       const inner = `
-        <div style="position:relative;width:50px;height:62px;filter:drop-shadow(0 5px 10px rgba(30,39,70,.24));">
-          <div style="position:absolute;inset:0;background:#fff;border:3px solid #1e2746;border-radius:25px 25px 25px 8px;transform:rotate(-45deg);"></div>
-          <div style="position:absolute;top:7px;left:7px;width:36px;height:36px;border-radius:50%;overflow:hidden;background:#1e2746;display:flex;align-items:center;justify-content:center;">
-            ${imgUrl ? `<div style="position:absolute;inset:0;${pinBg}"></div>` : ''}
-            <span style="position:relative;color:#fff;font-size:16px;font-weight:800;line-height:1;">${imgUrl ? '' : 'ㅎ'}</span>
+        <div style="position:relative;width:46px;height:56px;filter:drop-shadow(0 4px 7px rgba(30,39,70,.22));">
+          <div style="position:absolute;left:2px;top:1px;width:42px;height:42px;border-radius:13px 13px 13px 4px;background:#1e2746;border:3px solid #fff;transform:rotate(-45deg);box-sizing:border-box;display:flex;align-items:center;justify-content:center;">
+            <span style="display:block;color:#fff;font-size:22px;font-weight:900;line-height:1;transform:rotate(45deg);font-family:Arial,sans-serif;">ㅎ</span>
           </div>
-          <div style="position:absolute;left:19px;bottom:3px;width:12px;height:12px;border-radius:50%;background:#d6b46a;border:2px solid #fff;"></div>
+          <div style="position:absolute;left:18px;top:39px;width:9px;height:9px;border-radius:50%;background:#d6b46a;border:2px solid #fff;box-sizing:content-box;"></div>
         </div>`
-      const label = `<div style="margin-top:-1px;background:#1e2746;color:#fff;font-size:10px;font-weight:700;padding:3px 8px;border-radius:10px;white-space:nowrap;box-shadow:0 3px 8px rgba(30,39,70,.18);">${nm}</div>`
-      const html = `<div style="display:flex;flex-direction:column;align-items:center;">${inner}${label}</div>`
-      const icon = L.divIcon({ html, className: '', iconSize: [64, 84], iconAnchor: [32, 62] })
+      const html = `<div style="display:flex;align-items:center;justify-content:center;width:46px;height:56px;">${inner}</div>`
+      const icon = L.divIcon({ html, className: '', iconSize: [46, 56], iconAnchor: [23, 52] })
       const mk = L.marker([p.lat, p.lng], { icon }).addTo(map)
+      mk.bindTooltip(nm, { direction: 'top', offset: [0, -40], opacity: 0.95 })
       mk.on('click', () => setViewPost(p))
       markersRef.current.push(mk)
     }
@@ -457,19 +455,10 @@ export default function Home({ user, group, profileVersion, isActive, onMembersL
     try { fetch(window.location.origin + '/api/send-moment?groupId=' + group.id) } catch {}
   }
 
-    function onPickFile(e) {
+    async function onPickFile(e) {
     const file = e.target.files && e.target.files[0]
     e.target.value = ''
     if (!file) return
-    if (previewUrl) URL.revokeObjectURL(previewUrl)
-    setSelectedFile(file)
-    setPreviewUrl(URL.createObjectURL(file))
-  }
-
-  async function submitMoment() {
-    const file = selectedFile
-    if (!file) return
-    setSelectedFile(null)
     setBusy(true); setUploadStep('위치')
     try {
       const loc = await getLoc()
@@ -493,23 +482,11 @@ export default function Home({ user, group, profileVersion, isActive, onMembersL
       }, { onConflict: 'moment_id,user_id' })
       if (pres.error) { flash('기록 실패: ' + pres.error.message); setBusy(false); setUploadStep(''); return }
       flash('안부 전했어요! ✨')
-      if (previewUrl) URL.revokeObjectURL(previewUrl)
-      setPreviewUrl('')
       await loadPosts()
       await loadMoments()
       if (loc && mapRef.current) mapRef.current.setView([loc.lat, loc.lng], 15)
-    } catch (err) {
-      flash('오류: ' + (err.message || err))
-      if (previewUrl) URL.revokeObjectURL(previewUrl)
-      setPreviewUrl('')
-    }
+    } catch (err) { flash('오류: ' + (err.message || err)) }
     setBusy(false); setUploadStep('')
-  }
-
-  function cancelMomentPhoto() {
-    if (previewUrl) URL.revokeObjectURL(previewUrl)
-    setPreviewUrl('')
-    setSelectedFile(null)
   }
 
   async function enablePush() {
@@ -808,22 +785,6 @@ export default function Home({ user, group, profileVersion, isActive, onMembersL
                   </div>
                 )
               })}
-          </div>
-        )}
-
-        {selectedFile && previewUrl && (
-          <div style={S.photoModalBackdrop} onClick={cancelMomentPhoto}>
-            <div style={S.photoModal} onClick={(e) => e.stopPropagation()}>
-              <div style={S.photoModalHandle} />
-              <div style={S.photoModalTitle}>지금의 순간을 남길까요?</div>
-              <div style={S.photoModalSub}>사진 한 장으로 오늘의 안부가 닿아요</div>
-              <img src={previewUrl} alt="선택한 안부 사진" style={S.photoPreview} />
-              <div style={S.photoModalNote}>📍 위치가 함께 기록돼요</div>
-              <div style={S.photoModalActions}>
-                <button type="button" style={S.photoCancel} onClick={cancelMomentPhoto}>다시 선택</button>
-                <button type="button" style={S.photoConfirm} onClick={submitMoment}>안부 전하기</button>
-              </div>
-            </div>
           </div>
         )}
 
@@ -1140,16 +1101,6 @@ const S = {
   stepDots: { display: 'inline-flex', gap: 5 },
   stepDot: { width: 6, height: 6, borderRadius: '50%', background: 'rgba(255,255,255,.4)', transition: 'background .2s' },
   stepDotOn: { background: 'var(--mp-card)' },
-  photoModalBackdrop: { position: 'fixed', inset: 0, zIndex: 10000, background: 'rgba(20,24,38,.55)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', padding: 12, backdropFilter: 'blur(5px)' },
-  photoModal: { width: '100%', maxWidth: 520, background: '#fff', borderRadius: '26px 26px 20px 20px', padding: '12px 18px 18px', boxShadow: '0 -12px 40px rgba(0,0,0,.2)' },
-  photoModalHandle: { width: 38, height: 4, borderRadius: 99, background: '#d8d8dc', margin: '0 auto 16px' },
-  photoModalTitle: { fontSize: 20, fontWeight: 850, color: 'var(--mp-ink)', letterSpacing: '-.6px' },
-  photoModalSub: { fontSize: 13, color: 'var(--mp-muted)', marginTop: 5, marginBottom: 14 },
-  photoPreview: { width: '100%', maxHeight: 360, objectFit: 'cover', borderRadius: 18, display: 'block', background: '#f2f2f4' },
-  photoModalNote: { fontSize: 12, color: '#8a743f', background: '#fff9eb', borderRadius: 10, padding: '9px 11px', marginTop: 10 },
-  photoModalActions: { display: 'grid', gridTemplateColumns: '1fr 1.35fr', gap: 9, marginTop: 12 },
-  photoCancel: { border: '1px solid #e2e3e8', background: '#f5f5f7', color: 'var(--mp-ink)', borderRadius: 13, padding: 14, fontFamily: 'inherit', fontWeight: 750, fontSize: 14 },
-  photoConfirm: { border: 'none', background: 'var(--mp-ink)', color: '#fff', borderRadius: 13, padding: 14, fontFamily: 'inherit', fontWeight: 800, fontSize: 14, boxShadow: '0 7px 16px rgba(30,39,70,.18)' },
   actionCard: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, background: 'linear-gradient(135deg,#fffaf2,#fff7f4)', border: '1px solid rgba(214,180,106,.32)', borderRadius: 20, padding: '18px 16px', marginBottom: 10, boxShadow: '0 6px 22px rgba(30,39,70,.06)' },
   actionCopy: { minWidth: 0 },
   actionEyebrow: { fontSize: 10, fontWeight: 800, letterSpacing: .7, color: '#9a7430', marginBottom: 6 },
