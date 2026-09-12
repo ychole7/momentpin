@@ -108,7 +108,14 @@ export default function Home({ user, group, profileVersion, isActive, onMembersL
       return () => clearTimeout(t)
     }
     // 지도 탭을 떠나면 기존 지도 인스턴스를 깨끗이 제거
-    if (mapRef.current) { try { mapRef.current.remove() } catch {} mapRef.current = null; markersRef.current = [] }
+    if (mapRef.current) {
+      try {
+        if (mapRef.current.__daheumResizeObserver) mapRef.current.__daheumResizeObserver.disconnect()
+        mapRef.current.remove()
+      } catch {}
+      mapRef.current = null
+      markersRef.current = []
+    }
   }, [tab])
   useEffect(() => { drawPins() }, [posts, members])
   useEffect(() => { resolveSigned() }, [posts])
@@ -281,20 +288,77 @@ export default function Home({ user, group, profileVersion, isActive, onMembersL
 
   function initMap() {
     const L = window.L
-    if (!L || !mapBoxRef.current) return
-    if (mapRef.current) return  // 이미 떠 있으면 중복 생성 안 함
-    // 컨테이너에 이전 Leaflet 흔적이 남아있으면 초기화
-    if (mapBoxRef.current._leaflet_id) { mapBoxRef.current._leaflet_id = null }
-    const map = L.map(mapBoxRef.current).setView([37.5665, 126.9780], 13)
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' }).addTo(map)
+    const el = mapBoxRef.current
+    if (!L || !el) return
+    if (mapRef.current) return
+
+    // 이전 Leaflet 인스턴스가 남아 있으면 완전히 제거
+    if (el._leaflet_id) {
+      try { delete el._leaflet_id } catch {}
+    }
+
+    // 모바일 Safari에서 탭 전환 직후 zoom animation이 0.25배로 남는 현상을 방지
+    const map = L.map(el, {
+      zoomControl: true,
+      zoomAnimation: false,
+      fadeAnimation: false,
+      markerZoomAnimation: false,
+      attributionControl: true,
+      preferCanvas: false,
+    }).setView([37.5665, 126.9780], 13)
+
+    const tiles = L.tileLayer(
+      'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+      {
+        maxZoom: 19,
+        minZoom: 2,
+        tileSize: 256,
+        zoomOffset: 0,
+        detectRetina: false,
+        updateWhenZooming: false,
+        keepBuffer: 2,
+        attribution: '&copy; OpenStreetMap',
+      }
+    )
+
+    tiles.addTo(map)
     mapRef.current = map
+
+    const refreshMap = () => {
+      if (!mapRef.current || !mapBoxRef.current) return
+      map.invalidateSize(false)
+      // Leaflet 타일이 Safari의 축소 transform에 남아 있지 않도록 강제
+      const tileNodes = mapBoxRef.current.querySelectorAll('.leaflet-tile')
+      tileNodes.forEach((tile) => {
+        tile.style.width = '256px'
+        tile.style.height = '256px'
+        tile.style.maxWidth = 'none'
+        tile.style.maxHeight = 'none'
+      })
+    }
+
+    // 컨테이너 레이아웃이 확정된 뒤 여러 번 재계산
+    requestAnimationFrame(refreshMap)
+    setTimeout(refreshMap, 80)
+    setTimeout(refreshMap, 350)
+
+    if (typeof ResizeObserver !== 'undefined') {
+      const ro = new ResizeObserver(() => refreshMap())
+      ro.observe(el)
+      map.__daheumResizeObserver = ro
+    }
+
+    tiles.on('load', refreshMap)
+
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(p => {
         myPosRef.current = { lat: p.coords.latitude, lng: p.coords.longitude }
-        map.setView([p.coords.latitude, p.coords.longitude], 15)
+        map.setView([p.coords.latitude, p.coords.longitude], 15, { animate: false })
+        refreshMap()
         drawPins()
       }, () => {})
     }
+
     drawPins()
   }
 
@@ -648,7 +712,7 @@ export default function Home({ user, group, profileVersion, isActive, onMembersL
               <span style={S.mapBadge}>닿음</span>
             </div>
             <div style={S.mapWrap}>
-              <style>{`.leaflet-container img.leaflet-tile{max-width:none!important}.leaflet-container img{max-width:none!important}`}</style>
+              <style>{`.leaflet-container img{max-width:none!important;max-height:none!important}.leaflet-container img.leaflet-tile{width:256px!important;height:256px!important;max-width:none!important;max-height:none!important}`}</style>
               <div ref={mapBoxRef} style={S.map} />
             </div>
             <div style={S.summary}>
