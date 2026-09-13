@@ -73,12 +73,16 @@ export default function Home({ user, group, profileVersion, isActive, onMembersL
   const [likes, setLikes] = useState([])
   const [confetti, setConfetti] = useState(false)
   const [poppingHeart, setPoppingHeart] = useState(null)
+  const [showMapDetail, setShowMapDetail] = useState(false)
   const prevAllJoinedRef = useRef(false)
   const [nowTick, setNowTick] = useState(Date.now())
 
   const mapBoxRef = useRef(null)
   const mapRef = useRef(null)
+  const detailMapBoxRef = useRef(null)
+  const detailMapRef = useRef(null)
   const markersRef = useRef([])
+  const detailMarkersRef = useRef([])
   const fileRef = useRef(null)
   const myPosRef = useRef(null)
   const membersRef = useRef([])
@@ -134,7 +138,14 @@ export default function Home({ user, group, profileVersion, isActive, onMembersL
     // 지도 탭을 떠나면 기존 지도 인스턴스를 깨끗이 제거
     if (mapRef.current) { try { mapRef.current.remove() } catch {} mapRef.current = null; markersRef.current = [] }
   }, [tab])
-  useEffect(() => { drawPins() }, [posts, members])
+  useEffect(() => {
+    if (showMapDetail) {
+      const t = setTimeout(initDetailMap, 60)
+      return () => clearTimeout(t)
+    }
+    if (detailMapRef.current) { try { detailMapRef.current.remove() } catch {} detailMapRef.current = null }
+  }, [showMapDetail])
+  useEffect(() => { drawPins(); if (detailMapRef.current) drawPins(detailMapRef.current, detailMarkersRef) }, [posts, members, signed, moments])
   useEffect(() => { resolveSigned() }, [posts])
 
   // 현재 푸시 구독 상태 확인
@@ -372,11 +383,11 @@ export default function Home({ user, group, profileVersion, isActive, onMembersL
   function sharesLoc(uid) { const m = membersRef.current.find(x => x.user_id === uid); return m ? m.share_location !== false : true }
   function hasLoc(p) { return !!(p && p.lat != null && p.lng != null) }  // 그 안부에 위치가 포함됐는지
 
-  async function drawPins() {
-    const L = window.L, map = mapRef.current
+  async function drawPins(targetMap = mapRef.current, markerStore = markersRef) {
+    const L = window.L, map = targetMap
     if (!L || !map) return
-    markersRef.current.forEach(mk => map.removeLayer(mk))
-    markersRef.current = []
+    markerStore.current.forEach(mk => { try { map.removeLayer(mk) } catch {} })
+    markerStore.current = []
     const _n = new Date()
     const _open = moments.filter(m => new Date(m.fired_at) <= _n && _n <= new Date(m.deadline))
     const _recent = moments.slice().sort((a,b)=>new Date(b.fired_at)-new Date(a.fired_at))[0]
@@ -402,8 +413,38 @@ export default function Home({ user, group, profileVersion, isActive, onMembersL
       const icon = L.divIcon({ html, className: '', iconSize: [60, 82], iconAnchor: [30, 58] })
       const mk = L.marker([p.lat, p.lng], { icon }).addTo(map)
       mk.on('click', () => setViewPost(p))
-      markersRef.current.push(mk)
+      markerStore.current.push(mk)
     }
+  }
+
+  function initDetailMap() {
+    const L = window.L
+    const el = detailMapBoxRef.current
+    if (!L || !el || detailMapRef.current) return
+    if (el._leaflet_id) { try { el._leaflet_id = null } catch {} }
+    const map = L.map(el, { zoomControl: true, zoomAnimation: false, fadeAnimation: false, markerZoomAnimation: false, preferCanvas: false })
+      .setView(mapRef.current ? mapRef.current.getCenter() : [37.5665, 126.9780], mapRef.current ? Math.max(mapRef.current.getZoom(), 14) : 13)
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19, minZoom: 2, tileSize: 256, zoomOffset: 0, detectRetina: false, keepBuffer: 2, attribution: '&copy; OpenStreetMap'
+    }).addTo(map)
+    detailMapRef.current = map
+    requestAnimationFrame(() => map.invalidateSize(false))
+    setTimeout(() => map.invalidateSize(false), 120)
+    setTimeout(() => map.invalidateSize(false), 500)
+    drawPins(map, detailMarkersRef)
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(p => {
+        if (!detailMapRef.current) return
+        detailMapRef.current.setView([p.coords.latitude, p.coords.longitude], 15)
+        drawPins(detailMapRef.current, detailMarkersRef)
+      }, () => {})
+    }
+  }
+
+  function closeMapDetail() {
+    setShowMapDetail(false)
+    if (detailMapRef.current) { try { detailMapRef.current.remove() } catch {} detailMapRef.current = null }
+    detailMarkersRef.current = []
   }
 
   function getLoc() {
@@ -552,6 +593,7 @@ export default function Home({ user, group, profileVersion, isActive, onMembersL
   const openMoments = todayMoments.filter(m => new Date(m.fired_at) <= _now && _now <= new Date(m.deadline))
   const openMoment = openMoments.slice().sort((a,b)=>new Date(a.fired_at)-new Date(b.fired_at))[0] || null
   const recentMoment = todayMoments.slice().sort((a,b)=>new Date(b.fired_at)-new Date(a.fired_at))[0] || null
+  const todayEnded = !!recentMoment && !openMoments.length && new Date(recentMoment.deadline) < _now
   const displayMomentIds = openMoments.length ? openMoments.map(m=>m.id) : (recentMoment ? [recentMoment.id] : [])
   const scheduleTimes = (Array.isArray(group.fixed_times) ? group.fixed_times : []).map(parseScheduleTime).filter(Boolean).sort((a,b)=>a.h*60+a.min-(b.h*60+b.min))
   let nextSchedule = null
@@ -652,7 +694,7 @@ export default function Home({ user, group, profileVersion, isActive, onMembersL
       })()}
 
 
-      {todayJoined ? (
+      {hasOpen && todayJoined ? (
         <div style={S.designHeroActive}>
           <div style={S.designHeroSky} />
           <div style={S.designHeroBranch} aria-hidden="true" />
@@ -668,6 +710,17 @@ export default function Home({ user, group, profileVersion, isActive, onMembersL
               })}
               {members.length > 6 && <span style={S.designPeopleMore}>+{members.length-6}</span>}
             </div>
+          </div>
+        </div>
+      ) : todayEnded ? (
+        <div style={S.designHeroEnded}>
+          <div style={S.designHeroSky} />
+          <div style={S.designHeroBranch} aria-hidden="true" />
+          <div style={S.designHeroContent}>
+            <div style={S.designHeroEyebrow}><span style={S.designMoon}>◷</span> 오늘의 안부</div>
+            <div style={S.designHeroTitle}>오늘의 안부가<br/>끝났어요.</div>
+            <div style={S.designHeroSub}>같은 시간, 다른 공간에서<br/>오늘도 서로의 순간이 닿았어요.</div>
+            <div style={S.designEndedNext}>다음 안부까지 · {nextSchedule ? nextScheduleLabel : '다음 시간을 기다려요'}</div>
           </div>
         </div>
       ) : (
@@ -711,7 +764,7 @@ export default function Home({ user, group, profileVersion, isActive, onMembersL
                 <div style={S.mapTitle}>우리의 위치</div>
                 <div style={S.mapSub}>{members.filter(m => displayByUser[m.user_id]).length}/{members.length}명이 오늘의 순간을 남겼어요</div>
               </div>
-              <button style={S.detailBtn} onClick={() => { if (mapRef.current) { mapRef.current.invalidateSize(); mapRef.current.setZoom(Math.max(mapRef.current.getZoom(), 14)) } }}>상세보기 ›</button>
+              <button style={S.detailBtn} onClick={() => setShowMapDetail(true)}>상세보기 ›</button>
             </div>
             <div style={S.mapWrap}>
               <style>{`.leaflet-container{overflow:hidden!important;position:relative!important}.leaflet-container img,.leaflet-container img.leaflet-tile,.leaflet-container .leaflet-tile{max-width:none!important;max-height:none!important}.leaflet-container .leaflet-tile{width:256px!important;height:256px!important;display:block!important;position:absolute!important;left:0;top:0}.leaflet-container .leaflet-tile-container{width:1600px!important;height:1600px!important;-webkit-transform-origin:0 0!important;transform-origin:0 0!important}.leaflet-container .leaflet-map-pane,.leaflet-container .leaflet-tile-pane{position:absolute!important;left:0!important;top:0!important}`}</style>
@@ -850,6 +903,24 @@ export default function Home({ user, group, profileVersion, isActive, onMembersL
           )
         }) )}
       </div>
+
+      {showMapDetail && (
+        <div style={S.mapDetailOverlay}>
+          <div style={S.mapDetailHeader}>
+            <button style={S.mapDetailClose} onClick={closeMapDetail} aria-label="지도 닫기">‹</button>
+            <div style={S.mapDetailTitle}>우리의 위치</div>
+            <button style={S.mapDetailLocate} onClick={() => {
+              if (myPosRef.current && detailMapRef.current) detailMapRef.current.setView([myPosRef.current.lat, myPosRef.current.lng], 15)
+              else if (navigator.geolocation && detailMapRef.current) navigator.geolocation.getCurrentPosition(p => { myPosRef.current = {lat:p.coords.latitude,lng:p.coords.longitude}; detailMapRef.current.setView([p.coords.latitude,p.coords.longitude],15) }, () => {})
+            }} aria-label="내 위치">⌾</button>
+          </div>
+          <div ref={detailMapBoxRef} style={S.mapDetailBox} />
+          <div style={S.mapDetailBottom}>
+            <b>오늘의 닿음</b>
+            <span>{displayPosts.length}/{members.length}명이 순간을 남겼어요</span>
+          </div>
+        </div>
+      )}
 
       {viewPost && (
         <div style={S.pop} onClick={() => setViewPost(null)}>
@@ -1063,6 +1134,15 @@ const S = {
   inviteSub: { display: 'block', fontSize: 11.5, color: 'var(--mp-muted)', marginTop: 3 },
   inviteArrow: { fontSize: 18, color: 'var(--mp-gold)', flex: 'none', fontWeight: 700 },
   designHero: { position:'relative', margin:'14px 14px 0', minHeight:392, borderRadius:24, overflow:'hidden', background:'linear-gradient(135deg,#eef8ff 0%,#fff3ea 48%,#ffe1cf 100%)', boxShadow:'0 12px 34px rgba(30,39,70,.10)' },
+  designHeroEnded: { position:'relative', margin:'14px 14px 0', minHeight:286, borderRadius:24, overflow:'hidden', background:'linear-gradient(135deg,#eef7ff 0%,#fff0e7 62%,#ffe2d0 100%)', boxShadow:'0 12px 34px rgba(30,39,70,.10)' },
+  designEndedNext: { display:'inline-flex', alignItems:'center', marginTop:18, padding:'9px 13px', borderRadius:13, background:'rgba(255,255,255,.66)', border:'1px solid rgba(255,255,255,.85)', color:'var(--mp-sub)', fontSize:12, fontWeight:650 },
+  mapDetailOverlay: { position:'fixed', inset:0, zIndex:3500, background:'var(--mp-bg)', display:'flex', flexDirection:'column' },
+  mapDetailHeader: { height:64, flex:'none', display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0 16px', background:'rgba(250,249,246,.96)', borderBottom:'1px solid var(--mp-line)', backdropFilter:'blur(14px)' },
+  mapDetailTitle: { fontSize:17, fontWeight:800, color:'var(--mp-ink)' },
+  mapDetailClose: { width:40, height:40, border:'none', borderRadius:'50%', background:'var(--mp-card)', color:'var(--mp-ink)', fontSize:30, lineHeight:1, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' },
+  mapDetailLocate: { width:40, height:40, border:'1px solid var(--mp-line)', borderRadius:'50%', background:'var(--mp-card)', color:'var(--mp-ink)', fontSize:22, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' },
+  mapDetailBox: { flex:1, minHeight:0, width:'100%', position:'relative', overflow:'hidden' },
+  mapDetailBottom: { flex:'none', margin:'-1px 12px 12px', padding:'14px 16px', borderRadius:18, background:'rgba(255,255,255,.96)', border:'1px solid var(--mp-line)', boxShadow:'0 10px 28px rgba(30,39,70,.12)', display:'flex', flexDirection:'column', gap:3, color:'var(--mp-ink)' },
   designHeroActive: { position:'relative', margin:'14px 14px 0', minHeight:286, borderRadius:24, overflow:'hidden', background:'linear-gradient(135deg,#eef7ff 0%,#fff0e7 62%,#ffe2d0 100%)', boxShadow:'0 12px 34px rgba(30,39,70,.10)' },
   designHeroSky: { position:'absolute', inset:0, background:'radial-gradient(circle at 82% 28%,rgba(255,255,255,.9),transparent 27%),radial-gradient(circle at 14% 12%,rgba(255,255,255,.72),transparent 23%),linear-gradient(115deg,rgba(197,229,247,.45),transparent 44%,rgba(255,216,194,.34))' },
   designHeroBranch: { position:'absolute', right:-36, top:0, width:190, height:260, opacity:.34, zIndex:0, pointerEvents:'none', background:'radial-gradient(circle at 74% 24%,#ef9fa8 0 4px,transparent 5px),radial-gradient(circle at 82% 34%,#f2b1b7 0 5px,transparent 6px),radial-gradient(circle at 66% 42%,#eda0aa 0 4px,transparent 5px),radial-gradient(circle at 88% 51%,#efb0b5 0 5px,transparent 6px),linear-gradient(112deg,transparent 47%,rgba(103,83,72,.48) 48% 50%,transparent 51%)' },
