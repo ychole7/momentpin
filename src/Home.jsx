@@ -280,80 +280,124 @@ export default function Home({ user, group, profileVersion, isActive, onMembersL
     setSigned(map)
   }
 
-  function initMap() {
-    const L = window.L
-    const el = mapBoxRef.current
-    if (!L || !el) return
-    if (mapRef.current) return
+  async function ensureLeaflet() {
+    if (window.L) return window.L
 
-    // 이전 Leaflet 인스턴스가 남아 있으면 완전히 제거
-    if (el._leaflet_id) {
-      try { delete el._leaflet_id } catch {}
+    const cssId = 'leaflet-css-daheum'
+    const jsId = 'leaflet-js-daheum'
+
+    if (!document.getElementById(cssId)) {
+      const link = document.createElement('link')
+      link.id = cssId
+      link.rel = 'stylesheet'
+      link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'
+      document.head.appendChild(link)
     }
 
-    // 모바일 Safari에서 탭 전환 직후 zoom animation이 0.25배로 남는 현상을 방지
-    const map = L.map(el, {
-      zoomControl: true,
-      zoomAnimation: false,
-      fadeAnimation: false,
-      markerZoomAnimation: false,
-      attributionControl: true,
-      preferCanvas: false,
-    }).setView([37.5665, 126.9780], 13)
-
-    const tiles = L.tileLayer(
-      'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-      {
-        maxZoom: 19,
-        minZoom: 2,
-        tileSize: 256,
-        zoomOffset: 0,
-        detectRetina: false,
-        updateWhenZooming: false,
-        keepBuffer: 2,
-        attribution: '&copy; OpenStreetMap',
+    const loadScript = (src) => new Promise((resolve, reject) => {
+      const existing = document.getElementById(jsId)
+      if (existing) {
+        if (window.L) return resolve(window.L)
+        existing.addEventListener('load', () => resolve(window.L), { once: true })
+        existing.addEventListener('error', reject, { once: true })
+        return
       }
-    )
+      const script = document.createElement('script')
+      script.id = jsId
+      script.src = src
+      script.async = true
+      script.onload = () => window.L ? resolve(window.L) : reject(new Error('Leaflet loaded without window.L'))
+      script.onerror = () => reject(new Error('Leaflet script failed'))
+      document.head.appendChild(script)
+    })
 
-    tiles.addTo(map)
-    mapRef.current = map
+    try {
+      return await loadScript('https://unpkg.com/leaflet@1.9.4/dist/leaflet.js')
+    } catch {
+      const old = document.getElementById(jsId)
+      if (old) old.remove()
+      return await loadScript('https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js')
+    }
+  }
 
-    const refreshMap = () => {
-      if (!mapRef.current || !mapBoxRef.current) return
-      map.invalidateSize(false)
-      // Leaflet 타일이 Safari의 축소 transform에 남아 있지 않도록 강제
-      const tileNodes = mapBoxRef.current.querySelectorAll('.leaflet-tile')
-      tileNodes.forEach((tile) => {
-        tile.style.width = '256px'
-        tile.style.height = '256px'
-        tile.style.maxWidth = 'none'
-        tile.style.maxHeight = 'none'
-      })
+  async function initMap() {
+    const el = mapBoxRef.current
+    if (!el || mapRef.current) return
+
+    let L
+    try {
+      L = await ensureLeaflet()
+    } catch {
+      // CDN이 잠시 늦게 응답해도 홈 전체가 깨지지 않도록 한 번 더 시도한다.
+      setTimeout(() => { if (tab === 'map' && !mapRef.current) initMap() }, 1200)
+      return
     }
 
-    // 컨테이너 레이아웃이 확정된 뒤 여러 번 재계산
-    requestAnimationFrame(refreshMap)
-    setTimeout(refreshMap, 80)
-    setTimeout(refreshMap, 350)
+    if (!mapBoxRef.current || mapRef.current) return
 
-    if (typeof ResizeObserver !== 'undefined') {
-      const ro = new ResizeObserver(() => refreshMap())
-      ro.observe(el)
-      map.__daheumResizeObserver = ro
+    try {
+      const map = L.map(mapBoxRef.current, {
+        zoomControl: true,
+        zoomAnimation: false,
+        fadeAnimation: false,
+        markerZoomAnimation: false,
+        attributionControl: true,
+        preferCanvas: false,
+        tap: true,
+      }).setView([37.5665, 126.9780], 13)
+
+      const tiles = L.tileLayer(
+        'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+        {
+          maxZoom: 19,
+          minZoom: 2,
+          tileSize: 256,
+          zoomOffset: 0,
+          detectRetina: false,
+          updateWhenZooming: false,
+          keepBuffer: 2,
+          attribution: '&copy; OpenStreetMap',
+        }
+      ).addTo(map)
+
+      mapRef.current = map
+
+      const refreshMap = () => {
+        if (!mapRef.current || !mapBoxRef.current) return
+        map.invalidateSize({ animate: false, pan: false })
+      }
+
+      requestAnimationFrame(refreshMap)
+      setTimeout(refreshMap, 100)
+      setTimeout(refreshMap, 400)
+      setTimeout(refreshMap, 900)
+
+      if (typeof ResizeObserver !== 'undefined') {
+        const ro = new ResizeObserver(() => refreshMap())
+        ro.observe(mapBoxRef.current)
+        map.__daheumResizeObserver = ro
+      }
+
+      tiles.on('load', refreshMap)
+
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(p => {
+          myPosRef.current = { lat: p.coords.latitude, lng: p.coords.longitude }
+          if (mapRef.current) {
+            map.setView([p.coords.latitude, p.coords.longitude], 15, { animate: false })
+            refreshMap()
+            drawPins()
+          }
+        }, () => {}, { enableHighAccuracy: false, timeout: 7000, maximumAge: 60000 })
+      }
+
+      drawPins()
+    } catch (err) {
+      console.error('닿음 지도 초기화 실패:', err)
+      mapRef.current = null
+      try { if (mapBoxRef.current) mapBoxRef.current.innerHTML = '' } catch {}
+      setTimeout(() => { if (tab === 'map' && !mapRef.current) initMap() }, 1200)
     }
-
-    tiles.on('load', refreshMap)
-
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(p => {
-        myPosRef.current = { lat: p.coords.latitude, lng: p.coords.longitude }
-        map.setView([p.coords.latitude, p.coords.longitude], 15, { animate: false })
-        refreshMap()
-        drawPins()
-      }, () => {})
-    }
-
-    drawPins()
   }
 
   function nameOf(uid) { const m = membersRef.current.find(x => x.user_id === uid); return m ? m.display_name : '?' }
@@ -717,7 +761,7 @@ export default function Home({ user, group, profileVersion, isActive, onMembersL
               <span style={S.mapBadge}>닿음</span>
             </div>
             <div style={S.mapWrap}>
-              <style>{`.leaflet-container img{max-width:none!important;max-height:none!important}.leaflet-container img.leaflet-tile{width:256px!important;height:256px!important;max-width:none!important;max-height:none!important}`}</style>
+              <style>{`.leaflet-container img{max-width:none!important;max-height:none!important}.leaflet-container img.leaflet-tile{max-width:none!important;max-height:none!important}`}</style>
               <div ref={mapBoxRef} style={S.map} />
             </div>
             <div style={{ ...S.summary, ...(hasOpen ? S.liveSummary : {}) }}>
