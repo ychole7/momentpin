@@ -17,7 +17,6 @@ function distLabel(myPos, loc) {
   return d.toFixed(1) + 'km'
 }
 const fmtKm = (d) => d < 1 ? Math.round(d * 1000) + 'm' : d.toFixed(1) + 'km'
-function escapeAttr(v) { return String(v).replace(/&/g, '&amp;').replace(/\"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/'/g, '&#39;') }
 async function reverseGeocode(lat, lng) {
   try {
     // 서버의 /api/geocode 프록시를 거쳐 카카오 로컬 API로 행정동 이름을 받아옴
@@ -109,17 +108,9 @@ export default function Home({ user, group, profileVersion, isActive, onMembersL
       return () => clearTimeout(t)
     }
     // 지도 탭을 떠나면 기존 지도 인스턴스를 깨끗이 제거
-    if (mapRef.current) {
-      try {
-        if (mapRef.current.__daheumResizeObserver) mapRef.current.__daheumResizeObserver.disconnect()
-        mapRef.current.remove()
-      } catch {}
-      mapRef.current = null
-      markersRef.current = []
-    }
+    if (mapRef.current) { try { mapRef.current.remove() } catch {} mapRef.current = null; markersRef.current = [] }
   }, [tab])
-  // 지도/안부/멤버/사진 URL이 각각 비동기로 로드되므로,
-  // 재실행 직후 어느 것이 먼저 도착하더라도 핀이 다시 그려지게 합니다.
+  // 재실행 시 posts/moments/members/signed URL이 서로 다른 순서로 로드되어도 핀을 복원
   useEffect(() => { drawPins() }, [posts, members, moments, signed])
   useEffect(() => { resolveSigned() }, [posts])
 
@@ -289,84 +280,67 @@ export default function Home({ user, group, profileVersion, isActive, onMembersL
     setSigned(map)
   }
 
-  // signed URL 갱신이 끝난 뒤 지도 핀도 최신 사진으로 다시 렌더링
-  useEffect(() => {
-    if (mapRef.current && tab === 'map') drawPins()
-  }, [signed, tab])
-
   function initMap() {
     const L = window.L
-    const el = mapBoxRef.current
-    if (!L || !el) return
-    if (mapRef.current) return
-
-    // 이전 Leaflet 인스턴스가 남아 있으면 완전히 제거
-    if (el._leaflet_id) {
-      try { delete el._leaflet_id } catch {}
-    }
-
-    // 모바일 Safari에서 탭 전환 직후 zoom animation이 0.25배로 남는 현상을 방지
-    const map = L.map(el, {
+    if (!L || !mapBoxRef.current) return
+    if (mapRef.current) return  // 이미 떠 있으면 중복 생성 안 함
+    // 컨테이너에 이전 Leaflet 흔적이 남아있으면 초기화
+    if (mapBoxRef.current._leaflet_id) { mapBoxRef.current._leaflet_id = null }
+    // Safari/iOS에서 Leaflet 타일이 축소되어 보이는 현상을 방지
+    // (Leaflet의 Safari tile-container workaround를 앱 내부에서도 강제 적용)
+    const map = L.map(mapBoxRef.current, {
       zoomControl: true,
       zoomAnimation: false,
       fadeAnimation: false,
       markerZoomAnimation: false,
-      attributionControl: true,
       preferCanvas: false,
     }).setView([37.5665, 126.9780], 13)
 
-    const tiles = L.tileLayer(
-      'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-      {
-        maxZoom: 19,
-        minZoom: 2,
-        tileSize: 256,
-        zoomOffset: 0,
-        detectRetina: false,
-        updateWhenZooming: false,
-        keepBuffer: 2,
-        attribution: '&copy; OpenStreetMap',
-      }
-    )
-
-    tiles.addTo(map)
+    const tiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      minZoom: 2,
+      tileSize: 256,
+      zoomOffset: 0,
+      detectRetina: false,
+      updateWhenZooming: false,
+      keepBuffer: 2,
+      attribution: '&copy; OpenStreetMap',
+    }).addTo(map)
     mapRef.current = map
 
-    const refreshMap = () => {
-      if (!mapRef.current || !mapBoxRef.current) return
+    const fixTiles = () => {
+      if (!mapBoxRef.current || !mapRef.current) return
       map.invalidateSize(false)
-      // Leaflet 타일이 Safari의 축소 transform에 남아 있지 않도록 강제
-      const tileNodes = mapBoxRef.current.querySelectorAll('.leaflet-tile')
-      tileNodes.forEach((tile) => {
+      const root = mapBoxRef.current
+      root.style.width = '100%'
+      root.style.height = '100%'
+      root.querySelectorAll('.leaflet-tile').forEach((tile) => {
         tile.style.width = '256px'
         tile.style.height = '256px'
         tile.style.maxWidth = 'none'
         tile.style.maxHeight = 'none'
+        tile.style.display = 'block'
+      })
+      root.querySelectorAll('.leaflet-tile-container').forEach((container) => {
+        // Leaflet 공식 Safari workaround
+        container.style.width = '1600px'
+        container.style.height = '1600px'
+        container.style.webkitTransformOrigin = '0 0'
+        container.style.transformOrigin = '0 0'
       })
     }
 
-    // 컨테이너 레이아웃이 확정된 뒤 여러 번 재계산
-    requestAnimationFrame(refreshMap)
-    setTimeout(refreshMap, 80)
-    setTimeout(refreshMap, 350)
-
-    if (typeof ResizeObserver !== 'undefined') {
-      const ro = new ResizeObserver(() => refreshMap())
-      ro.observe(el)
-      map.__daheumResizeObserver = ro
-    }
-
-    tiles.on('load', refreshMap)
-
+    requestAnimationFrame(fixTiles)
+    setTimeout(fixTiles, 100)
+    setTimeout(fixTiles, 500)
+    tiles.on('load', fixTiles)
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(p => {
         myPosRef.current = { lat: p.coords.latitude, lng: p.coords.longitude }
-        map.setView([p.coords.latitude, p.coords.longitude], 15, { animate: false })
-        refreshMap()
+        map.setView([p.coords.latitude, p.coords.longitude], 15)
         drawPins()
       }, () => {})
     }
-
     drawPins()
   }
 
@@ -378,36 +352,44 @@ export default function Home({ user, group, profileVersion, isActive, onMembersL
   async function drawPins() {
     const L = window.L, map = mapRef.current
     if (!L || !map) return
+
     markersRef.current.forEach(mk => map.removeLayer(mk))
     markersRef.current = []
+
     const _n = new Date()
     const _open = moments.filter(m => new Date(m.fired_at) <= _n && _n <= new Date(m.deadline))
-    const _recent = moments.slice().sort((a,b)=>new Date(b.fired_at)-new Date(a.fired_at))[0]
-    const activeIds = _open.length ? _open.map(m=>m.id) : (_recent ? [_recent.id] : [])
+    const _recent = moments.slice().sort((a,b) => new Date(b.fired_at) - new Date(a.fired_at))[0]
+    const activeIds = _open.length ? _open.map(m => m.id) : (_recent ? [_recent.id] : [])
+
     for (const p of posts) {
       if (!activeIds.includes(p.moment_id)) continue
       if (p.lat == null || p.lng == null) continue
-      // 위치 포함 안부만 핀 표시 (lat/lng 없으면 이미 위에서 skip)
+
+      // 사진 URL이 이미 준비되어 있으면 사용하고, 아직 없으면 즉시 생성
       let imgUrl = signed[p.id] || ''
-      if (!imgUrl && p.img_back) { let s = await supabase.storage.from('moments').createSignedUrl(p.img_back, 3600); if (!s.error && s.data) imgUrl = s.data.signedUrl }
+      if (!imgUrl && p.img_back) {
+        const r = await supabase.storage.from('moments').createSignedUrl(p.img_back, 3600)
+        if (!r.error && r.data) imgUrl = r.data.signedUrl
+      }
+
       const color = colorOf(p.user_id)
       const nm = nameOf(p.user_id)
+
+      // 오리지널 핀: 사진이 주인공인 물방울형 지도 핀
       const pinBg = imgUrl
         ? `background-image:url('${imgUrl}');background-size:cover;background-position:center;`
         : `background:${color};`
-      // 닿음 전용 사진 핀: 사진을 중심으로 보여주고 작은 'ㅎ' 배지를 결합.
+
       const inner = `
-        <div style="position:relative;width:58px;height:68px;filter:drop-shadow(0 4px 7px rgba(30,39,70,.22));">
-          <div style="position:absolute;left:5px;top:2px;width:48px;height:48px;border-radius:50%;background:#fff;border:4px solid #1e2746;box-sizing:border-box;overflow:hidden;">
-            <img src="${escapeAttr(imgUrl || '')}" style="width:100%;height:100%;object-fit:cover;display:block;" />
-          </div>
-          <div style="position:absolute;left:18px;top:42px;width:28px;height:28px;border-radius:10px 10px 10px 4px;background:#1e2746;border:3px solid #fff;box-sizing:border-box;display:flex;align-items:center;justify-content:center;transform:rotate(-45deg);">
-            <span style="display:block;color:#fff;font-size:14px;font-weight:900;line-height:1;transform:rotate(45deg);font-family:Arial,sans-serif;">ㅎ</span>
-          </div>
-          <div style="position:absolute;left:26px;top:63px;width:8px;height:8px;border-radius:50%;background:#d6b46a;border:2px solid #fff;box-sizing:content-box;"></div>
+        <div style="position:relative;width:46px;height:58px;filter:drop-shadow(0 4px 10px rgba(0,0,0,.35));">
+          <div style="position:absolute;inset:0;background:#fff;clip-path:path('M23 0C10.3 0 0 10.3 0 23c0 15 23 35 23 35s23-20 23-35C46 10.3 35.7 0 23 0Z');"></div>
+          <div style="position:absolute;top:3px;left:3px;right:3px;bottom:13px;border-radius:50%;${pinBg}display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:16px;">${imgUrl ? '' : nm[0]}</div>
         </div>`
-      const html = `<div style="display:flex;align-items:center;justify-content:center;width:58px;height:68px;">${inner}</div>`
-      const icon = L.divIcon({ html, className: '', iconSize: [58, 68], iconAnchor: [29, 64] })
+
+      const label = `<div style="margin-top:2px;background:#16161a;color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.3);">${nm}</div>`
+      const html = `<div style="display:flex;flex-direction:column;align-items:center;">${inner}${label}</div>`
+      const icon = L.divIcon({ html, className: '', iconSize: [60, 82], iconAnchor: [30, 58] })
+
       const mk = L.marker([p.lat, p.lng], { icon }).addTo(map)
       mk.on('click', () => setViewPost(p))
       markersRef.current.push(mk)
@@ -641,43 +623,43 @@ export default function Home({ user, group, profileVersion, isActive, onMembersL
       })()}
 
 
-      <div style={{
-        ...S.banner,
-        ...(hasOpen ? S.bannerLive : {}),
-        ...(allJoined ? S.bannerDone : {})
-      }}>
-        <div style={S.bannerGlow} />
-        <div style={S.bannerContent}>
-          <div style={S.bTag}>TODAY'S 닿음 · {group.name}</div>
-          <div style={S.bMainRow}>
-            <div style={S.bStatusDot} />
-            <div>
-              {!hasOpen ? (
-                <>
-                  <div style={S.bBig}>다음 안부를 기다리는 중</div>
-                  <div style={S.bSmall}>{recentMoment ? '지난 순간을 둘러보세요 · 다음 안부가 오면 알려드릴게요' : '안부 시간이 되면 서로의 순간이 닿아요'}</div>
-                </>
-              ) : allJoined ? (
-                <>
-                  <div style={S.bBig} className="pop-in">모두의 안부가 닿았어요</div>
-                  <div style={S.bSmall}>{members.length}명 모두 같은 순간을 남겼어요</div>
-                </>
-              ) : !iJoined ? (
-                <>
-                  <div style={S.bBig}>☀️ 지금, 닿을 시간이에요</div>
-                  <div style={S.bSmall}>{joinedCount}/{members.length} 참여 · 지금의 순간을 남겨보세요</div>
-                </>
-              ) : (
-                <>
-                  <div style={S.bBig}>✓ 안부를 전했어요</div>
-                  <div style={S.bSmall}>{joinedCount}/{members.length} 참여 · 다른 사람의 순간을 기다리는 중</div>
-                </>
-              )}
+      {hasOpen ? (
+        <div style={{ ...S.banner, ...S.bannerLive, ...S.activeHero }}>
+          <div style={S.activeHeroGlow} />
+          <div style={S.bannerContent}>
+            <div style={S.bTag}>TODAY'S 닿음 · {group.name}</div>
+            <div style={S.activeHeroRow}>
+              <div style={S.activeSun}>☀</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={S.activeEyebrow}>지금, 닿을 시간이에요</div>
+                <div style={S.activeTitle}>{allJoined ? '모두의 안부가 닿았어요' : iJoined ? '서로의 순간이 닿는 중' : '오늘의 순간을 남겨보세요'}</div>
+                <div style={S.bSmall}>{allJoined ? `${members.length}명 모두 같은 순간을 남겼어요` : `${joinedCount}/${members.length} 참여 · 같은 시간, 다른 공간에서 만나요`}</div>
+              </div>
+              <div style={S.activeTimer}>
+                <span style={S.activeTimerLabel}>마감까지</span>
+                <b style={S.activeTimerValue}>{remainLabel}</b>
+              </div>
+            </div>
+            <div style={S.activeProgressTrack}>
+              <div style={{ ...S.activeProgress, width: `${members.length ? Math.min(100, (joinedCount / members.length) * 100) : 0}%` }} />
             </div>
           </div>
-          {hasOpen && <div style={S.bannerMeta}><span>{joinedCount}/{members.length} 참여</span><span style={S.metaDivider} /><span>남은 시간 {remainLabel}</span></div>}
         </div>
-      </div>
+      ) : (
+        <div style={S.banner}>
+          <div style={S.bannerGlow} />
+          <div style={S.bannerContent}>
+            <div style={S.bTag}>TODAY'S 닿음 · {group.name}</div>
+            <div style={S.bMainRow}>
+              <div style={S.bStatusDot} />
+              <div>
+                <div style={S.bBig}>다음 안부를 기다리는 중</div>
+                <div style={S.bSmall}>{recentMoment ? '지난 순간을 둘러보세요 · 다음 안부가 오면 알려드릴게요' : '안부 시간이 되면 서로의 순간이 닿아요'}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {members.length <= 1 && (
         <button style={S.inviteBanner} onClick={copyInviteLink}>
@@ -720,19 +702,62 @@ export default function Home({ user, group, profileVersion, isActive, onMembersL
               <span style={S.mapBadge}>닿음</span>
             </div>
             <div style={S.mapWrap}>
-              <style>{`.leaflet-container img{max-width:none!important;max-height:none!important}.leaflet-container img.leaflet-tile{width:256px!important;height:256px!important;max-width:none!important;max-height:none!important}`}</style>
+              <style>{`.leaflet-container{overflow:hidden!important;position:relative!important}.leaflet-container img,.leaflet-container img.leaflet-tile,.leaflet-container .leaflet-tile{max-width:none!important;max-height:none!important}.leaflet-container .leaflet-tile{width:256px!important;height:256px!important;display:block!important;position:absolute!important;left:0;top:0}.leaflet-container .leaflet-tile-container{width:1600px!important;height:1600px!important;-webkit-transform-origin:0 0!important;transform-origin:0 0!important}.leaflet-container .leaflet-map-pane,.leaflet-container .leaflet-tile-pane{position:absolute!important;left:0!important;top:0!important}`}</style>
               <div ref={mapBoxRef} style={S.map} />
             </div>
-            <div style={S.summary}>
-              <span style={S.sChip}><span style={S.sKey}>참여</span> <b>{members.filter(m => displayByUser[m.user_id]).length}/{members.length}</b></span>
-              {allHere ? <span style={S.sChip}><b>모두 같은 곳에 있어요</b></span> : (
-                <>
-                  <span style={S.sSep} />
-                  <span style={S.sChip}><span style={S.sKey}>평균 거리</span> <b>{cnt ? fmtKm(avgD) : '-'}</b></span>
-                  {farMember && <><span style={S.sSep} /><span style={S.sChip}><span style={S.sKey}>가장 먼</span> <b>{farMember.display_name} · {fmtKm(farD)}</b></span></>}
-                </>
-              )}
+            <div style={{ ...S.summary, ...(hasOpen ? S.liveSummary : {}) }}>
+              <div style={S.summaryStat}><span style={S.summaryIcon}>♧</span><span style={S.summaryStatText}><small style={S.summaryStatLabel}>참여</small><b style={S.summaryStatValue}>{joinedCount}/{members.length}</b></span></div>
+              <span style={S.sSep} />
+              <div style={S.summaryStat}><span style={S.summaryIcon}>⌖</span><span style={S.summaryStatText}><small style={S.summaryStatLabel}>평균 거리</small><b style={S.summaryStatValue}>{cnt ? fmtKm(avgD) : '-'}</b></span></div>
+              <span style={S.sSep} />
+              <div style={S.summaryStat}><span style={S.summaryIcon}>◷</span><span style={S.summaryStatText}><small style={S.summaryStatLabel}>{hasOpen ? '남은 시간' : '가장 먼 곳'}</small><b style={S.summaryStatValue}>{hasOpen ? remainLabel : (farMember ? fmtKm(farD) : '-')}</b></span></div>
             </div>
+
+            {hasOpen && (
+              <>
+                <div style={S.liveActionCard}>
+                  <div style={S.liveActionVisual}>
+                    <div style={S.photoStackBack} />
+                    <div style={S.photoStackFront}>ㅎ</div>
+                  </div>
+                  <div style={S.liveActionCopy}>
+                    <div style={S.liveActionTitle}>{iJoined ? '안부를 전했어요' : '지금 이 순간, 안부를 전해보세요'}</div>
+                    <div style={S.liveActionSub}>{iJoined ? '이제 다른 사람의 순간을 기다리고 있어요' : '같은 시간, 다른 공간에서도 우리는 닿을 수 있어요'}</div>
+                  </div>
+                  <button
+                    style={{ ...S.liveCameraBtn, opacity: (busy || iJoined || allJoined) ? .55 : 1 }}
+                    disabled={busy || iJoined || allJoined}
+                    onClick={() => { includeLocRef.current = true; fileRef.current && fileRef.current.click() }}
+                    aria-label={iJoined ? '안부를 전했어요' : '안부 남기기'}
+                  >
+                    <span>⌾</span>
+                  </button>
+                </div>
+
+                {displayPosts.length > 0 && (
+                  <div style={S.todayRailWrap}>
+                    <div style={S.todayRailHead}><span>오늘의 닿음</span><b style={S.todayRailCount}>{joinedCount}/{members.length}</b></div>
+                    <div style={S.todayRail}>
+                      {displayPosts.map(p => {
+                        const m = members.find(x => x.user_id === p.user_id)
+                        const url = signed[p.id]
+                        return (
+                          <button key={p.id} style={S.todayCard} onClick={() => setViewPost(p)}>
+                            <div style={S.todayPhoto}>{url ? <img src={url} alt="" style={S.todayImg} /> : <div style={S.todayNoImg}>ㅎ</div>}</div>
+                            <div style={S.todayMeta}>
+                              <span style={{ ...S.todayDot, background: m?.color || 'var(--mp-gold)' }} />
+                              <b style={S.todayMetaName}>{m?.display_name || nameOf(p.user_id)}</b>
+                              <span style={S.todayMetaTime}>{p.user_id === user.id ? '나' : hhmm(p.created_at)}</span>
+                            </div>
+                          </button>
+                        )
+                      })}
+                      {!iJoined && !allJoined && <button style={S.todayEmptyCard} onClick={() => { includeLocRef.current = true; fileRef.current && fileRef.current.click() }}><b>＋</b><span>내 안부<br/>남기기</span></button>}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
           </>
         )}
 
@@ -799,25 +824,7 @@ export default function Home({ user, group, profileVersion, isActive, onMembersL
         <input ref={fileRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={onPickFile} />
         {tab === 'map' && (canShoot ? (
           <>
-            {!iJoined && (
-              <div style={S.actionCard}>
-                <div style={S.actionCopy}>
-                  <div style={S.actionEyebrow}>같은 시간 · 다른 공간</div>
-                  <div style={S.actionTitle}>지금 이 순간,<br/>안부를 남겨보세요</div>
-                  <div style={S.actionSub}>사진 한 장으로 서로의 순간이 닿아요</div>
-                </div>
-                <button
-                  style={{ ...S.actionBtn, opacity: busy ? .75 : 1 }}
-                  disabled={busy}
-                  onClick={() => { includeLocRef.current = true; fileRef.current && fileRef.current.click() }}
-                  aria-label="나의 안부 남기기"
-                >
-                  <span style={S.actionCamera}>●</span>
-                  <span>안부 남기기</span>
-                </button>
-              </div>
-            )}
-            <div style={S.countdown}><span>남은 시간</span><b>{remainLabel}</b></div>
+            <div style={S.countdown}><span>지금 닿을 시간</span><b>{remainLabel}</b><span>남음</span></div>
             <button style={{ ...S.shoot, opacity: busy ? .85 : 1 }} disabled={busy} onClick={() => { includeLocRef.current = true; fileRef.current && fileRef.current.click() }}>
               {busy
                 ? <span style={S.stepWrap}>
@@ -829,7 +836,7 @@ export default function Home({ user, group, profileVersion, isActive, onMembersL
                       })}
                     </span>
                   </span>
-                : (iJoined ? '안부 사진 다시 보기' : '나의 안부 남기기')}
+                : '나의 안부 남기기'}
             </button>
           </>
         ) : (
@@ -1052,6 +1059,17 @@ const S = {
   bannerContent: { position: 'relative', zIndex: 2, padding: '18px 20px 18px' },
   bannerLive: { background: 'linear-gradient(145deg,#1e2746,#31415f)' },
   bannerDone: { background: 'linear-gradient(145deg,#1e2746,#344c49)' },
+  activeHero: { minHeight: 164, background: 'linear-gradient(135deg,#1e2746 0%,#31415f 58%,#53657b 100%)', boxShadow: '0 16px 38px rgba(30,39,70,.24)' },
+  activeHeroGlow: { position: 'absolute', width: 230, height: 230, borderRadius: '50%', right: -85, top: -105, background: 'rgba(214,180,106,.18)', filter: 'blur(8px)' },
+  activeHeroRow: { position: 'relative', display: 'flex', alignItems: 'center', gap: 11 },
+  activeSun: { width: 42, height: 42, borderRadius: 15, background: 'rgba(214,180,106,.16)', border: '1px solid rgba(214,180,106,.32)', color: '#f3cf79', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 25, flex: 'none' },
+  activeEyebrow: { fontSize: 12, fontWeight: 650, color: 'rgba(255,255,255,.72)', marginBottom: 2 },
+  activeTitle: { fontSize: 21, lineHeight: 1.2, fontWeight: 800, letterSpacing: '-.7px', color: '#fff' },
+  activeTimer: { display: 'flex', flexDirection: 'column', alignItems: 'flex-end', flex: 'none', paddingLeft: 8, borderLeft: '1px solid rgba(255,255,255,.2)' },
+  activeTimerLabel: { fontSize: 9.5, color: 'rgba(255,255,255,.62)', marginBottom: 2 },
+  activeTimerValue: { fontSize: 21, color: '#fff', letterSpacing: '-.5px', fontVariantNumeric: 'tabular-nums' },
+  activeProgressTrack: { position: 'relative', height: 4, marginTop: 15, borderRadius: 10, overflow: 'hidden', background: 'rgba(255,255,255,.15)' },
+  activeProgress: { height: '100%', borderRadius: 10, background: 'var(--mp-gold)', transition: 'width .4s ease' },
   bTag: { fontSize: 10, fontWeight: 750, letterSpacing: 1.1, textTransform: 'uppercase', opacity: .62, marginBottom: 10 },
   bMainRow: { display: 'flex', alignItems: 'flex-start', gap: 10 },
   bStatusDot: { width: 9, height: 9, borderRadius: '50%', background: '#d6b46a', marginTop: 9, flex: 'none', boxShadow: '0 0 0 5px rgba(214,180,106,.12)' },
@@ -1076,10 +1094,37 @@ const S = {
   mapBadge: { padding: '6px 9px', borderRadius: 10, background: '#fff5dc', color: '#9a7430', fontSize: 10.5, fontWeight: 750 },
   mapWrap: { position: 'relative', borderRadius: 20, overflow: 'hidden', boxShadow: '0 7px 28px rgba(30,39,70,.10)', marginBottom: 10, zIndex: 0, isolation: 'isolate', border: '1px solid rgba(30,39,70,.08)' },
   map: { width: '100%', height: 318 },
-  summary: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, flexWrap: 'wrap', background: 'var(--mp-card)', border: '1px solid var(--mp-line)', borderRadius: 14, padding: '11px 14px', boxShadow: '0 4px 20px rgba(30,39,70,.05)', marginBottom: 16, fontSize: 12.5 },
+  summary: { display: 'flex', alignItems: 'center', justifyContent: 'space-around', gap: 7, background: 'var(--mp-card)', border: '1px solid var(--mp-line)', borderRadius: 16, padding: '11px 10px', boxShadow: '0 4px 20px rgba(30,39,70,.05)', marginBottom: 16, fontSize: 12.5 },
+  liveSummary: { padding: '12px 8px', marginBottom: 12 },
+  summaryStat: { display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 },
+  summaryStatText: { display: 'flex', flexDirection: 'column', minWidth: 0 },
+  summaryStatLabel: { display: 'block', fontSize: 9.5, color: 'var(--mp-muted)', lineHeight: 1.1, marginBottom: 1 },
+  summaryStatValue: { display: 'block', fontSize: 13.5, color: 'var(--mp-ink)', lineHeight: 1.1 },
+  summaryIcon: { width: 28, height: 28, borderRadius: 9, background: '#f5f2ea', color: 'var(--mp-gold)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 17, flex: 'none' },
   sChip: { display: 'inline-flex', alignItems: 'center', gap: 5 },
   sKey: { color: 'var(--mp-muted)', fontWeight: 500 },
   sSep: { width: 1, height: 14, background: '#efeff2' },
+  liveActionCard: { display: 'flex', alignItems: 'center', gap: 10, background: 'linear-gradient(135deg,#fff8f5,#fff1ed)', border: '1px solid #f4ddd4', borderRadius: 18, padding: '14px 13px', marginBottom: 18, boxShadow: '0 6px 20px rgba(229,107,98,.08)' },
+  liveActionVisual: { position: 'relative', width: 54, height: 54, flex: 'none' },
+  photoStackBack: { position: 'absolute', width: 37, height: 45, left: 2, top: 5, background: '#fff', border: '1px solid #eadfd9', borderRadius: 8, transform: 'rotate(-10deg)', boxShadow: '0 4px 9px rgba(30,39,70,.08)' },
+  photoStackFront: { position: 'absolute', width: 37, height: 45, left: 10, top: 2, background: 'var(--mp-ink)', color: '#fff', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 18, transform: 'rotate(6deg)', boxShadow: '0 5px 12px rgba(30,39,70,.14)' },
+  liveActionCopy: { flex: 1, minWidth: 0 },
+  liveActionTitle: { fontSize: 14, fontWeight: 800, color: 'var(--mp-ink)', letterSpacing: '-.35px', lineHeight: 1.35 },
+  liveActionSub: { fontSize: 11.5, color: 'var(--mp-muted)', lineHeight: 1.45, marginTop: 3 },
+  liveCameraBtn: { width: 52, height: 52, border: 'none', borderRadius: '50%', background: 'var(--mp-coral)', color: '#fff', fontFamily: 'inherit', fontSize: 29, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none', cursor: 'pointer', boxShadow: '0 8px 18px rgba(229,107,98,.25)' },
+  todayRailWrap: { marginBottom: 20 },
+  todayRailHead: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '0 2px 9px', fontSize: 13, color: 'var(--mp-ink)' },
+  todayRailCount: { color: 'var(--mp-muted)', fontSize: 12 },
+  todayRail: { display: 'flex', gap: 9, overflowX: 'auto', padding: '1px 2px 6px', scrollbarWidth: 'none' },
+  todayCard: { width: 112, flex: '0 0 112px', border: '1px solid var(--mp-line)', background: 'var(--mp-card)', borderRadius: 14, padding: 0, overflow: 'hidden', textAlign: 'left', fontFamily: 'inherit', cursor: 'pointer', boxShadow: '0 4px 13px rgba(30,39,70,.07)' },
+  todayPhoto: { width: '100%', aspectRatio: '1/1', background: 'var(--mp-card2)', overflow: 'hidden' },
+  todayImg: { width: '100%', height: '100%', objectFit: 'cover', display: 'block' },
+  todayNoImg: { width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--mp-ink)', color: '#fff', fontSize: 22, fontWeight: 800 },
+  todayMeta: { display: 'flex', alignItems: 'center', gap: 4, padding: '7px 8px', whiteSpace: 'nowrap', overflow: 'hidden' },
+  todayDot: { width: 6, height: 6, borderRadius: '50%', flex: 'none' },
+  todayMetaName: { fontSize: 11.5, color: 'var(--mp-ink)', overflow: 'hidden', textOverflow: 'ellipsis' },
+  todayMetaTime: { fontSize: 10, color: 'var(--mp-muted)', marginLeft: 'auto' },
+  todayEmptyCard: { width: 112, flex: '0 0 112px', border: '1.5px dashed #c9cbd2', background: 'transparent', borderRadius: 14, minHeight: 145, color: 'var(--mp-muted)', fontFamily: 'inherit', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 5, cursor: 'pointer' },
   grid: { display: 'grid', gap: 8, marginBottom: 16 },
   gcellWrap: { display: 'flex', flexDirection: 'column', cursor: 'pointer', borderRadius: 16, overflow: 'hidden', boxShadow: '0 4px 16px rgba(20,20,30,.08)', background: 'var(--mp-card2)' },
   gcell: { position: 'relative', aspectRatio: '3/4', overflow: 'hidden' },
@@ -1109,14 +1154,8 @@ const S = {
   stepDots: { display: 'inline-flex', gap: 5 },
   stepDot: { width: 6, height: 6, borderRadius: '50%', background: 'rgba(255,255,255,.4)', transition: 'background .2s' },
   stepDotOn: { background: 'var(--mp-card)' },
-  actionCard: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, background: 'linear-gradient(135deg,#fffaf2,#fff7f4)', border: '1px solid rgba(214,180,106,.32)', borderRadius: 20, padding: '18px 16px', marginBottom: 10, boxShadow: '0 6px 22px rgba(30,39,70,.06)' },
-  actionCopy: { minWidth: 0 },
-  actionEyebrow: { fontSize: 10, fontWeight: 800, letterSpacing: .7, color: '#9a7430', marginBottom: 6 },
-  actionTitle: { fontSize: 17, lineHeight: 1.35, fontWeight: 800, letterSpacing: '-.55px', color: 'var(--mp-ink)' },
-  actionSub: { fontSize: 11.5, lineHeight: 1.45, color: 'var(--mp-muted)', marginTop: 5 },
-  actionBtn: { flex: 'none', width: 82, height: 82, border: 'none', borderRadius: 24, background: 'var(--mp-ink)', color: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 5, fontFamily: 'inherit', fontSize: 11, fontWeight: 750, cursor: 'pointer', boxShadow: '0 8px 18px rgba(30,39,70,.18)' },
-  actionCamera: { width: 26, height: 20, border: '3px solid #fff', borderRadius: 6, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 0, position: 'relative' },
-  countdown: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, background: '#fffaf0', border: '1px solid rgba(214,180,106,.42)', color: '#9a7430', borderRadius: 13, padding: '10px 14px', fontSize: 12.5, fontWeight: 650, marginBottom: 9 },
+  shoot: { width: '100%', border: 'none', borderRadius: 15, padding: 15, fontFamily: 'inherit', fontSize: 15, fontWeight: 760, cursor: 'pointer', color: '#fff', background: 'linear-gradient(135deg,#d6b46a,#b9944d)', boxShadow: '0 8px 20px rgba(185,148,77,.25)', marginBottom: 10 },
+  countdown: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, background: '#fffaf0', border: '1px solid rgba(214,180,106,.42)', color: '#9a7430', borderRadius: 13, padding: '10px 14px', fontSize: 12.5, fontWeight: 650, marginBottom: 9 },
   timerPillWrap: { display: 'flex', justifyContent: 'center', margin: '10px 14px 0' },
   timerPill: { display: 'inline-flex', alignItems: 'center', gap: 10, background: 'var(--mp-card2)', border: '1.5px solid var(--mp-coral)', color: 'var(--mp-coral)', borderRadius: 22, padding: '8px 16px', fontSize: 13, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' },
   timerPillGo: { fontSize: 12, fontWeight: 700, opacity: .85 },
