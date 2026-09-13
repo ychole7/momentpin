@@ -1,5 +1,5 @@
 // src/GroupSettings.jsx — commercial UI redesign; existing functionality preserved
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from './supabaseClient'
 
 const COLORS = ['#ff4d5e', '#13bca4', '#e0972e', '#5b8def', '#9c4dcc', '#2a9d5a']
@@ -22,6 +22,9 @@ export default function GroupSettings({ user, group, onClose, onGroupUpdate, onL
   const [todayCount, setTodayCount] = useState(null)
   const [busy, setBusy] = useState(false)
   const [toast, setToast] = useState('')
+  const scheduleBaseline = useRef({ mode, times: [...times], windowMin, rStart, rEnd })
+  const memberBaseline = useRef({ useGroupName: false, groupName: '', groupColor: '' })
+  const nameBaseline = useRef(group.name || '')
   function flash(m) { setToast(m); setTimeout(() => setToast(''), 2400) }
 
   useEffect(() => { loadMembers(); loadMe(); loadTodayCount(); window.scrollTo({ top: 0, left: 0, behavior: 'instant' }) }, [])
@@ -36,11 +39,15 @@ export default function GroupSettings({ user, group, onClose, onGroupUpdate, onL
     let mres = await supabase.from('members').select('id,display_name,color').eq('group_id', group.id).eq('user_id', user.id).maybeSingle()
     if (!mres.error && mres.data) {
       setMyMemberId(mres.data.id)
-      if (mres.data.display_name) {
-        setGroupName(mres.data.display_name)
-        setGroupColor(mres.data.color || '')
+      const memberUse = !!mres.data.display_name
+      const memberName = mres.data.display_name || ''
+      const memberColor = mres.data.color || ''
+      if (memberUse) {
+        setGroupName(memberName)
+        setGroupColor(memberColor)
         setUseGroupName(true)
       }
+      memberBaseline.current = { useGroupName: memberUse, groupName: memberName, groupColor: memberColor }
     }
   }
   async function loadTodayCount() {
@@ -64,9 +71,16 @@ export default function GroupSettings({ user, group, onClose, onGroupUpdate, onL
     let res = await supabase.from('members').update(payload).eq('id', myMemberId)
     setBusy(false)
     if (res.error) { flash('저장 실패: ' + res.error.message); return }
-    flash(useGroupName ? '이 그룹 이름 저장됨 ✨' : '기본 프로필로 되돌렸어요')
+    memberBaseline.current = { useGroupName, groupName: useGroupName ? groupName.trim().slice(0, 12) : '', groupColor: useGroupName ? (groupColor || '#ff4d5e') : '' }
+    flash('저장했어요 ✓')
     if (onMemberUpdate) onMemberUpdate()
   }
+  const scheduleDirty = mode !== scheduleBaseline.current.mode ||
+    JSON.stringify(times) !== JSON.stringify(scheduleBaseline.current.times) ||
+    windowMin !== scheduleBaseline.current.windowMin || rStart !== scheduleBaseline.current.rStart || rEnd !== scheduleBaseline.current.rEnd
+  const memberDirty = useGroupName !== memberBaseline.current.useGroupName || groupName !== memberBaseline.current.groupName || (groupColor || '') !== (memberBaseline.current.groupColor || '')
+  const nameDirty = editName !== nameBaseline.current
+
   function addTime() {
     if (times.length >= 3) { flash('최대 3개까지예요'); return }
     if (!newTime) return
@@ -87,7 +101,8 @@ export default function GroupSettings({ user, group, onClose, onGroupUpdate, onL
     let res = await supabase.from('groups').update({ alarm_mode: mode, fixed_times: times, window_min: windowMin, random_start: rStart, random_end: rEnd }).eq('id', group.id)
     setBusy(false)
     if (res.error) { flash('저장 실패: ' + res.error.message); return }
-    flash('그룹 설정 저장됨 ✨')
+    scheduleBaseline.current = { mode, times: [...times], windowMin, rStart, rEnd }
+    flash('저장했어요 ✓')
     if (onGroupUpdate) onGroupUpdate({ ...group, alarm_mode: mode, fixed_times: times, window_min: windowMin, random_start: rStart, random_end: rEnd })
   }
   async function saveGroupName() {
@@ -97,7 +112,8 @@ export default function GroupSettings({ user, group, onClose, onGroupUpdate, onL
     let res = await supabase.from('groups').update({ name: nm }).eq('id', group.id)
     setBusy(false)
     if (res.error) { flash('저장 실패: ' + res.error.message); return }
-    flash('그룹 이름 변경됨 ✨')
+    nameBaseline.current = nm
+    flash('저장했어요 ✓')
     if (onGroupUpdate) onGroupUpdate({ ...group, name: nm })
   }
   async function copyInvite() {
@@ -163,7 +179,7 @@ export default function GroupSettings({ user, group, onClose, onGroupUpdate, onL
             <div style={S.label}>그룹 이름</div>
             <div style={S.inline}>
               <input style={{ ...S.input, flex: 1 }} value={editName} maxLength={10} onChange={e => setEditName(e.target.value.slice(0, 10))} />
-              <button style={S.outlineBtn} disabled={busy} onClick={saveGroupName}>저장</button>
+              <button style={S.outlineBtn} disabled={busy || !nameDirty} onClick={saveGroupName}>저장</button>
             </div>
           </div>}
         </section>
@@ -188,7 +204,7 @@ export default function GroupSettings({ user, group, onClose, onGroupUpdate, onL
               {COLORS.map(c => <button key={c} onClick={() => setGroupColor(c)} style={{ ...S.colorDot, background: c, border: (groupColor || '#ff4d5e') === c ? '3px solid #1e2746' : '3px solid #fff' }} aria-label="색상 선택" />)}
             </div>
           </div>}
-          <button style={S.primaryBtn} disabled={busy} onClick={saveMyGroupName}>{useGroupName ? '이 그룹 이름 저장' : '기본 프로필로 되돌리기'}</button>
+          <button style={{ ...S.primaryBtn, ...(memberDirty ? {} : S.primaryBtnDisabled) }} disabled={busy || !memberDirty} onClick={saveMyGroupName}>{useGroupName ? '이 그룹 이름 저장' : '기본 프로필로 되돌리기'}</button>
         </section>
 
         <SectionLabel text="안부 알림" />
@@ -202,7 +218,7 @@ export default function GroupSettings({ user, group, onClose, onGroupUpdate, onL
             {mode === 'fixed' ? <>
               <div style={{ ...S.label, marginTop: 20 }}>안부 시간 <span style={S.muted}>하루 1~3회</span></div>
               <div style={S.timeList}>
-                {times.map(t => <button key={t} style={S.timeChip} onClick={() => removeTime(t)}>{t}<span>×</span></button>)}
+                {times.map((t, i) => <button key={t} style={i === 0 ? S.timePrimary : S.timeChip} onClick={() => removeTime(t)}>{formatTime(t)}<span>×</span></button>)}
               </div>
               {times.length < 3 && <div style={S.inlineAdd}><input type="time" style={{ ...S.input, flex: 1 }} value={newTime} onChange={e => setNewTime(e.target.value)} /><button style={S.addBtn} onClick={addTime}>+ 추가</button></div>}
               <div style={S.help}>추가한 시간을 누르면 삭제할 수 있어요.</div>
@@ -218,7 +234,7 @@ export default function GroupSettings({ user, group, onClose, onGroupUpdate, onL
               {used != null && <div style={S.quotaRow}><span>오늘 남긴 안부</span><b style={{ color: left === 0 ? '#8a91a1' : '#e56b62' }}>{used} / {dailyLimit}회{left === 0 ? ' · 오늘 끝' : ''}</b></div>}
               <div style={S.quotaHint}>{mode === 'random' ? '설정한 시간대 안에서 하루 한 번 깜짝 알림이 가요.' : `설정한 시간 ${times.length}개만큼 하루 알림이 가요.`}</div>
             </div>
-            <button style={S.primaryBtn} disabled={busy} onClick={saveGroup}>그룹 설정 저장</button>
+            <button style={{ ...S.primaryBtn, ...(scheduleDirty ? {} : S.primaryBtnDisabled) }} disabled={busy || !scheduleDirty} onClick={saveGroup}>그룹 설정 저장</button>
           </>}
         </section>
 
@@ -232,6 +248,13 @@ export default function GroupSettings({ user, group, onClose, onGroupUpdate, onL
       {toast && <div style={S.toast}>{toast}</div>}
     </div>
   )
+}
+
+function formatTime(t) {
+  const [h, m] = t.split(':').map(Number)
+  const suffix = h >= 12 ? '오후' : '오전'
+  const hh = h % 12 || 12
+  return `${suffix} ${hh}:${String(m).padStart(2, '0')}`
 }
 
 function SectionLabel({ text }) { return <div style={S.sectionLabel}>{text}</div> }
@@ -271,12 +294,14 @@ const S = {
   counter: { fontSize: 10.5, color: '#a1a6b1', textAlign: 'right', marginTop: 4 },
   colors: { display: 'flex', gap: 10 },
   colorDot: { width: 30, height: 30, borderRadius: '50%', cursor: 'pointer', boxSizing: 'border-box', boxShadow: '0 2px 7px rgba(0,0,0,.08)' },
+  primaryBtnDisabled: { opacity: .45, boxShadow: 'none', cursor: 'default' },
   primaryBtn: { width: '100%', border: 'none', borderRadius: 15, padding: '14px 14px', marginTop: 17, color: '#fff', background: '#1e2746', fontFamily: 'inherit', fontSize: 14, fontWeight: 800, cursor: 'pointer', boxShadow: '0 7px 18px rgba(30,39,70,.16)' },
   segment: { display: 'grid', gridTemplateColumns: '1fr 1fr', padding: 4, borderRadius: 14, background: '#f1f0ec' },
   segmentBtn: { border: 'none', background: 'transparent', color: '#7e8596', padding: '10px 8px', borderRadius: 11, fontFamily: 'inherit', fontSize: 12.5, fontWeight: 800, cursor: 'pointer' },
   segmentOn: { background: '#fff', color: '#1e2746', boxShadow: '0 2px 8px rgba(30,39,70,.09)' },
   timeList: { display: 'flex', flexWrap: 'wrap', gap: 8 },
   timeChip: { border: '1px solid #ead1ce', background: '#fff7f5', color: '#e56b62', padding: '10px 13px', borderRadius: 13, fontFamily: 'inherit', fontSize: 13, fontWeight: 800, cursor: 'pointer' },
+  timePrimary: { border: '1px solid #e0e1e5', background: '#fbfaf8', color: '#1e2746', padding: '11px 15px', borderRadius: 13, fontFamily: 'inherit', fontSize: 14, fontWeight: 800, cursor: 'pointer', minWidth: 150, textAlign: 'center' },
   inlineAdd: { display: 'flex', gap: 8, marginTop: 10 },
   addBtn: { border: '1px dashed #cfd2d9', background: '#fff', color: '#596173', borderRadius: 13, padding: '0 14px', fontFamily: 'inherit', fontSize: 12, fontWeight: 800, cursor: 'pointer' },
   help: { fontSize: 11, color: '#9a9ead', marginTop: 8, lineHeight: 1.5 },
