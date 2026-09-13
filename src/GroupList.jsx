@@ -262,7 +262,7 @@ export default function GroupList({ user, currentGroup, isActive, onSelectGroup,
                 <div key={g.id} style={{ ...S.row, ...(isCurrent ? S.rowActive : {}) }}>
                   <button style={S.rowMain} onClick={() => onSelectGroup(g)}>
                     <div style={{ ...S.avatar, ...(isCurrent ? S.avatarCurrent : {}), ...(g.active ? S.avatarActive : {}) }}>
-                      {g.active ? '●' : initial}
+                      {g.active ? '·' : initial}
                     </div>
 
                     <div style={S.rowInfo}>
@@ -285,7 +285,7 @@ export default function GroupList({ user, currentGroup, isActive, onSelectGroup,
                   </button>
 
                   <button style={S.gearBtn} onClick={() => setSettingsGroup(g)} aria-label={`${g.name} 그룹 설정`}>
-                    <span style={S.gearGlyph}>⚙</span>
+                    <span style={S.gearGlyph}>⚙︎</span>
                   </button>
                 </div>
               )
@@ -388,11 +388,11 @@ const S = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    background: 'rgba(250,250,248,.94)',
+    background: 'rgba(248,247,243,.96)',
     backdropFilter: 'blur(14px)',
     WebkitBackdropFilter: 'blur(14px)',
     borderBottom: '1px solid rgba(30,39,70,.08)',
-    padding: 'max(calc(env(safe-area-inset-top,0px) + 16px), 16px) 24px 16px',
+    padding: 'max(calc(env(safe-area-inset-top,0px) + 18px), 18px) 24px 17px',
     boxSizing: 'border-box'
   },
 
@@ -406,8 +406,8 @@ const S = {
 
   title: {
     fontWeight: 800,
-    fontSize: 24,
-    letterSpacing: '-.7px',
+    fontSize: 27,
+    letterSpacing: '-.9px',
     color: 'var(--mp-ink)'
   },
 
@@ -425,11 +425,11 @@ const S = {
     boxShadow: '0 4px 14px rgba(30,39,70,.06)'
   },
 
-  body: { padding: '24px 24px 30px', boxSizing: 'border-box' },
+  body: { padding: '28px 24px 30px', boxSizing: 'border-box' },
 
-  sectionHead: { margin: '2px 2px 12px' },
-  sectionTitle: { fontSize: 16, fontWeight: 780, color: 'var(--mp-ink)', letterSpacing: '-.3px' },
-  sectionSub: { marginTop: 4, fontSize: 12, color: 'var(--mp-muted)' },
+  sectionHead: { margin: '2px 2px 15px' },
+  sectionTitle: { fontSize: 18, fontWeight: 800, color: 'var(--mp-ink)', letterSpacing: '-.3px' },
+  sectionSub: { marginTop: 5, fontSize: 13, color: 'var(--mp-muted)' },
 
   loadingCard: {
     display: 'flex',
@@ -465,8 +465,8 @@ const S = {
   },
 
   rowActive: {
-    borderColor: 'rgba(255,92,91,.72)',
-    boxShadow: '0 8px 28px rgba(255,92,91,.12)'
+    borderColor: 'rgba(255,92,91,.62)',
+    boxShadow: '0 8px 28px rgba(255,92,91,.09)'
   },
 
   rowMain: {
@@ -701,7 +701,7 @@ const S = {
     fontFamily: 'inherit',
     cursor: 'pointer',
     color: '#fff',
-    background: 'linear-gradient(135deg,#ff7a45,#ff4d5e)',
-    boxShadow: '0 8px 20px rgba(255,77,94,.22)'
+    background: '#1E2746',
+    boxShadow: '0 8px 20px rgba(30,39,70,.18)'
   }
 }
