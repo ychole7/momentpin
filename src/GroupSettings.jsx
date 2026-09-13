@@ -218,7 +218,17 @@ export default function GroupSettings({ user, group, onClose, onGroupUpdate, onL
             {mode === 'fixed' ? <>
               <div style={{ ...S.label, marginTop: 20 }}>안부 시간 <span style={S.muted}>하루 1~3회</span></div>
               <div style={S.timeList}>
-                {times.map((t, i) => <button key={t} style={i === 0 ? S.timePrimary : S.timeChip} onClick={() => removeTime(t)}>{formatTime(t)}<span>×</span></button>)}
+                {times.map((t, i) => (
+                  <div key={t} style={i === 0 ? S.timePrimary : S.timeChip}>
+                    <span>{formatTime(t)}</span>
+                    <button
+                      type="button"
+                      style={i === 0 ? S.timeRemovePrimary : S.timeRemove}
+                      onClick={(e) => { e.stopPropagation(); removeTime(t) }}
+                      aria-label={`${formatTime(t)} 삭제`}
+                    >×</button>
+                  </div>
+                ))}
               </div>
               {times.length < 3 && <div style={S.inlineAdd}><input type="time" style={{ ...S.input, flex: 1 }} value={newTime} onChange={e => setNewTime(e.target.value)} /><button style={S.addBtn} onClick={addTime}>+ 추가</button></div>}
               <div style={S.help}>추가한 시간을 누르면 삭제할 수 있어요.</div>
@@ -300,8 +310,10 @@ const S = {
   segmentBtn: { border: 'none', background: 'transparent', color: '#7e8596', padding: '10px 8px', borderRadius: 11, fontFamily: 'inherit', fontSize: 12.5, fontWeight: 800, cursor: 'pointer' },
   segmentOn: { background: '#fff', color: '#1e2746', boxShadow: '0 2px 8px rgba(30,39,70,.09)' },
   timeList: { display: 'flex', flexWrap: 'wrap', gap: 8 },
-  timeChip: { border: '1px solid #ead1ce', background: '#fff7f5', color: '#e56b62', padding: '10px 13px', borderRadius: 13, fontFamily: 'inherit', fontSize: 13, fontWeight: 800, cursor: 'pointer' },
-  timePrimary: { border: '1px solid #e0e1e5', background: '#fbfaf8', color: '#1e2746', padding: '11px 15px', borderRadius: 13, fontFamily: 'inherit', fontSize: 14, fontWeight: 800, cursor: 'pointer', minWidth: 150, textAlign: 'center' },
+  timeChip: { display: 'inline-flex', alignItems: 'center', gap: 3, border: '1px solid #ead1ce', background: '#fff7f5', color: '#e56b62', padding: '10px 8px 10px 13px', borderRadius: 13, fontFamily: 'inherit', fontSize: 13, fontWeight: 800 },
+  timePrimary: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4, border: '1px solid #e0e1e5', background: '#fbfaf8', color: '#1e2746', padding: '11px 9px 11px 15px', borderRadius: 13, fontFamily: 'inherit', fontSize: 14, fontWeight: 800, minWidth: 150, textAlign: 'center' },
+  timeRemove: { width: 22, height: 22, border: 'none', background: 'transparent', color: '#e56b62', padding: 0, margin: 0, fontFamily: 'inherit', fontSize: 17, lineHeight: 1, fontWeight: 500, cursor: 'pointer', display: 'grid', placeItems: 'center' },
+  timeRemovePrimary: { width: 24, height: 24, border: 'none', background: 'transparent', color: '#7d8493', padding: 0, margin: 0, fontFamily: 'inherit', fontSize: 17, lineHeight: 1, fontWeight: 500, cursor: 'pointer', display: 'grid', placeItems: 'center' },
   inlineAdd: { display: 'flex', gap: 8, marginTop: 10 },
   addBtn: { border: '1px dashed #cfd2d9', background: '#fff', color: '#596173', borderRadius: 13, padding: '0 14px', fontFamily: 'inherit', fontSize: 12, fontWeight: 800, cursor: 'pointer' },
   help: { fontSize: 11, color: '#9a9ead', marginTop: 8, lineHeight: 1.5 },
