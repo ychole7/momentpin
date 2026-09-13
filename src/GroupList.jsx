@@ -1,707 +1,303 @@
-// src/GroupList.jsx — 닿음 그룹 목록·전환 + 만들기/참여 + 그룹별 설정
+// src/GroupSettings.jsx — commercial UI redesign; existing functionality preserved
 import { useEffect, useState } from 'react'
 import { supabase } from './supabaseClient'
-import GroupSettings from './GroupSettings'
 
 const COLORS = ['#ff4d5e', '#13bca4', '#e0972e', '#5b8def', '#9c4dcc', '#2a9d5a']
-const randColor = () => COLORS[Math.floor(Math.random() * COLORS.length)]
 
-function makeCode() {
-  const ch = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
-  let s = ''
-  for (let i = 0; i < 4; i++) s += ch[Math.floor(Math.random() * ch.length)]
-  return 'MP-' + s
-}
-
-export default function GroupList({ user, currentGroup, isActive, onSelectGroup, onGroupUpdate, onCurrentGroupLeave, onMemberUpdate }) {
-  const [groups, setGroups] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [adding, setAdding] = useState(false)
-  const [tab, setTab] = useState('create')
-  const [name, setName] = useState('')
-  const [code, setCode] = useState('')
-  const [displayName, setDisplayName] = useState('')
-  const [myColor, setMyColor] = useState(randColor())
+export default function GroupSettings({ user, group, onClose, onGroupUpdate, onLeaveGroup, onMemberUpdate }) {
+  const isOwner = group.created_by === user.id
+  const [members, setMembers] = useState([])
+  const [myName, setMyName] = useState('')
+  const [groupName, setGroupName] = useState('')
+  const [groupColor, setGroupColor] = useState('')
+  const [useGroupName, setUseGroupName] = useState(false)
+  const [myMemberId, setMyMemberId] = useState(null)
+  const [mode, setMode] = useState(group.alarm_mode || 'fixed')
+  const [times, setTimes] = useState(Array.isArray(group.fixed_times) ? group.fixed_times : ['08:00', '21:00'])
+  const [windowMin, setWindowMin] = useState(group.window_min || 3)
+  const [rStart, setRStart] = useState((group.random_start || '09:00').slice(0, 5))
+  const [rEnd, setREnd] = useState((group.random_end || '21:00').slice(0, 5))
+  const [newTime, setNewTime] = useState('18:30')
+  const [editName, setEditName] = useState(group.name)
+  const [todayCount, setTodayCount] = useState(null)
   const [busy, setBusy] = useState(false)
-  const [msg, setMsg] = useState('')
-  const [settingsGroup, setSettingsGroup] = useState(null)
+  const [toast, setToast] = useState('')
+  function flash(m) { setToast(m); setTimeout(() => setToast(''), 2400) }
 
-  useEffect(() => { load(); loadProfile() }, [])
+  useEffect(() => { loadMembers(); loadMe(); loadTodayCount() }, [])
 
-  useEffect(() => {
-    if (isActive && !settingsGroup) load({ silent: true })
-  }, [isActive])
-
-  async function loadProfile() {
-    const res = await supabase.from('profiles').select('display_name,color').eq('user_id', user.id).maybeSingle()
-    if (!res.error && res.data) {
-      if (res.data.display_name) setDisplayName(res.data.display_name)
-      if (res.data.color) setMyColor(res.data.color)
-    }
+  async function loadMembers() {
+    let res = await supabase.from('members').select('user_id,display_name,color').eq('group_id', group.id)
+    if (!res.error) setMembers(res.data || [])
   }
-
-  async function load(opts) {
-    const silent = opts && opts.silent
-    if (!silent) setLoading(true)
-    const res = await supabase
-      .from('members')
-      .select('group_id, groups(id,name,invite_code,created_by,alarm_mode,fixed_times,random_start,random_end,window_min)')
-      .eq('user_id', user.id)
-
-    if (res.error) {
-      if (!silent) setLoading(false)
-      return
-    }
-
-    const list = (res.data || []).map(r => r.groups).filter(Boolean)
-    const now = new Date().toISOString()
-    const gids = list.map(g => g.id)
-    const activeSet = new Set()
-
-    if (gids.length) {
-      const mres = await supabase.from('moments').select('group_id')
-        .in('group_id', gids).lte('fired_at', now).gte('deadline', now)
-      if (!mres.error && mres.data) mres.data.forEach(m => activeSet.add(m.group_id))
-    }
-
-    setGroups(list.map(g => ({ ...g, active: activeSet.has(g.id) })))
-    setLoading(false)
-  }
-
-  async function saveProfile() {
-    const res = await supabase.from('profiles').upsert({
-      user_id: user.id,
-      display_name: displayName.trim().slice(0, 12),
-      color: myColor,
-      updated_at: new Date().toISOString(),
-    }, { onConflict: 'user_id' })
-    return res.error
-  }
-
-  async function createGroup() {
-    if (!name.trim() || !displayName.trim()) {
-      setMsg('그룹 이름과 내 이름을 입력해 주세요.')
-      return
-    }
-    setBusy(true); setMsg('')
-
-    if (groups.length >= 10) {
-      setMsg('그룹은 최대 10개까지 만들 수 있어요.')
-      setBusy(false)
-      return
-    }
-
-    const dup = groups.some(g => g.name.trim().toLowerCase() === name.trim().toLowerCase())
-    if (dup) {
-      setMsg('이미 같은 이름의 그룹이 있어요.')
-      setBusy(false)
-      return
-    }
-
-    const pErr = await saveProfile()
-    if (pErr) {
-      setMsg('프로필 저장 실패: ' + pErr.message)
-      setBusy(false)
-      return
-    }
-
-    let group = null
-    for (let attempt = 0; attempt < 3 && !group; attempt++) {
-      const res = await supabase.from('groups')
-        .insert({ name: name.trim(), invite_code: makeCode(), created_by: user.id })
-        .select().single()
-
-      if (!res.error) {
-        group = res.data
-        break
-      }
-      if (!String(res.error.message).includes('duplicate')) {
-        setMsg(res.error.message)
-        setBusy(false)
-        return
+  async function loadMe() {
+    let res = await supabase.from('profiles').select('display_name,color').eq('user_id', user.id).maybeSingle()
+    if (!res.error && res.data) setMyName(res.data.display_name || '')
+    let mres = await supabase.from('members').select('id,display_name,color').eq('group_id', group.id).eq('user_id', user.id).maybeSingle()
+    if (!mres.error && mres.data) {
+      setMyMemberId(mres.data.id)
+      if (mres.data.display_name) {
+        setGroupName(mres.data.display_name)
+        setGroupColor(mres.data.color || '')
+        setUseGroupName(true)
       }
     }
-
-    if (!group) {
-      setMsg('초대코드 생성에 실패했어요. 다시 시도해 주세요.')
-      setBusy(false)
-      return
+  }
+  async function loadTodayCount() {
+    const now = new Date()
+    const kst = new Date(now.getTime() + 9 * 3600 * 1000)
+    const y = kst.getUTCFullYear(), mo = kst.getUTCMonth(), d = kst.getUTCDate()
+    const startKstUtc = new Date(Date.UTC(y, mo, d) - 9 * 3600 * 1000)
+    let res = await supabase.from('moments').select('id', { count: 'exact', head: true }).eq('group_id', group.id).gte('fired_at', startKstUtc.toISOString())
+    if (typeof res.count === 'number') setTodayCount(res.count)
+  }
+  async function saveMyGroupName() {
+    if (!myMemberId) { flash('멤버 정보를 찾을 수 없어요'); return }
+    if (useGroupName && !groupName.trim()) { flash('이 그룹에서 쓸 이름을 입력해 주세요'); return }
+    if (useGroupName) {
+      const wanted = groupName.trim().toLowerCase()
+      const clash = (members || []).some(m => m.user_id !== user.id && (m.display_name || '').trim().toLowerCase() === wanted)
+      if (clash) { flash('이 그룹에 이미 같은 이름이 있어요. 다른 이름을 써주세요'); return }
     }
-
-    const res2 = await supabase.from('members')
-      .insert({
-        group_id: group.id,
-        user_id: user.id,
-        display_name: displayName.trim().slice(0, 12),
-        color: myColor
-      })
-
-    if (res2.error) {
-      setMsg(res2.error.message)
-      setBusy(false)
-      return
-    }
-
+    setBusy(true)
+    const payload = useGroupName ? { display_name: groupName.trim().slice(0, 12), color: groupColor || '#ff4d5e' } : { display_name: null, color: null }
+    let res = await supabase.from('members').update(payload).eq('id', myMemberId)
     setBusy(false)
-    setName('')
-    setAdding(false)
-    onSelectGroup(group)
+    if (res.error) { flash('저장 실패: ' + res.error.message); return }
+    flash(useGroupName ? '이 그룹 이름 저장됨 ✨' : '기본 프로필로 되돌렸어요')
+    if (onMemberUpdate) onMemberUpdate()
   }
-
-  async function joinGroup() {
-    if (!code.trim() || !displayName.trim()) {
-      setMsg('초대코드와 내 이름을 입력해 주세요.')
-      return
+  function addTime() {
+    if (times.length >= 3) { flash('최대 3개까지예요'); return }
+    if (!newTime) return
+    if (times.includes(newTime)) { flash('이미 있는 시간이에요'); return }
+    setTimes([...times, newTime].sort())
+  }
+  function removeTime(t) { setTimes(times.filter(x => x !== t)) }
+  async function saveGroup() {
+    if (mode === 'fixed') {
+      if (!times.length) { flash('안부 시간을 1개 이상 추가해 주세요'); return }
+    } else {
+      const toMin = (t) => { const [h, m] = t.split(':').map(Number); return h * 60 + m }
+      const s = toMin(rStart), e = toMin(rEnd)
+      if (e <= s) { flash('끝 시간이 시작 시간보다 늦어야 해요'); return }
+      if (e - s < 10) { flash('랜덤 시간대는 최소 10분 이상으로 정해 주세요'); return }
     }
-
-    setBusy(true); setMsg('')
-
-    const pErr = await saveProfile()
-    if (pErr) {
-      setMsg('프로필 저장 실패: ' + pErr.message)
-      setBusy(false)
-      return
-    }
-
-    const res = await supabase.from('groups')
-      .select('id,name,invite_code,created_by,alarm_mode,fixed_times,random_start,random_end,window_min')
-      .eq('invite_code', code.trim().toUpperCase())
-      .single()
-
-    if (res.error || !res.data) {
-      setMsg('그 코드의 그룹을 찾을 수 없어요.')
-      setBusy(false)
-      return
-    }
-
-    const group = res.data
-    const res2 = await supabase.from('members')
-      .insert({
-        group_id: group.id,
-        user_id: user.id,
-        display_name: displayName.trim().slice(0, 12),
-        color: myColor
-      })
-
-    if (res2.error && !String(res2.error.message).includes('duplicate')) {
-      setMsg(res2.error.message)
-      setBusy(false)
-      return
-    }
-
+    setBusy(true)
+    let res = await supabase.from('groups').update({ alarm_mode: mode, fixed_times: times, window_min: windowMin, random_start: rStart, random_end: rEnd }).eq('id', group.id)
     setBusy(false)
-    setCode('')
-    setAdding(false)
-    onSelectGroup(group)
+    if (res.error) { flash('저장 실패: ' + res.error.message); return }
+    flash('그룹 설정 저장됨 ✨')
+    if (onGroupUpdate) onGroupUpdate({ ...group, alarm_mode: mode, fixed_times: times, window_min: windowMin, random_start: rStart, random_end: rEnd })
+  }
+  async function saveGroupName() {
+    const nm = editName.trim().slice(0, 10)
+    if (!nm) { flash('그룹 이름을 입력해 주세요'); return }
+    setBusy(true)
+    let res = await supabase.from('groups').update({ name: nm }).eq('id', group.id)
+    setBusy(false)
+    if (res.error) { flash('저장 실패: ' + res.error.message); return }
+    flash('그룹 이름 변경됨 ✨')
+    if (onGroupUpdate) onGroupUpdate({ ...group, name: nm })
+  }
+  async function copyInvite() {
+    const link = window.location.origin + '/?code=' + encodeURIComponent(group.invite_code)
+    try { await navigator.clipboard.writeText(link) } catch {}
+    flash('초대 링크 복사됨 ✨')
+  }
+  async function leaveGroup() {
+    if (isOwner && members.length > 1) { flash('그룹장은 먼저 다른 멤버에게 넘기거나 그룹을 삭제해 주세요'); return }
+    const lastOne = members.length <= 1
+    if (lastOne && !confirm('이 그룹엔 나만 있어요. 나가면 그룹이 삭제되고 모든 기록이 사라져요. 계속할까요?')) return
+    if (!lastOne && !confirm('정말 이 그룹에서 나갈까요?')) return
+    setBusy(true)
+    if (lastOne) {
+      let res = await supabase.from('groups').delete().eq('id', group.id)
+      setBusy(false)
+      if (res.error) { flash('나가기 실패: ' + res.error.message); return }
+    } else {
+      let res = await supabase.from('members').delete().eq('group_id', group.id).eq('user_id', user.id)
+      setBusy(false)
+      if (res.error) { flash('나가기 실패: ' + res.error.message); return }
+    }
+    if (onLeaveGroup) onLeaveGroup()
+  }
+  async function deleteGroup() {
+    if (!confirm('정말 그룹을 삭제할까요?\n모든 안부와 사진이 사라지고 되돌릴 수 없어요.')) return
+    if (!confirm('한 번 더 확인할게요. 정말 삭제하시겠어요?')) return
+    setBusy(true)
+    let res = await supabase.from('groups').delete().eq('id', group.id)
+    setBusy(false)
+    if (res.error) { flash('삭제 실패: ' + res.error.message); return }
+    if (onLeaveGroup) onLeaveGroup()
   }
 
-  if (settingsGroup) {
-    return (
-      <GroupSettings
-        user={user}
-        group={settingsGroup}
-        onClose={() => setSettingsGroup(null)}
-        onGroupUpdate={(updated) => {
-          setSettingsGroup(updated)
-          setGroups(prev => prev.map(g => g.id === updated.id ? { ...g, ...updated } : g))
-          if (onGroupUpdate && currentGroup?.id === updated.id) onGroupUpdate(updated)
-        }}
-        onLeaveGroup={() => {
-          const leftId = settingsGroup.id
-          setSettingsGroup(null)
-          setGroups(prev => prev.filter(g => g.id !== leftId))
-          if (onCurrentGroupLeave && currentGroup?.id === leftId) onCurrentGroupLeave()
-          load()
-        }}
-        onMemberUpdate={() => { if (onMemberUpdate) onMemberUpdate() }}
-      />
-    )
-  }
-
-  function openAdd(mode = 'create') {
-    setTab(mode)
-    setAdding(true)
-    setMsg('')
-  }
+  const dailyLimit = Math.min(5, Math.max(1, mode === 'random' ? 1 : times.length))
+  const rawUsed = todayCount == null ? null : todayCount
+  const used = rawUsed == null ? null : Math.min(rawUsed, dailyLimit)
+  const left = used == null ? null : Math.max(0, dailyLimit - rawUsed)
 
   return (
     <div style={S.app}>
-      <header style={S.top}>
-        <div>
-          <div style={S.eyebrow}>함께하는 사람들</div>
-          <div style={S.title}>내 그룹</div>
+      <header style={S.header}>
+        <button style={S.back} onClick={onClose} aria-label="뒤로">‹</button>
+        <div style={S.headerCenter}>
+          <div style={S.eyebrow}>GROUP SETTINGS</div>
+          <div style={S.title}>{group.name}</div>
         </div>
-        <button style={S.topAdd} onClick={() => openAdd('create')} aria-label="새 그룹 만들기">＋</button>
+        <div style={S.headerSpacer} />
       </header>
 
       <main style={S.body}>
-        {loading ? (
-          <div style={S.loadingCard}>
-            <div style={S.loadingDot} />
-            <div>
-              <div style={S.loadingTitle}>그룹을 불러오는 중</div>
-              <div style={S.loadingSub}>잠시만 기다려 주세요.</div>
-            </div>
+        <section style={S.intro}>
+          <div style={S.introIcon}>⌁</div>
+          <div>
+            <div style={S.introTitle}>우리의 닿음을 설정해요</div>
+            <div style={S.introSub}>이 그룹에서 사용할 이름과 안부 시간을 관리할 수 있어요.</div>
           </div>
-        ) : (
-          <>
-            {groups.length > 0 && (
-              <div style={S.sectionHead}>
-                <div>
-                  <div style={S.sectionTitle}>함께 닿는 그룹</div>
-                  <div style={S.sectionSub}>{groups.length}개의 그룹과 함께하고 있어요.</div>
-                </div>
+        </section>
+
+        <SectionLabel text="그룹" />
+        <section style={S.card}>
+          <div style={S.groupHead}>
+            <div style={S.groupAvatar}>{(group.name || '그').slice(0, 1)}</div>
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div style={S.groupName}>{group.name}</div>
+              <div style={S.meta}>멤버 {members.length}명 · {group.invite_code}</div>
+            </div>
+            <button style={S.inviteBtn} onClick={copyInvite}>초대</button>
+          </div>
+          {isOwner && <div style={S.subBlock}>
+            <div style={S.label}>그룹 이름</div>
+            <div style={S.inline}>
+              <input style={{ ...S.input, flex: 1 }} value={editName} maxLength={10} onChange={e => setEditName(e.target.value.slice(0, 10))} />
+              <button style={S.outlineBtn} disabled={busy} onClick={saveGroupName}>저장</button>
+            </div>
+          </div>}
+        </section>
+
+        <SectionLabel text="이 그룹에서 쓰는 이름" />
+        <section style={S.card}>
+          <div style={S.toggleRow}>
+            <div>
+              <div style={S.cardTitle}>다른 이름 쓰기</div>
+              <div style={S.cardHint}>{useGroupName ? '이 그룹에서만 다르게 표시돼요' : `기본 프로필(${myName || '이름 없음'})을 사용해요`}</div>
+            </div>
+            <button onClick={() => setUseGroupName(v => !v)} style={{ ...S.switch, background: useGroupName ? '#13bca4' : '#d9dde5' }} aria-label="다른 이름 사용">
+              <span style={{ ...S.knob, transform: useGroupName ? 'translateX(20px)' : 'translateX(0)' }} />
+            </button>
+          </div>
+          {useGroupName && <div style={S.expandBlock}>
+            <div style={S.label}>이 그룹에서 쓸 이름</div>
+            <input style={S.input} value={groupName} maxLength={12} onChange={e => setGroupName(e.target.value.slice(0, 12))} placeholder="예: 아빠, 팀장님" />
+            <div style={S.counter}>{groupName.length}/12</div>
+            <div style={{ ...S.label, marginTop: 16 }}>이 그룹에서 쓸 색상</div>
+            <div style={S.colors}>
+              {COLORS.map(c => <button key={c} onClick={() => setGroupColor(c)} style={{ ...S.colorDot, background: c, border: (groupColor || '#ff4d5e') === c ? '3px solid #1e2746' : '3px solid #fff' }} aria-label="색상 선택" />)}
+            </div>
+          </div>}
+          <button style={S.primaryBtn} disabled={busy} onClick={saveMyGroupName}>{useGroupName ? '이 그룹 이름 저장' : '기본 프로필로 되돌리기'}</button>
+        </section>
+
+        <SectionLabel text="안부 알림" />
+        <section style={S.card}>
+          {!isOwner ? <div style={S.locked}><div style={S.lockIcon}>🔒</div><div><b style={{fontSize:13}}>그룹장만 설정할 수 있어요</b><span style={{display:'block',fontSize:11,color:'#8a91a1',marginTop:3}}>안부 알림 시간은 그룹장이 관리해요.</span></div></div> : <>
+            <div style={S.label}>언제 다 같이 찍을까요?</div>
+            <div style={S.segment}>
+              <button style={{ ...S.segmentBtn, ...(mode === 'fixed' ? S.segmentOn : {}) }} onClick={() => setMode('fixed')}>정해진 시간</button>
+              <button style={{ ...S.segmentBtn, ...(mode === 'random' ? S.segmentOn : {}) }} onClick={() => setMode('random')}>랜덤</button>
+            </div>
+            {mode === 'fixed' ? <>
+              <div style={{ ...S.label, marginTop: 20 }}>안부 시간 <span style={S.muted}>하루 1~3회</span></div>
+              <div style={S.timeList}>
+                {times.map(t => <button key={t} style={S.timeChip} onClick={() => removeTime(t)}>{t}<span>×</span></button>)}
               </div>
-            )}
+              {times.length < 3 && <div style={S.inlineAdd}><input type="time" style={{ ...S.input, flex: 1 }} value={newTime} onChange={e => setNewTime(e.target.value)} /><button style={S.addBtn} onClick={addTime}>+ 추가</button></div>}
+              <div style={S.help}>추가한 시간을 누르면 삭제할 수 있어요.</div>
+            </> : <>
+              <div style={{ ...S.label, marginTop: 20 }}>랜덤 시간대</div>
+              <div style={S.timeRange}><input type="time" style={{ ...S.input, flex: 1, textAlign: 'center' }} value={rStart} onChange={e => setRStart(e.target.value)} /><span>~</span><input type="time" style={{ ...S.input, flex: 1, textAlign: 'center' }} value={rEnd} onChange={e => setREnd(e.target.value)} /></div>
+              <div style={S.help}>이 시간대 안에서 하루 한 번, 깜짝 알림이 가요.</div>
+            </>}
+            <div style={{ ...S.label, marginTop: 20 }}>찍을 수 있는 시간 <span style={S.muted}>마감</span></div>
+            <div style={S.segmentWrap}>{[2, 3, 5, 10].map(w => <button key={w} style={{ ...S.smallPill, ...(windowMin === w ? S.smallPillOn : {}) }} onClick={() => setWindowMin(w)}>{w}분</button>)}</div>
+            <div style={S.quota}>
+              <div style={S.quotaRow}><span>오늘 알림 예정</span><b>하루 {dailyLimit}번</b></div>
+              {used != null && <div style={S.quotaRow}><span>오늘 남긴 안부</span><b style={{ color: left === 0 ? '#8a91a1' : '#e56b62' }}>{used} / {dailyLimit}회{left === 0 ? ' · 오늘 끝' : ''}</b></div>}
+              <div style={S.quotaHint}>{mode === 'random' ? '설정한 시간대 안에서 하루 한 번 깜짝 알림이 가요.' : `설정한 시간 ${times.length}개만큼 하루 알림이 가요.`}</div>
+            </div>
+            <button style={S.primaryBtn} disabled={busy} onClick={saveGroup}>그룹 설정 저장</button>
+          </>}
+        </section>
 
-            {groups.map(g => {
-              const isCurrent = g.id === currentGroup?.id
-              const initial = (g.name || '그룹').slice(0, 1)
-
-              return (
-                <div key={g.id} style={{ ...S.row, ...(isCurrent ? S.rowActive : {}) }}>
-                  <button style={S.rowMain} onClick={() => onSelectGroup(g)}>
-                    <div style={{ ...S.avatar, ...(isCurrent ? S.avatarCurrent : {}), ...(g.active ? S.avatarActive : {}) }}>
-                      {g.active ? '●' : initial}
-                    </div>
-
-                    <div style={S.rowInfo}>
-                      <div style={S.rowName}>
-                        {g.name}
-                        {g.created_by === user.id && <span style={S.owner}>그룹장</span>}
-                      </div>
-
-                      <div style={S.rowSub}>
-                        <span style={S.codeText}>{g.invite_code}</span>
-                        <span style={S.dot}>·</span>
-                        {g.active
-                          ? <span style={S.activeBadge}>안부 진행 중</span>
-                          : <span style={S.waitText}>다음 안부를 기다리는 중</span>}
-                      </div>
-                    </div>
-
-                    {isCurrent && <span style={S.currentChip}>현재</span>}
-                    <span style={S.arrow}>›</span>
-                  </button>
-
-                  <button style={S.gearBtn} onClick={() => setSettingsGroup(g)} aria-label={`${g.name} 그룹 설정`}>
-                    <span style={S.gearGlyph}>⚙</span>
-                  </button>
-                </div>
-              )
-            })}
-
-            {!adding ? (
-              <button style={S.addBtn} onClick={() => openAdd('create')}>
-                <span style={S.addIcon}>＋</span>
-                <span>
-                  <strong style={S.addTitle}>새 그룹 만들기 / 참여하기</strong>
-                  <small style={S.addSub}>가족·친구와 함께 닿을 그룹을 만들어보세요.</small>
-                </span>
-                <span style={S.addArrow}>›</span>
-              </button>
-            ) : (
-              <section style={S.addCard}>
-                <div style={S.addHead}>
-                  <div>
-                    <div style={S.addKicker}>GROUP</div>
-                    <div style={S.addTitleLarge}>{tab === 'create' ? '새 그룹 만들기' : '초대코드로 참여하기'}</div>
-                  </div>
-                  <button style={S.addClose} onClick={() => { setAdding(false); setMsg('') }} aria-label="닫기">×</button>
-                </div>
-
-                <div style={S.tabs}>
-                  <button style={{ ...S.tab, ...(tab === 'create' ? S.tabOn : {}) }} onClick={() => { setTab('create'); setMsg('') }}>새로 만들기</button>
-                  <button style={{ ...S.tab, ...(tab === 'join' ? S.tabOn : {}) }} onClick={() => { setTab('join'); setMsg('') }}>초대코드 참여</button>
-                </div>
-
-                <label style={S.fieldLabel}>내 이름</label>
-                <input
-                  style={S.input}
-                  placeholder="예: 아빠, 민지"
-                  maxLength={12}
-                  value={displayName}
-                  onChange={e => setDisplayName(e.target.value.slice(0, 12))}
-                />
-
-                {tab === 'create' ? (
-                  <>
-                    <label style={S.fieldLabel}>그룹 이름</label>
-                    <input
-                      style={S.input}
-                      placeholder="예: 우리가족"
-                      maxLength={10}
-                      value={name}
-                      onChange={e => setName(e.target.value.slice(0, 10))}
-                    />
-                  </>
-                ) : (
-                  <>
-                    <label style={S.fieldLabel}>초대코드</label>
-                    <input
-                      style={{ ...S.input, textTransform: 'uppercase', letterSpacing: 1.2 }}
-                      placeholder="예: MP-4F2K"
-                      value={code}
-                      onChange={e => setCode(e.target.value)}
-                    />
-                  </>
-                )}
-
-                {msg && <div style={S.msg}>{msg}</div>}
-
-                <button
-                  style={{ ...S.primary, opacity: busy ? .6 : 1 }}
-                  disabled={busy}
-                  onClick={tab === 'create' ? createGroup : joinGroup}
-                >
-                  {busy ? '잠시만요…' : (tab === 'create' ? '그룹 만들기' : '그룹 참여하기')}
-                </button>
-              </section>
-            )}
-          </>
-        )}
+        <SectionLabel text="그룹 관리" />
+        <section style={S.card}>
+          <button style={S.actionRow} onClick={leaveGroup}><span>이 그룹에서 나가기</span><span>›</span></button>
+          {isOwner && <button style={{ ...S.actionRow, color: '#e56b62', borderBottom: 'none' }} onClick={deleteGroup}><span>그룹 삭제하기</span><span>›</span></button>}
+        </section>
+        {isOwner && <div style={S.danger}>삭제하면 모든 안부와 사진이 영구히 사라져요.</div>}
       </main>
+      {toast && <div style={S.toast}>{toast}</div>}
     </div>
   )
 }
 
+function SectionLabel({ text }) { return <div style={S.sectionLabel}>{text}</div> }
+
 const S = {
-  center: { textAlign: 'center', color: 'var(--mp-muted)', padding: 40, fontSize: 14 },
-
-  app: {
-    width: '100%',
-    maxWidth: 480,
-    margin: '0 auto',
-    minHeight: '100dvh',
-    background: 'var(--mp-bg)',
-    fontFamily: "'Outfit','Gowun Dodum',sans-serif",
-    color: 'var(--mp-ink)',
-    paddingBottom: 110,
-    boxSizing: 'border-box',
-    overflowX: 'hidden'
-  },
-
-  top: {
-    position: 'sticky',
-    top: 0,
-    zIndex: 100,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    background: 'rgba(250,250,248,.94)',
-    backdropFilter: 'blur(14px)',
-    WebkitBackdropFilter: 'blur(14px)',
-    borderBottom: '1px solid rgba(30,39,70,.08)',
-    padding: 'max(calc(env(safe-area-inset-top,0px) + 16px), 16px) 24px 16px',
-    boxSizing: 'border-box'
-  },
-
-  eyebrow: {
-    color: 'var(--mp-muted)',
-    fontSize: 11,
-    fontWeight: 650,
-    letterSpacing: .3,
-    marginBottom: 2
-  },
-
-  title: {
-    fontWeight: 800,
-    fontSize: 24,
-    letterSpacing: '-.7px',
-    color: 'var(--mp-ink)'
-  },
-
-  topAdd: {
-    width: 42,
-    height: 42,
-    border: '1px solid rgba(30,39,70,.10)',
-    borderRadius: 14,
-    background: 'var(--mp-card)',
-    color: 'var(--mp-ink)',
-    fontSize: 24,
-    lineHeight: 1,
-    fontWeight: 400,
-    cursor: 'pointer',
-    boxShadow: '0 4px 14px rgba(30,39,70,.06)'
-  },
-
-  body: { padding: '24px 24px 30px', boxSizing: 'border-box' },
-
-  sectionHead: { margin: '2px 2px 12px' },
-  sectionTitle: { fontSize: 16, fontWeight: 780, color: 'var(--mp-ink)', letterSpacing: '-.3px' },
-  sectionSub: { marginTop: 4, fontSize: 12, color: 'var(--mp-muted)' },
-
-  loadingCard: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 12,
-    background: 'var(--mp-card)',
-    border: '1px solid var(--mp-line)',
-    borderRadius: 20,
-    padding: 18,
-    boxShadow: '0 8px 26px rgba(30,39,70,.05)'
-  },
-  loadingDot: {
-    width: 38, height: 38, borderRadius: 12,
-    background: 'linear-gradient(135deg,#fff4da,#f5e7bf)',
-    flex: 'none'
-  },
-  loadingTitle: { fontSize: 14, fontWeight: 700, color: 'var(--mp-ink)' },
-  loadingSub: { marginTop: 3, fontSize: 12, color: 'var(--mp-muted)' },
-
-  row: {
-    position: 'relative',
-    width: '100%',
-    display: 'flex',
-    alignItems: 'stretch',
-    gap: 8,
-    border: '1px solid rgba(30,39,70,.10)',
-    background: 'var(--mp-card)',
-    borderRadius: 22,
-    padding: 8,
-    marginBottom: 12,
-    boxSizing: 'border-box',
-    boxShadow: '0 7px 22px rgba(30,39,70,.055)'
-  },
-
-  rowActive: {
-    borderColor: 'rgba(255,92,91,.72)',
-    boxShadow: '0 8px 28px rgba(255,92,91,.12)'
-  },
-
-  rowMain: {
-    flex: 1,
-    minWidth: 0,
-    display: 'flex',
-    alignItems: 'center',
-    gap: 13,
-    border: 'none',
-    background: 'none',
-    fontFamily: 'inherit',
-    cursor: 'pointer',
-    textAlign: 'left',
-    padding: '10px 7px'
-  },
-
-  avatar: {
-    width: 52,
-    height: 52,
-    borderRadius: 17,
-    background: '#f0f1f4',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontSize: 19,
-    fontWeight: 800,
-    color: '#687184',
-    flex: 'none'
-  },
-
-  avatarCurrent: { background: '#fff0ec', color: '#ff5c5b' },
-  avatarActive: { background: '#fff1e4', color: '#d08a32' },
-
-  rowInfo: { minWidth: 0, flex: 1 },
-
-  rowName: {
-    fontWeight: 800,
-    fontSize: 17,
-    color: 'var(--mp-ink)',
-    display: 'flex',
-    alignItems: 'center',
-    gap: 6,
-    whiteSpace: 'nowrap',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis'
-  },
-
-  owner: {
-    fontSize: 10,
-    fontWeight: 700,
-    color: '#a57a2c',
-    background: '#fff5dc',
-    borderRadius: 7,
-    padding: '3px 6px',
-    flex: 'none'
-  },
-
-  rowSub: {
-    marginTop: 7,
-    display: 'flex',
-    alignItems: 'center',
-    gap: 5,
-    flexWrap: 'wrap'
-  },
-
-  codeText: { fontSize: 11.5, color: 'var(--mp-muted)', fontWeight: 650, letterSpacing: .4 },
-  dot: { color: '#c6cad2', fontSize: 10 },
-  waitText: { fontSize: 11.5, color: 'var(--mp-muted)', fontWeight: 550 },
-
-  activeBadge: {
-    fontSize: 11,
-    fontWeight: 750,
-    color: '#c17920',
-    background: '#fff5df',
-    borderRadius: 8,
-    padding: '4px 7px'
-  },
-
-  currentChip: {
-    position: 'static',
-    fontSize: 10,
-    fontWeight: 800,
-    color: '#ff5c5b',
-    background: '#fff0ec',
-    padding: '4px 7px',
-    borderRadius: 8
-  },
-
-  arrow: { fontSize: 26, color: '#c4c8d0', fontWeight: 300, lineHeight: 1, marginLeft: 'auto' },
-
-  gearBtn: {
-    flex: 'none',
-    width: 46,
-    border: 'none',
-    background: '#f5f6f7',
-    borderRadius: 16,
-    cursor: 'pointer',
-    color: '#7e8796',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-
-  gearGlyph: { fontSize: 17, lineHeight: 1 },
-
-  addBtn: {
-    width: '100%',
-    display: 'flex',
-    alignItems: 'center',
-    gap: 13,
-    border: '1.5px dashed #d4d7df',
-    background: 'rgba(255,255,255,.72)',
-    color: 'var(--mp-sub)',
-    borderRadius: 20,
-    padding: '15px 16px',
-    marginTop: 2,
-    fontFamily: 'inherit',
-    textAlign: 'left',
-    cursor: 'pointer',
-    boxSizing: 'border-box'
-  },
-
-  addIcon: {
-    width: 42, height: 42, borderRadius: 14,
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    background: '#fff5dc', color: '#b18437', fontSize: 23, flex: 'none'
-  },
-
-  addTitle: { display: 'block', fontSize: 14, fontWeight: 750, color: 'var(--mp-ink)' },
-  addSub: { display: 'block', marginTop: 3, fontSize: 11.5, color: 'var(--mp-muted)' },
-  addArrow: { marginLeft: 'auto', fontSize: 25, color: '#c0a15d', fontWeight: 300 },
-
-  addCard: {
-    border: '1px solid rgba(30,39,70,.10)',
-    background: 'var(--mp-card)',
-    borderRadius: 24,
-    padding: 20,
-    marginTop: 4,
-    boxShadow: '0 10px 30px rgba(30,39,70,.07)'
-  },
-
-  addHead: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 17
-  },
-
-  addKicker: {
-    fontSize: 10,
-    fontWeight: 800,
-    color: '#b08a3e',
-    letterSpacing: 1.2,
-    marginBottom: 3
-  },
-
-  addTitleLarge: { fontWeight: 800, fontSize: 20, letterSpacing: '-.5px' },
-
-  addClose: {
-    width: 34, height: 34, border: 'none',
-    background: '#f3f4f6', borderRadius: 12,
-    fontSize: 22, cursor: 'pointer', color: '#737b8a'
-  },
-
-  tabs: {
-    display: 'flex',
-    gap: 4,
-    background: '#eef0f3',
-    borderRadius: 15,
-    padding: 4,
-    marginBottom: 19
-  },
-
-  tab: {
-    flex: 1,
-    border: 'none',
-    background: 'none',
-    fontFamily: 'inherit',
-    fontSize: 12.5,
-    fontWeight: 650,
-    color: 'var(--mp-muted)',
-    padding: 10,
-    borderRadius: 12,
-    cursor: 'pointer'
-  },
-
-  tabOn: {
-    background: 'var(--mp-card)',
-    color: 'var(--mp-ink)',
-    boxShadow: '0 2px 8px rgba(30,39,70,.09)'
-  },
-
-  fieldLabel: {
-    display: 'block',
-    fontSize: 12,
-    fontWeight: 700,
-    color: 'var(--mp-sub)',
-    margin: '0 2px 7px'
-  },
-
-  input: {
-    width: '100%',
-    border: '1px solid #dfe2e8',
-    background: '#fbfbfa',
-    color: 'var(--mp-ink)',
-    borderRadius: 15,
-    padding: '14px 15px',
-    fontSize: 15,
-    fontFamily: 'inherit',
-    marginBottom: 14,
-    outline: 'none',
-    boxSizing: 'border-box'
-  },
-
-  msg: {
-    fontSize: 12.5,
-    color: 'var(--mp-coral)',
-    background: '#fff4f2',
-    border: '1px solid #ffd8d3',
-    padding: '11px 12px',
-    borderRadius: 12,
-    margin: '0 0 13px'
-  },
-
-  primary: {
-    width: '100%',
-    border: 'none',
-    borderRadius: 15,
-    padding: 15,
-    fontSize: 15,
-    fontWeight: 750,
-    fontFamily: 'inherit',
-    cursor: 'pointer',
-    color: '#fff',
-    background: 'linear-gradient(135deg,#ff7a45,#ff4d5e)',
-    boxShadow: '0 8px 20px rgba(255,77,94,.22)'
-  }
+  app: { width: '100%', maxWidth: 480, margin: '0 auto', minHeight: '100dvh', background: '#f8f7f3', color: '#1e2746', fontFamily: "'Outfit','Gowun Dodum',sans-serif", paddingBottom: 32 },
+  header: { position: 'sticky', top: 0, zIndex: 100, height: 64, background: 'rgba(248,247,243,.94)', backdropFilter: 'blur(16px)', borderBottom: '1px solid #e9e7e2', display: 'flex', alignItems: 'center', padding: '0 18px' },
+  back: { width: 38, height: 38, border: 'none', background: '#fff', borderRadius: 13, fontSize: 28, lineHeight: 1, color: '#1e2746', cursor: 'pointer', boxShadow: '0 2px 10px rgba(30,39,70,.06)' },
+  headerCenter: { flex: 1, textAlign: 'center', minWidth: 0 },
+  headerSpacer: { width: 38 },
+  eyebrow: { fontSize: 8, fontWeight: 800, letterSpacing: 1.4, color: '#9a9ead', marginBottom: 2 },
+  title: { fontSize: 17, fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  body: { padding: '18px 18px 50px' },
+  intro: { display: 'flex', gap: 12, alignItems: 'center', padding: '15px 16px', background: '#fff', borderRadius: 18, boxShadow: '0 5px 24px rgba(30,39,70,.055)', marginBottom: 4 },
+  introIcon: { width: 38, height: 38, borderRadius: 13, display: 'grid', placeItems: 'center', background: '#fff2ef', color: '#e56b62', fontSize: 22, fontWeight: 700 },
+  introTitle: { fontSize: 14, fontWeight: 800, marginBottom: 3 },
+  introSub: { fontSize: 11.5, lineHeight: 1.45, color: '#8a91a1' },
+  sectionLabel: { margin: '22px 4px 9px', fontSize: 11, fontWeight: 800, color: '#7e8596', letterSpacing: .2 },
+  card: { background: '#fff', borderRadius: 20, padding: 17, boxShadow: '0 7px 28px rgba(30,39,70,.055)' },
+  groupHead: { display: 'flex', alignItems: 'center', gap: 12 },
+  groupAvatar: { width: 50, height: 50, flex: '0 0 50px', borderRadius: 16, background: '#1e2746', color: '#fff', display: 'grid', placeItems: 'center', fontSize: 20, fontWeight: 800 },
+  groupName: { fontSize: 17, fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  meta: { marginTop: 4, fontSize: 11.5, color: '#8a91a1' },
+  inviteBtn: { border: '1px solid #e7e5e0', background: '#fff', borderRadius: 13, padding: '9px 13px', color: '#1e2746', fontWeight: 800, fontSize: 12, cursor: 'pointer' },
+  subBlock: { borderTop: '1px solid #efeee9', marginTop: 16, paddingTop: 15 },
+  label: { fontSize: 12.5, fontWeight: 800, marginBottom: 9 },
+  muted: { color: '#a1a6b1', fontWeight: 600, marginLeft: 3 },
+  inline: { display: 'flex', gap: 8 },
+  input: { width: '100%', border: '1px solid #e4e3df', borderRadius: 13, padding: '12px 13px', background: '#fbfaf8', color: '#1e2746', fontFamily: 'inherit', fontSize: 14, fontWeight: 700, outline: 'none', boxSizing: 'border-box' },
+  outlineBtn: { border: '1px solid #dfe0e4', background: '#fff', color: '#1e2746', borderRadius: 13, padding: '0 15px', fontFamily: 'inherit', fontSize: 12, fontWeight: 800, cursor: 'pointer' },
+  cardTitle: { fontSize: 14, fontWeight: 800 },
+  cardHint: { fontSize: 11.5, color: '#8a91a1', marginTop: 4, lineHeight: 1.45 },
+  toggleRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 },
+  switch: { width: 46, height: 26, borderRadius: 20, border: 'none', cursor: 'pointer', position: 'relative', padding: 0, transition: 'background .2s' },
+  knob: { position: 'absolute', top: 3, left: 3, width: 20, height: 20, borderRadius: '50%', background: '#fff', boxShadow: '0 2px 5px rgba(0,0,0,.18)', transition: 'transform .2s' },
+  expandBlock: { marginTop: 17, paddingTop: 17, borderTop: '1px solid #efeee9' },
+  counter: { fontSize: 10.5, color: '#a1a6b1', textAlign: 'right', marginTop: 4 },
+  colors: { display: 'flex', gap: 10 },
+  colorDot: { width: 30, height: 30, borderRadius: '50%', cursor: 'pointer', boxSizing: 'border-box', boxShadow: '0 2px 7px rgba(0,0,0,.08)' },
+  primaryBtn: { width: '100%', border: 'none', borderRadius: 14, padding: '13px 14px', marginTop: 17, color: '#fff', background: '#1e2746', fontFamily: 'inherit', fontSize: 13.5, fontWeight: 800, cursor: 'pointer', boxShadow: '0 7px 18px rgba(30,39,70,.16)' },
+  segment: { display: 'grid', gridTemplateColumns: '1fr 1fr', padding: 4, borderRadius: 14, background: '#f1f0ec' },
+  segmentBtn: { border: 'none', background: 'transparent', color: '#7e8596', padding: '10px 8px', borderRadius: 11, fontFamily: 'inherit', fontSize: 12.5, fontWeight: 800, cursor: 'pointer' },
+  segmentOn: { background: '#fff', color: '#1e2746', boxShadow: '0 2px 8px rgba(30,39,70,.09)' },
+  timeList: { display: 'flex', flexWrap: 'wrap', gap: 8 },
+  timeChip: { border: '1px solid #ead1ce', background: '#fff7f5', color: '#e56b62', padding: '9px 12px', borderRadius: 12, fontFamily: 'inherit', fontSize: 13, fontWeight: 800, cursor: 'pointer' },
+  inlineAdd: { display: 'flex', gap: 8, marginTop: 9 },
+  addBtn: { border: '1px dashed #cfd2d9', background: '#fff', color: '#596173', borderRadius: 13, padding: '0 14px', fontFamily: 'inherit', fontSize: 12, fontWeight: 800, cursor: 'pointer' },
+  help: { fontSize: 11, color: '#9a9ead', marginTop: 8, lineHeight: 1.5 },
+  timeRange: { display: 'flex', gap: 8, alignItems: 'center' },
+  segmentWrap: { display: 'flex', gap: 8, flexWrap: 'wrap' },
+  smallPill: { minWidth: 56, border: '1px solid #e1e2e5', background: '#fafaf9', color: '#596173', padding: '9px 13px', borderRadius: 12, fontFamily: 'inherit', fontSize: 12, fontWeight: 800, cursor: 'pointer' },
+  smallPillOn: { background: '#fff1ee', borderColor: '#e56b62', color: '#e56b62' },
+  quota: { marginTop: 17, background: '#f8f7f3', borderRadius: 15, padding: '13px 14px' },
+  quotaRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, fontSize: 12.5, color: '#707789', padding: '3px 0' },
+  quotaHint: { fontSize: 10.5, color: '#9a9ead', lineHeight: 1.5, marginTop: 6 },
+  locked: { display: 'flex', gap: 12, alignItems: 'center', background: '#f8f7f3', borderRadius: 15, padding: '14px' },
+  lockIcon: { width: 38, height: 38, borderRadius: 12, background: '#fff', display: 'grid', placeItems: 'center', fontSize: 17 },
+  actionRow: { width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: 'none', borderBottom: '1px solid #efeee9', background: 'transparent', color: '#1e2746', padding: '14px 2px', fontFamily: 'inherit', fontSize: 13.5, fontWeight: 700, cursor: 'pointer' },
+  danger: { textAlign: 'center', color: '#e56b62', fontSize: 10.5, marginTop: 9 },
+  toast: { position: 'fixed', left: '50%', bottom: 28, transform: 'translateX(-50%)', background: '#1e2746', color: '#fff', padding: '12px 19px', borderRadius: 24, fontSize: 12.5, fontWeight: 700, boxShadow: '0 10px 30px rgba(0,0,0,.22)', zIndex: 4000, whiteSpace: 'nowrap' }
 }
