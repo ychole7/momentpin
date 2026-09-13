@@ -30,7 +30,6 @@ async function reverseGeocode(lat, lng) {
 }
 function hhmm(ts) { const d = new Date(ts); return d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0') }
 function ago(ts) { const d = (Date.now() - new Date(ts).getTime()) / 1000; if (d < 60) return '방금'; if (d < 3600) return Math.floor(d / 60) + '분 전'; return Math.floor(d / 3600) + '시간 전' }
-function kstDateKey(ts) { return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(ts)) }
 
 export default function Home({ user, group, profileVersion, isActive, onMembersLoaded }) {
   const [members, setMembers] = useState([])
@@ -111,7 +110,7 @@ export default function Home({ user, group, profileVersion, isActive, onMembersL
     // 지도 탭을 떠나면 기존 지도 인스턴스를 깨끗이 제거
     if (mapRef.current) { try { mapRef.current.remove() } catch {} mapRef.current = null; markersRef.current = [] }
   }, [tab])
-  useEffect(() => { drawPins() }, [posts, members, moments, signed])
+  useEffect(() => { drawPins() }, [posts, members])
   useEffect(() => { resolveSigned() }, [posts])
 
   // 현재 푸시 구독 상태 확인
@@ -280,124 +279,68 @@ export default function Home({ user, group, profileVersion, isActive, onMembersL
     setSigned(map)
   }
 
-  async function ensureLeaflet() {
-    if (window.L) return window.L
+  function initMap() {
+    const L = window.L
+    if (!L || !mapBoxRef.current) return
+    if (mapRef.current) return  // 이미 떠 있으면 중복 생성 안 함
+    // 컨테이너에 이전 Leaflet 흔적이 남아있으면 초기화
+    if (mapBoxRef.current._leaflet_id) { mapBoxRef.current._leaflet_id = null }
+    // Safari/iOS에서 Leaflet 타일이 축소되어 보이는 현상을 방지
+    // (Leaflet의 Safari tile-container workaround를 앱 내부에서도 강제 적용)
+    const map = L.map(mapBoxRef.current, {
+      zoomControl: true,
+      zoomAnimation: false,
+      fadeAnimation: false,
+      markerZoomAnimation: false,
+      preferCanvas: false,
+    }).setView([37.5665, 126.9780], 13)
 
-    const cssId = 'leaflet-css-daheum'
-    const jsId = 'leaflet-js-daheum'
+    const tiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      minZoom: 2,
+      tileSize: 256,
+      zoomOffset: 0,
+      detectRetina: false,
+      updateWhenZooming: false,
+      keepBuffer: 2,
+      attribution: '&copy; OpenStreetMap',
+    }).addTo(map)
+    mapRef.current = map
 
-    if (!document.getElementById(cssId)) {
-      const link = document.createElement('link')
-      link.id = cssId
-      link.rel = 'stylesheet'
-      link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'
-      document.head.appendChild(link)
+    const fixTiles = () => {
+      if (!mapBoxRef.current || !mapRef.current) return
+      map.invalidateSize(false)
+      const root = mapBoxRef.current
+      root.style.width = '100%'
+      root.style.height = '100%'
+      root.querySelectorAll('.leaflet-tile').forEach((tile) => {
+        tile.style.width = '256px'
+        tile.style.height = '256px'
+        tile.style.maxWidth = 'none'
+        tile.style.maxHeight = 'none'
+        tile.style.display = 'block'
+      })
+      root.querySelectorAll('.leaflet-tile-container').forEach((container) => {
+        // Leaflet 공식 Safari workaround
+        container.style.width = '1600px'
+        container.style.height = '1600px'
+        container.style.webkitTransformOrigin = '0 0'
+        container.style.transformOrigin = '0 0'
+      })
     }
 
-    const loadScript = (src) => new Promise((resolve, reject) => {
-      const existing = document.getElementById(jsId)
-      if (existing) {
-        if (window.L) return resolve(window.L)
-        existing.addEventListener('load', () => resolve(window.L), { once: true })
-        existing.addEventListener('error', reject, { once: true })
-        return
-      }
-      const script = document.createElement('script')
-      script.id = jsId
-      script.src = src
-      script.async = true
-      script.onload = () => window.L ? resolve(window.L) : reject(new Error('Leaflet loaded without window.L'))
-      script.onerror = () => reject(new Error('Leaflet script failed'))
-      document.head.appendChild(script)
-    })
-
-    try {
-      return await loadScript('https://unpkg.com/leaflet@1.9.4/dist/leaflet.js')
-    } catch {
-      const old = document.getElementById(jsId)
-      if (old) old.remove()
-      return await loadScript('https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js')
+    requestAnimationFrame(fixTiles)
+    setTimeout(fixTiles, 100)
+    setTimeout(fixTiles, 500)
+    tiles.on('load', fixTiles)
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(p => {
+        myPosRef.current = { lat: p.coords.latitude, lng: p.coords.longitude }
+        map.setView([p.coords.latitude, p.coords.longitude], 15)
+        drawPins()
+      }, () => {})
     }
-  }
-
-  async function initMap() {
-    const el = mapBoxRef.current
-    if (!el || mapRef.current) return
-
-    let L
-    try {
-      L = await ensureLeaflet()
-    } catch {
-      // CDN이 잠시 늦게 응답해도 홈 전체가 깨지지 않도록 한 번 더 시도한다.
-      setTimeout(() => { if (tab === 'map' && !mapRef.current) initMap() }, 1200)
-      return
-    }
-
-    if (!mapBoxRef.current || mapRef.current) return
-
-    try {
-      const map = L.map(mapBoxRef.current, {
-        zoomControl: true,
-        zoomAnimation: false,
-        fadeAnimation: false,
-        markerZoomAnimation: false,
-        attributionControl: true,
-        preferCanvas: false,
-        tap: true,
-      }).setView([37.5665, 126.9780], 13)
-
-      const tiles = L.tileLayer(
-        'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-        {
-          maxZoom: 19,
-          minZoom: 2,
-          tileSize: 256,
-          zoomOffset: 0,
-          detectRetina: false,
-          updateWhenZooming: false,
-          keepBuffer: 2,
-          attribution: '&copy; OpenStreetMap',
-        }
-      ).addTo(map)
-
-      mapRef.current = map
-
-      const refreshMap = () => {
-        if (!mapRef.current || !mapBoxRef.current) return
-        map.invalidateSize({ animate: false, pan: false })
-      }
-
-      requestAnimationFrame(refreshMap)
-      setTimeout(refreshMap, 100)
-      setTimeout(refreshMap, 400)
-      setTimeout(refreshMap, 900)
-
-      if (typeof ResizeObserver !== 'undefined') {
-        const ro = new ResizeObserver(() => refreshMap())
-        ro.observe(mapBoxRef.current)
-        map.__daheumResizeObserver = ro
-      }
-
-      tiles.on('load', refreshMap)
-
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(p => {
-          myPosRef.current = { lat: p.coords.latitude, lng: p.coords.longitude }
-          if (mapRef.current) {
-            map.setView([p.coords.latitude, p.coords.longitude], 15, { animate: false })
-            refreshMap()
-            drawPins()
-          }
-        }, () => {}, { enableHighAccuracy: false, timeout: 7000, maximumAge: 60000 })
-      }
-
-      drawPins()
-    } catch (err) {
-      console.error('닿음 지도 초기화 실패:', err)
-      mapRef.current = null
-      try { if (mapBoxRef.current) mapBoxRef.current.innerHTML = '' } catch {}
-      setTimeout(() => { if (tab === 'map' && !mapRef.current) initMap() }, 1200)
-    }
+    drawPins()
   }
 
   function nameOf(uid) { const m = membersRef.current.find(x => x.user_id === uid); return m ? m.display_name : '?' }
@@ -411,12 +354,8 @@ export default function Home({ user, group, profileVersion, isActive, onMembersL
     markersRef.current.forEach(mk => map.removeLayer(mk))
     markersRef.current = []
     const _n = new Date()
-    const _todayKey = kstDateKey(_n)
-    // 닿음의 안부는 당일 자정까지만 화면에 표시한다.
-    // DB의 연간 기록 데이터는 별도로 보존할 수 있지만, 홈에서는 전날 안부를 노출하지 않는다.
-    const _todayMoments = moments.filter(m => kstDateKey(m.fired_at) === _todayKey)
-    const _open = _todayMoments.filter(m => new Date(m.fired_at) <= _n && _n <= new Date(m.deadline))
-    const _recent = _todayMoments.slice().sort((a,b)=>new Date(b.fired_at)-new Date(a.fired_at))[0]
+    const _open = moments.filter(m => new Date(m.fired_at) <= _n && _n <= new Date(m.deadline))
+    const _recent = moments.slice().sort((a,b)=>new Date(b.fired_at)-new Date(a.fired_at))[0]
     const activeIds = _open.length ? _open.map(m=>m.id) : (_recent ? [_recent.id] : [])
     for (const p of posts) {
       if (!activeIds.includes(p.moment_id)) continue
@@ -429,22 +368,14 @@ export default function Home({ user, group, profileVersion, isActive, onMembersL
       const pinBg = imgUrl
         ? `background-image:url('${imgUrl}');background-size:cover;background-position:center;`
         : `background:${color};`
-      // 확정 핀 디자인: 원래 사용하던 사진 중심 물방울 핀을 유지하고,
-      // 하단에 닿음의 'ㅎ' 배지를 작게 결합한다. 지도에서 사진이 가장 먼저 보이도록 한다.
-      const safeImg = imgUrl ? imgUrl.replace(/&/g, '&amp;').replace(/\"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/'/g, '&#39;') : ''
       const inner = `
-        <div style="position:relative;width:58px;height:68px;filter:drop-shadow(0 4px 8px rgba(30,39,70,.22));">
-          <div style="position:absolute;left:5px;top:2px;width:48px;height:48px;border-radius:50%;background:#fff;border:4px solid #1e2746;box-sizing:border-box;overflow:hidden;">
-            ${safeImg ? `<img src="${safeImg}" style="width:100%;height:100%;object-fit:cover;display:block;" />` : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:${color};color:#fff;font-size:17px;font-weight:800;">${nm[0] || 'ㅎ'}</div>`}
-          </div>
-          <div style="position:absolute;left:18px;top:42px;width:28px;height:28px;border-radius:10px 10px 10px 4px;background:#1e2746;border:3px solid #fff;box-sizing:border-box;display:flex;align-items:center;justify-content:center;transform:rotate(-45deg);">
-            <span style="display:block;color:#fff;font-size:14px;font-weight:900;line-height:1;transform:rotate(45deg);font-family:Arial,sans-serif;">ㅎ</span>
-          </div>
-          <div style="position:absolute;left:26px;top:63px;width:8px;height:8px;border-radius:50%;background:#d6b46a;border:2px solid #fff;box-sizing:content-box;"></div>
+        <div style="position:relative;width:46px;height:58px;filter:drop-shadow(0 4px 10px rgba(0,0,0,.35));">
+          <div style="position:absolute;inset:0;background:#fff;clip-path:path(\'M23 0C10.3 0 0 10.3 0 23c0 15 23 35 23 35s23-20 23-35C46 10.3 35.7 0 23 0Z\');"></div>
+          <div style="position:absolute;top:3px;left:3px;right:3px;bottom:13px;border-radius:50%;${pinBg}display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:16px;">${imgUrl ? '' : nm[0]}</div>
         </div>`
-      const label = `<div style="margin-top:2px;background:#1e2746;color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;white-space:nowrap;box-shadow:0 2px 6px rgba(30,39,70,.22);">${nm}</div>`
-      const html = `<div style="display:flex;flex-direction:column;align-items:center;width:58px;height:68px;">${inner}${label}</div>`
-      const icon = L.divIcon({ html, className: '', iconSize: [58, 68], iconAnchor: [29, 64] })
+      const label = `<div style="margin-top:-1px;background:#1e2746;color:#fff;font-size:10px;font-weight:700;padding:3px 8px;border-radius:10px;white-space:nowrap;box-shadow:0 3px 8px rgba(30,39,70,.18);">${nm}</div>`
+      const html = `<div style="display:flex;flex-direction:column;align-items:center;">${inner}${label}</div>`
+      const icon = L.divIcon({ html, className: '', iconSize: [60, 82], iconAnchor: [30, 58] })
       const mk = L.marker([p.lat, p.lng], { icon }).addTo(map)
       mk.on('click', () => setViewPost(p))
       markersRef.current.push(mk)
@@ -592,16 +523,12 @@ export default function Home({ user, group, profileVersion, isActive, onMembersL
 
   // 열린 안부 판정
   const _now = new Date(nowTick)
-  const _todayKey = kstDateKey(_now)
-  // 휘발 정책: 홈에서 보여주는 안부는 오늘(KST) 날짜의 것만 허용.
-  // 자정이 지나면 전날의 지도 핀/사진/피드가 자동으로 화면에서 사라진다.
-  const todayMoments = moments.filter(m => kstDateKey(m.fired_at) === _todayKey)
-  const openMoments = todayMoments.filter(m => new Date(m.fired_at) <= _now && _now <= new Date(m.deadline))
+  const openMoments = moments.filter(m => new Date(m.fired_at) <= _now && _now <= new Date(m.deadline))
   // 사진 찍기용: 가장 먼저 시작된 열린 안부로 통일 (모두 같은 곳에 모이게)
   const openMoment = openMoments.slice().sort((a,b)=>new Date(a.fired_at)-new Date(b.fired_at))[0] || null
-  // 오늘의 가장 최근 안부만 표시. 자정이 지나면 null이 되어 전날 콘텐츠가 노출되지 않는다.
-  const recentMoment = todayMoments.slice().sort((a,b)=>new Date(b.fired_at)-new Date(a.fired_at))[0] || null
-  // 표시용 안부: 오늘 열린 안부가 있으면 그것들, 없으면 오늘의 최근 안부
+  // 가장 최근 안부 (열린 게 없을 때 '지난 결과'로 보여주기 위함)
+  const recentMoment = moments.slice().sort((a,b)=>new Date(b.fired_at)-new Date(a.fired_at))[0] || null
+  // 표시용 안부: 열린 안부 있으면 그것들, 없으면 가장 최근 안부 (사진은 다음 안부 전까지 남김)
   const displayMomentIds = openMoments.length ? openMoments.map(m=>m.id) : (recentMoment ? [recentMoment.id] : [])
   // 참여/재촉용: 열린 안부만 (지난 안부는 재촉 안 함)
   const activeMomentIds = openMoments.map(m=>m.id)
@@ -761,7 +688,7 @@ export default function Home({ user, group, profileVersion, isActive, onMembersL
               <span style={S.mapBadge}>닿음</span>
             </div>
             <div style={S.mapWrap}>
-              <style>{`.leaflet-container img{max-width:none!important;max-height:none!important}.leaflet-container img.leaflet-tile{max-width:none!important;max-height:none!important}`}</style>
+              <style>{`.leaflet-container{overflow:hidden!important;position:relative!important}.leaflet-container img,.leaflet-container img.leaflet-tile,.leaflet-container .leaflet-tile{max-width:none!important;max-height:none!important}.leaflet-container .leaflet-tile{width:256px!important;height:256px!important;display:block!important;position:absolute!important;left:0;top:0}.leaflet-container .leaflet-tile-container{width:1600px!important;height:1600px!important;-webkit-transform-origin:0 0!important;transform-origin:0 0!important}.leaflet-container .leaflet-map-pane,.leaflet-container .leaflet-tile-pane{position:absolute!important;left:0!important;top:0!important}`}</style>
               <div ref={mapBoxRef} style={S.map} />
             </div>
             <div style={{ ...S.summary, ...(hasOpen ? S.liveSummary : {}) }}>
