@@ -24,7 +24,7 @@ export default function GroupSettings({ user, group, onClose, onGroupUpdate, onL
   const [toast, setToast] = useState('')
   function flash(m) { setToast(m); setTimeout(() => setToast(''), 2400) }
 
-  useEffect(() => { loadMembers(); loadMe(); loadTodayCount() }, [])
+  useEffect(() => { loadMembers(); loadMe(); loadTodayCount(); window.scrollTo({ top: 0, left: 0, behavior: 'instant' }) }, [])
 
   async function loadMembers() {
     let res = await supabase.from('members').select('user_id,display_name,color').eq('group_id', group.id)
@@ -149,14 +149,6 @@ export default function GroupSettings({ user, group, onClose, onGroupUpdate, onL
       </header>
 
       <main style={S.body}>
-        <section style={S.intro}>
-          <div style={S.introIcon}>⌁</div>
-          <div>
-            <div style={S.introTitle}>우리의 닿음을 설정해요</div>
-            <div style={S.introSub}>이 그룹에서 사용할 이름과 안부 시간을 관리할 수 있어요.</div>
-          </div>
-        </section>
-
         <SectionLabel text="그룹" />
         <section style={S.card}>
           <div style={S.groupHead}>
@@ -246,22 +238,22 @@ function SectionLabel({ text }) { return <div style={S.sectionLabel}>{text}</div
 
 const S = {
   app: { width: '100%', maxWidth: 480, margin: '0 auto', minHeight: '100dvh', background: '#f8f7f3', color: '#1e2746', fontFamily: "'Outfit','Gowun Dodum',sans-serif", paddingBottom: 32 },
-  header: { position: 'sticky', top: 0, zIndex: 100, height: 64, background: 'rgba(248,247,243,.94)', backdropFilter: 'blur(16px)', borderBottom: '1px solid #e9e7e2', display: 'flex', alignItems: 'center', padding: '0 18px' },
-  back: { width: 38, height: 38, border: 'none', background: '#fff', borderRadius: 13, fontSize: 28, lineHeight: 1, color: '#1e2746', cursor: 'pointer', boxShadow: '0 2px 10px rgba(30,39,70,.06)' },
+  header: { position: 'sticky', top: 0, zIndex: 100, minHeight: 86, padding: 'max(12px, env(safe-area-inset-top)) 18px 12px', boxSizing: 'border-box', background: 'rgba(248,247,243,.97)', backdropFilter: 'blur(18px)', borderBottom: '1px solid #e9e7e2', display: 'flex', alignItems: 'center' },
+  back: { width: 46, height: 46, border: '1px solid rgba(30,39,70,.06)', background: '#fff', borderRadius: 15, fontSize: 31, lineHeight: 1, color: '#1e2746', cursor: 'pointer', boxShadow: '0 3px 12px rgba(30,39,70,.07)', display:'grid', placeItems:'center', paddingBottom:2 },
   headerCenter: { flex: 1, textAlign: 'center', minWidth: 0 },
-  headerSpacer: { width: 38 },
-  eyebrow: { fontSize: 8, fontWeight: 800, letterSpacing: 1.4, color: '#9a9ead', marginBottom: 2 },
-  title: { fontSize: 17, fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-  body: { padding: '18px 18px 50px' },
+  headerSpacer: { width: 46 },
+  eyebrow: { fontSize: 9, fontWeight: 800, letterSpacing: 1.8, color: '#9a9ead', marginBottom: 4 },
+  title: { fontSize: 21, fontWeight: 800, letterSpacing:'-.5px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  body: { padding: '22px 18px 58px' },
   intro: { display: 'flex', gap: 12, alignItems: 'center', padding: '15px 16px', background: '#fff', borderRadius: 18, boxShadow: '0 5px 24px rgba(30,39,70,.055)', marginBottom: 4 },
   introIcon: { width: 38, height: 38, borderRadius: 13, display: 'grid', placeItems: 'center', background: '#fff2ef', color: '#e56b62', fontSize: 22, fontWeight: 700 },
   introTitle: { fontSize: 14, fontWeight: 800, marginBottom: 3 },
   introSub: { fontSize: 11.5, lineHeight: 1.45, color: '#8a91a1' },
-  sectionLabel: { margin: '22px 4px 9px', fontSize: 11, fontWeight: 800, color: '#7e8596', letterSpacing: .2 },
-  card: { background: '#fff', borderRadius: 20, padding: 17, boxShadow: '0 7px 28px rgba(30,39,70,.055)' },
+  sectionLabel: { margin: '26px 4px 11px', fontSize: 13, fontWeight: 800, color: '#7e8596', letterSpacing: .1 },
+  card: { background: '#fff', borderRadius: 22, padding: 18, boxShadow: '0 6px 24px rgba(30,39,70,.055)', border: '1px solid rgba(30,39,70,.045)' },
   groupHead: { display: 'flex', alignItems: 'center', gap: 12 },
-  groupAvatar: { width: 50, height: 50, flex: '0 0 50px', borderRadius: 16, background: '#1e2746', color: '#fff', display: 'grid', placeItems: 'center', fontSize: 20, fontWeight: 800 },
-  groupName: { fontSize: 17, fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  groupAvatar: { width: 54, height: 54, flex: '0 0 54px', borderRadius: 16, background: '#1e2746', color: '#fff', display: 'grid', placeItems: 'center', fontSize: 20, fontWeight: 800 },
+  groupName: { fontSize: 18, fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
   meta: { marginTop: 4, fontSize: 11.5, color: '#8a91a1' },
   inviteBtn: { border: '1px solid #e7e5e0', background: '#fff', borderRadius: 13, padding: '9px 13px', color: '#1e2746', fontWeight: 800, fontSize: 12, cursor: 'pointer' },
   subBlock: { borderTop: '1px solid #efeee9', marginTop: 16, paddingTop: 15 },
@@ -279,25 +271,25 @@ const S = {
   counter: { fontSize: 10.5, color: '#a1a6b1', textAlign: 'right', marginTop: 4 },
   colors: { display: 'flex', gap: 10 },
   colorDot: { width: 30, height: 30, borderRadius: '50%', cursor: 'pointer', boxSizing: 'border-box', boxShadow: '0 2px 7px rgba(0,0,0,.08)' },
-  primaryBtn: { width: '100%', border: 'none', borderRadius: 14, padding: '13px 14px', marginTop: 17, color: '#fff', background: '#1e2746', fontFamily: 'inherit', fontSize: 13.5, fontWeight: 800, cursor: 'pointer', boxShadow: '0 7px 18px rgba(30,39,70,.16)' },
+  primaryBtn: { width: '100%', border: 'none', borderRadius: 15, padding: '14px 14px', marginTop: 17, color: '#fff', background: '#1e2746', fontFamily: 'inherit', fontSize: 14, fontWeight: 800, cursor: 'pointer', boxShadow: '0 7px 18px rgba(30,39,70,.16)' },
   segment: { display: 'grid', gridTemplateColumns: '1fr 1fr', padding: 4, borderRadius: 14, background: '#f1f0ec' },
   segmentBtn: { border: 'none', background: 'transparent', color: '#7e8596', padding: '10px 8px', borderRadius: 11, fontFamily: 'inherit', fontSize: 12.5, fontWeight: 800, cursor: 'pointer' },
   segmentOn: { background: '#fff', color: '#1e2746', boxShadow: '0 2px 8px rgba(30,39,70,.09)' },
   timeList: { display: 'flex', flexWrap: 'wrap', gap: 8 },
-  timeChip: { border: '1px solid #ead1ce', background: '#fff7f5', color: '#e56b62', padding: '9px 12px', borderRadius: 12, fontFamily: 'inherit', fontSize: 13, fontWeight: 800, cursor: 'pointer' },
-  inlineAdd: { display: 'flex', gap: 8, marginTop: 9 },
+  timeChip: { border: '1px solid #ead1ce', background: '#fff7f5', color: '#e56b62', padding: '10px 13px', borderRadius: 13, fontFamily: 'inherit', fontSize: 13, fontWeight: 800, cursor: 'pointer' },
+  inlineAdd: { display: 'flex', gap: 8, marginTop: 10 },
   addBtn: { border: '1px dashed #cfd2d9', background: '#fff', color: '#596173', borderRadius: 13, padding: '0 14px', fontFamily: 'inherit', fontSize: 12, fontWeight: 800, cursor: 'pointer' },
   help: { fontSize: 11, color: '#9a9ead', marginTop: 8, lineHeight: 1.5 },
   timeRange: { display: 'flex', gap: 8, alignItems: 'center' },
   segmentWrap: { display: 'flex', gap: 8, flexWrap: 'wrap' },
   smallPill: { minWidth: 56, border: '1px solid #e1e2e5', background: '#fafaf9', color: '#596173', padding: '9px 13px', borderRadius: 12, fontFamily: 'inherit', fontSize: 12, fontWeight: 800, cursor: 'pointer' },
-  smallPillOn: { background: '#fff1ee', borderColor: '#e56b62', color: '#e56b62' },
-  quota: { marginTop: 17, background: '#f8f7f3', borderRadius: 15, padding: '13px 14px' },
+  smallPillOn: { background: '#fff1ee', borderColor: '#e56b62', color: '#d95f57', boxShadow: '0 2px 7px rgba(229,107,98,.10)' },
+  quota: { marginTop: 18, background: '#f8f7f3', borderRadius: 15, padding: '13px 14px' },
   quotaRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, fontSize: 12.5, color: '#707789', padding: '3px 0' },
   quotaHint: { fontSize: 10.5, color: '#9a9ead', lineHeight: 1.5, marginTop: 6 },
   locked: { display: 'flex', gap: 12, alignItems: 'center', background: '#f8f7f3', borderRadius: 15, padding: '14px' },
   lockIcon: { width: 38, height: 38, borderRadius: 12, background: '#fff', display: 'grid', placeItems: 'center', fontSize: 17 },
-  actionRow: { width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: 'none', borderBottom: '1px solid #efeee9', background: 'transparent', color: '#1e2746', padding: '14px 2px', fontFamily: 'inherit', fontSize: 13.5, fontWeight: 700, cursor: 'pointer' },
+  actionRow: { width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: 'none', borderBottom: '1px solid #efeee9', background: 'transparent', color: '#1e2746', padding: '17px 2px', fontFamily: 'inherit', fontSize: 13.5, fontWeight: 700, cursor: 'pointer' },
   danger: { textAlign: 'center', color: '#e56b62', fontSize: 10.5, marginTop: 9 },
   toast: { position: 'fixed', left: '50%', bottom: 28, transform: 'translateX(-50%)', background: '#1e2746', color: '#fff', padding: '12px 19px', borderRadius: 24, fontSize: 12.5, fontWeight: 700, boxShadow: '0 10px 30px rgba(0,0,0,.22)', zIndex: 4000, whiteSpace: 'nowrap' }
 }
