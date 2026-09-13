@@ -354,8 +354,11 @@ export default function Home({ user, group, profileVersion, isActive, onMembersL
     markersRef.current.forEach(mk => map.removeLayer(mk))
     markersRef.current = []
     const _n = new Date()
-    const _open = moments.filter(m => new Date(m.fired_at) <= _n && _n <= new Date(m.deadline))
-    const _recent = moments.slice().sort((a,b)=>new Date(b.fired_at)-new Date(a.fired_at))[0]
+    const dateKey = ts => new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Seoul',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(ts))
+    const todayKey = dateKey(_n)
+    const today = moments.filter(m => dateKey(m.fired_at) === todayKey)
+    const _open = today.filter(m => new Date(m.fired_at) <= _n && _n <= new Date(m.deadline))
+    const _recent = today.slice().sort((a,b)=>new Date(b.fired_at)-new Date(a.fired_at))[0]
     const activeIds = _open.length ? _open.map(m=>m.id) : (_recent ? [_recent.id] : [])
     for (const p of posts) {
       if (!activeIds.includes(p.moment_id)) continue
@@ -368,12 +371,13 @@ export default function Home({ user, group, profileVersion, isActive, onMembersL
       const pinBg = imgUrl
         ? `background-image:url('${imgUrl}');background-size:cover;background-position:center;`
         : `background:${color};`
+      // 확정 홈 시안: 기존 오리지널 사진 핀 유지. 브랜드 'ㅎ' 요소는 지도 핀에 넣지 않음.
       const inner = `
         <div style="position:relative;width:46px;height:58px;filter:drop-shadow(0 4px 10px rgba(0,0,0,.35));">
-          <div style="position:absolute;inset:0;background:#fff;clip-path:path(\'M23 0C10.3 0 0 10.3 0 23c0 15 23 35 23 35s23-20 23-35C46 10.3 35.7 0 23 0Z\');"></div>
+          <div style="position:absolute;inset:0;background:#fff;clip-path:path('M23 0C10.3 0 0 10.3 0 23c0 15 23 35 23 35s23-20 23-35C46 10.3 35.7 0 23 0Z');"></div>
           <div style="position:absolute;top:3px;left:3px;right:3px;bottom:13px;border-radius:50%;${pinBg}display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:16px;">${imgUrl ? '' : nm[0]}</div>
         </div>`
-      const label = `<div style="margin-top:-1px;background:#1e2746;color:#fff;font-size:10px;font-weight:700;padding:3px 8px;border-radius:10px;white-space:nowrap;box-shadow:0 3px 8px rgba(30,39,70,.18);">${nm}</div>`
+      const label = `<div style="margin-top:2px;background:#16161a;color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.3);">${nm}</div>`
       const html = `<div style="display:flex;flex-direction:column;align-items:center;">${inner}${label}</div>`
       const icon = L.divIcon({ html, className: '', iconSize: [60, 82], iconAnchor: [30, 58] })
       const mk = L.marker([p.lat, p.lng], { icon }).addTo(map)
@@ -521,14 +525,16 @@ export default function Home({ user, group, profileVersion, isActive, onMembersL
     flash('초대 링크 복사됨! 카톡에 붙여넣기 ✨')
   }
 
-  // 열린 안부 판정
+  // 홈 표시 기준: KST 날짜가 바뀌는 자정에 전날의 순간은 홈에서 휘발. DB 기록은 유지.
   const _now = new Date(nowTick)
-  const openMoments = moments.filter(m => new Date(m.fired_at) <= _now && _now <= new Date(m.deadline))
+  const kstDateKey = (ts) => new Intl.DateTimeFormat('en-CA', { timeZone:'Asia/Seoul', year:'numeric', month:'2-digit', day:'2-digit' }).format(new Date(ts))
+  const _todayKey = kstDateKey(_now)
+  const todayMoments = moments.filter(m => kstDateKey(m.fired_at) === _todayKey)
+  const openMoments = todayMoments.filter(m => new Date(m.fired_at) <= _now && _now <= new Date(m.deadline))
   // 사진 찍기용: 가장 먼저 시작된 열린 안부로 통일 (모두 같은 곳에 모이게)
   const openMoment = openMoments.slice().sort((a,b)=>new Date(a.fired_at)-new Date(b.fired_at))[0] || null
-  // 가장 최근 안부 (열린 게 없을 때 '지난 결과'로 보여주기 위함)
-  const recentMoment = moments.slice().sort((a,b)=>new Date(b.fired_at)-new Date(a.fired_at))[0] || null
-  // 표시용 안부: 열린 안부 있으면 그것들, 없으면 가장 최근 안부 (사진은 다음 안부 전까지 남김)
+  // 오늘의 최근 안부만 홈에 표시
+  const recentMoment = todayMoments.slice().sort((a,b)=>new Date(b.fired_at)-new Date(a.fired_at))[0] || null
   const displayMomentIds = openMoments.length ? openMoments.map(m=>m.id) : (recentMoment ? [recentMoment.id] : [])
   // 참여/재촉용: 열린 안부만 (지난 안부는 재촉 안 함)
   const activeMomentIds = openMoments.map(m=>m.id)
@@ -610,64 +616,32 @@ export default function Home({ user, group, profileVersion, isActive, onMembersL
 
 
       {hasOpen ? (
-        <div style={{ ...S.banner, ...S.bannerLive, ...S.activeHero }}>
-          <div style={S.activeHeroGlow} />
-          <div style={S.bannerContent}>
-            <div style={S.bTag}>TODAY'S 닿음 · {group.name}</div>
-            <div style={S.activeHeroRow}>
-              <div style={S.activeSun}>☀</div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={S.activeEyebrow}>지금, 닿을 시간이에요</div>
-                <div style={S.activeTitle}>{allJoined ? '모두의 안부가 닿았어요' : iJoined ? '서로의 순간이 닿는 중' : '오늘의 순간을 남겨보세요'}</div>
-                <div style={S.bSmall}>{allJoined ? `${members.length}명 모두 같은 순간을 남겼어요` : `${joinedCount}/${members.length} 참여 · 같은 시간, 다른 공간에서 만나요`}</div>
-              </div>
-              <div style={S.activeTimer}>
-                <span style={S.activeTimerLabel}>마감까지</span>
-                <b style={S.activeTimerValue}>{remainLabel}</b>
-              </div>
-            </div>
-            <div style={S.activeProgressTrack}>
-              <div style={{ ...S.activeProgress, width: `${members.length ? Math.min(100, (joinedCount / members.length) * 100) : 0}%` }} />
-            </div>
+        <div style={S.confirmHero}>
+          <div style={S.heroGlow} />
+          <div style={S.heroTree} aria-hidden="true" />
+          <div style={S.heroContent}>
+            {iJoined ? (
+              <>
+                <div style={S.heroCheck}>✓</div>
+                <div style={S.heroTitle}>안부를 전했어요</div>
+                <div style={S.heroSub}>이제 다른 사람의 순간을<br/>기다리고 있어요.</div>
+              </>
+            ) : (
+              <>
+                <div style={S.heroTitle}>같은 시간,<br/>다른 공간에서<br/>오늘도, 닿아요.</div>
+                <div style={S.heroSub}>지금 이 순간, 누군가가 당신을 생각하고 있어요.</div>
+              </>
+            )}
           </div>
         </div>
       ) : (
-        <div style={S.banner}>
-          <div style={S.bannerGlow} />
-          <div style={S.bannerContent}>
-            <div style={S.bTag}>TODAY'S 닿음 · {group.name}</div>
-            <div style={S.bMainRow}>
-              <div style={S.bStatusDot} />
-              <div>
-                <div style={S.bBig}>다음 안부를 기다리는 중</div>
-                <div style={S.bSmall}>{recentMoment ? '지난 순간을 둘러보세요 · 다음 안부가 오면 알려드릴게요' : '안부 시간이 되면 서로의 순간이 닿아요'}</div>
-              </div>
-            </div>
+        <div style={S.confirmHero}>
+          <div style={S.heroGlow} />
+          <div style={S.heroContent}>
+            <div style={S.heroTitle}>같은 시간,<br/>다른 공간에서<br/>오늘도, 닿아요.</div>
+            <div style={S.heroSub}>안부 시간이 되면 서로의 순간이 닿아요.</div>
           </div>
         </div>
-      )}
-
-      {members.length <= 1 && (
-        <button style={S.inviteBanner} onClick={copyInviteLink}>
-          <span style={S.inviteGlyph}>＋</span>
-          <span style={{ flex: 1, textAlign: 'left' }}>
-            <span style={S.inviteTitle}>함께할 사람을 초대해보세요</span>
-            <span style={S.inviteSub}>초대 링크를 보내고, 같은 시간에 안부를 나눠보세요</span>
-          </span>
-          <span style={S.inviteArrow}>→</span>
-        </button>
-      )}
-
-      {/* 스트릭 배너 */}
-      {streak && streak.count > 0 && (
-        <button style={S.streakBanner} onClick={() => setShowStreak(true)}>
-          <span style={{ fontSize: 20 }}>🔥</span>
-          <span style={{ flex: 1, textAlign: 'left' }}>
-            <span style={{ fontWeight: 700, fontSize: 14 }}>{streak.count}일 연속 안부</span>
-            <span style={{ display: 'block', fontSize: 11.5, color: 'var(--mp-muted)', marginTop: 1 }}>{group.name}이(가) 함께 이어온 기록이에요</span>
-          </span>
-          <span style={{ color: '#ff7a45', fontSize: 12, fontWeight: 700 }}>D+{streak.count}</span>
-        </button>
       )}
 
       <div style={S.toggle} aria-label="보기 방식">
@@ -685,7 +659,7 @@ export default function Home({ user, group, profileVersion, isActive, onMembersL
                 <div style={S.mapTitle}>우리의 위치</div>
                 <div style={S.mapSub}>{members.filter(m => displayByUser[m.user_id]).length}/{members.length}명이 오늘의 순간을 남겼어요</div>
               </div>
-              <span style={S.mapBadge}>닿음</span>
+              <button type="button" style={S.detailBtn} onClick={() => setTab('map')}>상세보기 <span>›</span></button>
             </div>
             <div style={S.mapWrap}>
               <style>{`.leaflet-container{overflow:hidden!important;position:relative!important}.leaflet-container img,.leaflet-container img.leaflet-tile,.leaflet-container .leaflet-tile{max-width:none!important;max-height:none!important}.leaflet-container .leaflet-tile{width:256px!important;height:256px!important;display:block!important;position:absolute!important;left:0;top:0}.leaflet-container .leaflet-tile-container{width:1600px!important;height:1600px!important;-webkit-transform-origin:0 0!important;transform-origin:0 0!important}.leaflet-container .leaflet-map-pane,.leaflet-container .leaflet-tile-pane{position:absolute!important;left:0!important;top:0!important}`}</style>
@@ -701,24 +675,19 @@ export default function Home({ user, group, profileVersion, isActive, onMembersL
 
             {hasOpen && (
               <>
-                <div style={S.liveActionCard}>
-                  <div style={S.liveActionVisual}>
-                    <div style={S.photoStackBack} />
-                    <div style={S.photoStackFront}>ㅎ</div>
-                  </div>
-                  <div style={S.liveActionCopy}>
-                    <div style={S.liveActionTitle}>{iJoined ? '안부를 전했어요' : '지금 이 순간, 안부를 전해보세요'}</div>
-                    <div style={S.liveActionSub}>{iJoined ? '이제 다른 사람의 순간을 기다리고 있어요' : '같은 시간, 다른 공간에서도 우리는 닿을 수 있어요'}</div>
-                  </div>
+                {!iJoined && !allJoined && (
                   <button
-                    style={{ ...S.liveCameraBtn, opacity: (busy || iJoined || allJoined) ? .55 : 1 }}
-                    disabled={busy || iJoined || allJoined}
+                    style={S.confirmShoot}
+                    disabled={busy}
                     onClick={() => { includeLocRef.current = true; fileRef.current && fileRef.current.click() }}
-                    aria-label={iJoined ? '안부를 전했어요' : '안부 남기기'}
                   >
-                    <span>⌾</span>
+                    <span style={S.confirmShootIcon}>⌾</span>
+                    <span style={S.confirmShootCopy}>
+                      <b>{busy ? '안부를 전하는 중…' : '지금, 안부 전하기'}</b>
+                      <small>당신의 오늘을 공유해보세요</small>
+                    </span>
                   </button>
-                </div>
+                )}
 
                 {displayPosts.length > 0 && (
                   <div style={S.todayRailWrap}>
@@ -729,16 +698,15 @@ export default function Home({ user, group, profileVersion, isActive, onMembersL
                         const url = signed[p.id]
                         return (
                           <button key={p.id} style={S.todayCard} onClick={() => setViewPost(p)}>
-                            <div style={S.todayPhoto}>{url ? <img src={url} alt="" style={S.todayImg} /> : <div style={S.todayNoImg}>ㅎ</div>}</div>
+                            <div style={S.todayPhoto}>{url ? <img src={url} alt="" style={S.todayImg} /> : <div style={S.todayNoImg}>{(m?.display_name || nameOf(p.user_id))[0]}</div>}</div>
                             <div style={S.todayMeta}>
                               <span style={{ ...S.todayDot, background: m?.color || 'var(--mp-gold)' }} />
                               <b style={S.todayMetaName}>{m?.display_name || nameOf(p.user_id)}</b>
-                              <span style={S.todayMetaTime}>{p.user_id === user.id ? '나' : hhmm(p.created_at)}</span>
+                              <span style={S.todayMetaTime}>{p.user_id === user.id ? '지금' : ago(p.created_at)}</span>
                             </div>
                           </button>
                         )
                       })}
-                      {!iJoined && !allJoined && <button style={S.todayEmptyCard} onClick={() => { includeLocRef.current = true; fileRef.current && fileRef.current.click() }}><b>＋</b><span>내 안부<br/>남기기</span></button>}
                     </div>
                   </div>
                 )}
@@ -1022,6 +990,18 @@ function Confetti() {
 }
 
 const S = {
+  confirmHero: { position:'relative', margin:'14px 16px 0', minHeight:176, borderRadius:20, overflow:'hidden', background:'linear-gradient(135deg,#b8d8ec 0%,#f6d5bf 54%,#ffe8cf 100%)', boxShadow:'0 10px 30px rgba(30,39,70,.10)' },
+  heroGlow: { position:'absolute', inset:0, background:'radial-gradient(circle at 20% 12%,rgba(255,255,255,.72),transparent 30%),radial-gradient(circle at 85% 28%,rgba(255,255,255,.25),transparent 35%)' },
+  heroContent: { position:'relative', zIndex:2, padding:'25px 28px', maxWidth:340 },
+  heroTitle: { fontSize:24, lineHeight:1.18, fontWeight:500, letterSpacing:'-1.1px', color:'#17233f', fontFamily:'var(--heading)' },
+  heroSub: { fontSize:12.5, lineHeight:1.55, marginTop:12, color:'rgba(23,35,63,.76)', fontWeight:500 },
+  heroCheck: { width:24,height:24,borderRadius:'50%',background:'#1e2746',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontSize:14,fontWeight:800,marginBottom:9 },
+  heroTree: { position:'absolute', right:18, bottom:-6, width:92, height:138, opacity:.55, background:'radial-gradient(ellipse at 50% 26%,rgba(47,61,48,.85) 0 27%,transparent 28%),radial-gradient(ellipse at 30% 42%,rgba(47,61,48,.75) 0 23%,transparent 24%),radial-gradient(ellipse at 72% 44%,rgba(47,61,48,.72) 0 24%,transparent 25%),linear-gradient(90deg,transparent 45%,rgba(76,61,45,.72) 46% 55%,transparent 56%) bottom/100% 55% no-repeat' },
+  detailBtn: { border:'none', background:'#fff5dc', color:'#9a7430', borderRadius:13, padding:'9px 12px', fontFamily:'inherit', fontSize:11.5, fontWeight:750, cursor:'pointer' },
+  confirmShoot: { width:'100%', border:'none', borderRadius:18, padding:'17px 18px', margin:'6px 0 20px', background:'var(--mp-ink)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', gap:12, fontFamily:'inherit', cursor:'pointer', boxShadow:'0 9px 22px rgba(30,39,70,.18)' },
+  confirmShootIcon: { width:30,height:30,display:'flex',alignItems:'center',justifyContent:'center',fontSize:25,lineHeight:1 },
+  confirmShootCopy: { display:'flex', flexDirection:'column', alignItems:'flex-start', gap:2 },
+  confirmShootCopySmall: { fontSize:11, opacity:.72 },
   app: { width: '100%', maxWidth: 480, margin: '0 auto', minHeight: '100dvh', background: 'var(--mp-bg)', fontFamily: 'var(--sans)', color: 'var(--mp-ink)', paddingBottom: 30 },
   top: { position: 'sticky', top: 0, zIndex: 1000, background: 'var(--mp-topbar)', backdropFilter: 'blur(18px)', borderBottom: '1px solid var(--mp-line)', padding: '11px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
   logoRow: { display: 'flex', alignItems: 'center', gap: 8 },
@@ -1079,7 +1059,7 @@ const S = {
   mapSub: { fontSize: 11.5, color: 'var(--mp-muted)', marginTop: 2 },
   mapBadge: { padding: '6px 9px', borderRadius: 10, background: '#fff5dc', color: '#9a7430', fontSize: 10.5, fontWeight: 750 },
   mapWrap: { position: 'relative', borderRadius: 20, overflow: 'hidden', boxShadow: '0 7px 28px rgba(30,39,70,.10)', marginBottom: 10, zIndex: 0, isolation: 'isolate', border: '1px solid rgba(30,39,70,.08)' },
-  map: { width: '100%', height: 318 },
+  map: { width: '100%', height: 360 },
   summary: { display: 'flex', alignItems: 'center', justifyContent: 'space-around', gap: 7, background: 'var(--mp-card)', border: '1px solid var(--mp-line)', borderRadius: 16, padding: '11px 10px', boxShadow: '0 4px 20px rgba(30,39,70,.05)', marginBottom: 16, fontSize: 12.5 },
   liveSummary: { padding: '12px 8px', marginBottom: 12 },
   summaryStat: { display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 },
@@ -1102,15 +1082,15 @@ const S = {
   todayRailHead: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '0 2px 9px', fontSize: 13, color: 'var(--mp-ink)' },
   todayRailCount: { color: 'var(--mp-muted)', fontSize: 12 },
   todayRail: { display: 'flex', gap: 9, overflowX: 'auto', padding: '1px 2px 6px', scrollbarWidth: 'none' },
-  todayCard: { width: 112, flex: '0 0 112px', border: '1px solid var(--mp-line)', background: 'var(--mp-card)', borderRadius: 14, padding: 0, overflow: 'hidden', textAlign: 'left', fontFamily: 'inherit', cursor: 'pointer', boxShadow: '0 4px 13px rgba(30,39,70,.07)' },
+  todayCard: { width: 82, flex: '0 0 82px', border: '1px solid var(--mp-line)', background: 'var(--mp-card)', borderRadius: 14, padding: 0, overflow: 'hidden', textAlign: 'left', fontFamily: 'inherit', cursor: 'pointer', boxShadow: '0 4px 13px rgba(30,39,70,.07)' },
   todayPhoto: { width: '100%', aspectRatio: '1/1', background: 'var(--mp-card2)', overflow: 'hidden' },
   todayImg: { width: '100%', height: '100%', objectFit: 'cover', display: 'block' },
   todayNoImg: { width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--mp-ink)', color: '#fff', fontSize: 22, fontWeight: 800 },
-  todayMeta: { display: 'flex', alignItems: 'center', gap: 4, padding: '7px 8px', whiteSpace: 'nowrap', overflow: 'hidden' },
+  todayMeta: { display: 'flex', alignItems: 'center', gap: 3, padding: '6px 6px', whiteSpace: 'nowrap', overflow: 'hidden' },
   todayDot: { width: 6, height: 6, borderRadius: '50%', flex: 'none' },
-  todayMetaName: { fontSize: 11.5, color: 'var(--mp-ink)', overflow: 'hidden', textOverflow: 'ellipsis' },
+  todayMetaName: { fontSize: 10.5, color: 'var(--mp-ink)', overflow: 'hidden', textOverflow: 'ellipsis' },
   todayMetaTime: { fontSize: 10, color: 'var(--mp-muted)', marginLeft: 'auto' },
-  todayEmptyCard: { width: 112, flex: '0 0 112px', border: '1.5px dashed #c9cbd2', background: 'transparent', borderRadius: 14, minHeight: 145, color: 'var(--mp-muted)', fontFamily: 'inherit', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 5, cursor: 'pointer' },
+  todayEmptyCard: { width: 112, flex: '0 0 82px', border: '1.5px dashed #c9cbd2', background: 'transparent', borderRadius: 14, minHeight: 145, color: 'var(--mp-muted)', fontFamily: 'inherit', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 5, cursor: 'pointer' },
   grid: { display: 'grid', gap: 8, marginBottom: 16 },
   gcellWrap: { display: 'flex', flexDirection: 'column', cursor: 'pointer', borderRadius: 16, overflow: 'hidden', boxShadow: '0 4px 16px rgba(20,20,30,.08)', background: 'var(--mp-card2)' },
   gcell: { position: 'relative', aspectRatio: '3/4', overflow: 'hidden' },
