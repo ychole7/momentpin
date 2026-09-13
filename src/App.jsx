@@ -63,10 +63,20 @@ export default function App() {
 
     async function goToGroup(groupId) {
       if (!groupId) return
-      const { data } = await supabase.from('members')
-        .select('groups(id,name,invite_code,created_by,alarm_mode,fixed_times,random_start,random_end,window_min)')
+      // 관계(join) 조회 대신 2단계 조회를 사용합니다.
+      // Supabase/PostgREST에서 members → groups 관계가 환경에 따라
+      // 해석되지 않아 앱 진입 자체가 막히는 경우를 방지합니다.
+      const { data: memberRows, error: memberError } = await supabase.from('members')
+        .select('group_id')
         .eq('user_id', session.user.id)
-      const groups = (data || []).map(r => r.groups).filter(Boolean)
+      if (memberError) throw memberError
+      const ids = [...new Set((memberRows || []).map(r => r.group_id).filter(Boolean))]
+      if (!ids.length) return
+      const { data: groupRows, error: groupError } = await supabase.from('groups')
+        .select('id,name,invite_code,created_by,alarm_mode,fixed_times,random_start,random_end,window_min')
+        .in('id', ids)
+      if (groupError) throw groupError
+      const groups = groupRows || []
       const target = groups.find(g => g.id === groupId)
       if (target) {
         window.history.replaceState({}, '', window.location.pathname)
@@ -104,6 +114,8 @@ export default function App() {
 
   function finishOnboarding() {
     try { localStorage.setItem('mp_onboarded', '1') } catch {}
+    // 온보딩을 마친 직후 그룹 확인을 다시 허용합니다.
+    if (session?.user?.id) ensureStartedRef.current = null
     setShowOnboarding(false)
   }
 
@@ -124,10 +136,23 @@ export default function App() {
       setEnsuringGroup(true)
       try {
         // 이미 속한 그룹이 있으면 자동 생성 안 함
-        let mres = await supabase.from('members')
-          .select('group_id, groups(id,name,invite_code,created_by,alarm_mode,fixed_times,random_start,random_end,window_min)')
+        // 중요: 여기서 members → groups 중첩 join을 사용하지 않습니다.
+        // 기존 앱에서 이 관계 조회가 실패하면 '닿음 준비 중…' 이후
+        // GroupGate로 넘어가는 과정 전체가 깨질 수 있습니다.
+        const mres = await supabase.from('members')
+          .select('group_id')
           .eq('user_id', session.user.id)
-        const existing = (mres.data || []).map(r => r.groups).filter(Boolean)
+        if (mres.error) throw mres.error
+        const groupIds = [...new Set((mres.data || []).map(r => r.group_id).filter(Boolean))]
+
+        let existing = []
+        if (groupIds.length) {
+          const gres = await supabase.from('groups')
+            .select('id,name,invite_code,created_by,alarm_mode,fixed_times,random_start,random_end,window_min')
+            .in('id', groupIds)
+          if (gres.error) throw gres.error
+          existing = gres.data || []
+        }
         if (cancelled) return
         if (existing.length > 0) {
           let saved = null
@@ -182,8 +207,12 @@ export default function App() {
           }, { onConflict: 'user_id' })
           if (!cancelled) { setGroup(created); setActiveTab('home') }
         }
-      } catch (e) { console.error('[첫닿음] 예외', e) }
-      if (!cancelled) setEnsuringGroup(false)
+      } catch (e) {
+        console.error('[첫닿음] 예외', e)
+        // 오류가 나더라도 '준비 중' 화면에 갇히지 않도록 반드시 해제합니다.
+      } finally {
+        if (!cancelled) setEnsuringGroup(false)
+      }
     })()
 
     return () => { cancelled = true }
