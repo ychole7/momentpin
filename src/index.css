@@ -171,7 +171,8 @@ code,
 
 .leaflet-container {
   width: 100% !important;
-  height: 100% !important;
+  height: 318px !important;
+  min-height: 318px !important;
   overflow: hidden !important;
   background: #e5e5e5;
 }
@@ -211,47 +212,5 @@ code,
 @media (max-width: 520px) {
   .leaflet-container {
     border-radius: inherit;
-  }
-}
-
-/* 닿음 확정 홈 — 모바일 앱 마감 */
-html, body, #root {
-  overflow-x: hidden;
-}
-
-body {
-  overscroll-behavior-x: none;
-}
-
-button {
-  touch-action: manipulation;
-}
-
-/* Leaflet은 전역 이미지 규칙의 영향을 받지 않도록 고정 */
-.leaflet-container,
-.leaflet-container .leaflet-map-pane,
-.leaflet-container .leaflet-tile-pane,
-.leaflet-container .leaflet-overlay-pane,
-.leaflet-container .leaflet-marker-pane,
-.leaflet-container .leaflet-shadow-pane,
-.leaflet-container .leaflet-marker-icon,
-.leaflet-container .leaflet-marker-shadow {
-  max-width: none !important;
-  max-height: none !important;
-}
-
-.leaflet-container .leaflet-tile {
-  width: 256px !important;
-  height: 256px !important;
-}
-
-@media (max-width: 520px) {
-  body {
-    background: var(--mp-bg);
-  }
-
-  #root {
-    width: 100%;
-    max-width: 480px;
   }
 }
