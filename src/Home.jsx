@@ -282,65 +282,77 @@ export default function Home({ user, group, profileVersion, isActive, onMembersL
 
   function initMap() {
     const L = window.L
-    if (!L || !mapBoxRef.current) return
-    if (mapRef.current) return  // 이미 떠 있으면 중복 생성 안 함
-    // 컨테이너에 이전 Leaflet 흔적이 남아있으면 초기화
-    if (mapBoxRef.current._leaflet_id) { mapBoxRef.current._leaflet_id = null }
-    // Safari/iOS에서 Leaflet 타일이 축소되어 보이는 현상을 방지
-    // (Leaflet의 Safari tile-container workaround를 앱 내부에서도 강제 적용)
-    const map = L.map(mapBoxRef.current, {
+    const el = mapBoxRef.current
+    if (!L || !el) return
+    if (mapRef.current) return
+
+    // 이전 Leaflet 인스턴스가 남아 있으면 완전히 제거
+    if (el._leaflet_id) {
+      try { delete el._leaflet_id } catch {}
+    }
+
+    // 모바일 Safari에서 탭 전환 직후 zoom animation이 0.25배로 남는 현상을 방지
+    const map = L.map(el, {
       zoomControl: true,
       zoomAnimation: false,
       fadeAnimation: false,
       markerZoomAnimation: false,
+      attributionControl: true,
       preferCanvas: false,
     }).setView([37.5665, 126.9780], 13)
 
-    const tiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      minZoom: 2,
-      tileSize: 256,
-      zoomOffset: 0,
-      detectRetina: false,
-      updateWhenZooming: false,
-      keepBuffer: 2,
-      attribution: '&copy; OpenStreetMap',
-    }).addTo(map)
+    const tiles = L.tileLayer(
+      'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+      {
+        maxZoom: 19,
+        minZoom: 2,
+        tileSize: 256,
+        zoomOffset: 0,
+        detectRetina: false,
+        updateWhenZooming: false,
+        keepBuffer: 2,
+        attribution: '&copy; OpenStreetMap',
+      }
+    )
+
+    tiles.addTo(map)
     mapRef.current = map
 
-    const fixTiles = () => {
-      if (!mapBoxRef.current || !mapRef.current) return
+    const refreshMap = () => {
+      if (!mapRef.current || !mapBoxRef.current) return
       map.invalidateSize(false)
-      const root = mapBoxRef.current
-      root.style.width = '100%'
-      root.style.height = '100%'
-      root.querySelectorAll('.leaflet-tile').forEach((tile) => {
+      // Leaflet 타일이 Safari의 축소 transform에 남아 있지 않도록 강제
+      const tileNodes = mapBoxRef.current.querySelectorAll('.leaflet-tile')
+      tileNodes.forEach((tile) => {
         tile.style.width = '256px'
         tile.style.height = '256px'
         tile.style.maxWidth = 'none'
         tile.style.maxHeight = 'none'
-        tile.style.display = 'block'
-      })
-      root.querySelectorAll('.leaflet-tile-container').forEach((container) => {
-        // Leaflet 공식 Safari workaround
-        container.style.width = '1600px'
-        container.style.height = '1600px'
-        container.style.webkitTransformOrigin = '0 0'
-        container.style.transformOrigin = '0 0'
       })
     }
 
-    requestAnimationFrame(fixTiles)
-    setTimeout(fixTiles, 100)
-    setTimeout(fixTiles, 500)
-    tiles.on('load', fixTiles)
+    // 컨테이너 레이아웃이 확정된 뒤 여러 번 재계산
+    requestAnimationFrame(refreshMap)
+    setTimeout(refreshMap, 80)
+    setTimeout(refreshMap, 350)
+
+    if (typeof ResizeObserver !== 'undefined') {
+      const ro = new ResizeObserver(() => refreshMap())
+      ro.observe(el)
+      map.__daheumResizeObserver = ro
+    }
+
+    tiles.on('load', refreshMap)
+
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(p => {
         myPosRef.current = { lat: p.coords.latitude, lng: p.coords.longitude }
-        map.setView([p.coords.latitude, p.coords.longitude], 15)
+        map.setView([p.coords.latitude, p.coords.longitude], 15, { animate: false })
+        refreshMap()
         drawPins()
       }, () => {})
     }
+
     drawPins()
   }
 
@@ -705,7 +717,7 @@ export default function Home({ user, group, profileVersion, isActive, onMembersL
               <span style={S.mapBadge}>닿음</span>
             </div>
             <div style={S.mapWrap}>
-              <style>{`.leaflet-container{overflow:hidden!important;position:relative!important}.leaflet-container img,.leaflet-container img.leaflet-tile,.leaflet-container .leaflet-tile{max-width:none!important;max-height:none!important}.leaflet-container .leaflet-tile{width:256px!important;height:256px!important;display:block!important;position:absolute!important;left:0;top:0}.leaflet-container .leaflet-tile-container{width:1600px!important;height:1600px!important;-webkit-transform-origin:0 0!important;transform-origin:0 0!important}.leaflet-container .leaflet-map-pane,.leaflet-container .leaflet-tile-pane{position:absolute!important;left:0!important;top:0!important}`}</style>
+              <style>{`.leaflet-container img{max-width:none!important;max-height:none!important}.leaflet-container img.leaflet-tile{width:256px!important;height:256px!important;max-width:none!important;max-height:none!important}`}</style>
               <div ref={mapBoxRef} style={S.map} />
             </div>
             <div style={{ ...S.summary, ...(hasOpen ? S.liveSummary : {}) }}>
