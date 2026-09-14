@@ -134,7 +134,7 @@ export default function Home({ user, group, profileVersion, isActive, onMembersL
     // 지도 탭을 떠나면 기존 지도 인스턴스를 깨끗이 제거
     if (mapRef.current) { try { mapRef.current.remove() } catch {} mapRef.current = null; markersRef.current = [] }
   }, [tab])
-  useEffect(() => { drawPins() }, [posts, members, signed, moments])
+  useEffect(() => { drawPins() }, [posts, members])
   useEffect(() => { resolveSigned() }, [posts])
 
   // 현재 푸시 구독 상태 확인
@@ -372,11 +372,11 @@ export default function Home({ user, group, profileVersion, isActive, onMembersL
   function sharesLoc(uid) { const m = membersRef.current.find(x => x.user_id === uid); return m ? m.share_location !== false : true }
   function hasLoc(p) { return !!(p && p.lat != null && p.lng != null) }  // 그 안부에 위치가 포함됐는지
 
-  async function drawPins(targetMap = mapRef.current, markerStore = markersRef) {
-    const L = window.L, map = targetMap
+  async function drawPins() {
+    const L = window.L, map = mapRef.current
     if (!L || !map) return
-    markerStore.current.forEach(mk => { try { map.removeLayer(mk) } catch {} })
-    markerStore.current = []
+    markersRef.current.forEach(mk => map.removeLayer(mk))
+    markersRef.current = []
     const _n = new Date()
     const _open = moments.filter(m => new Date(m.fired_at) <= _n && _n <= new Date(m.deadline))
     const _recent = moments.slice().sort((a,b)=>new Date(b.fired_at)-new Date(a.fired_at))[0]
@@ -402,7 +402,7 @@ export default function Home({ user, group, profileVersion, isActive, onMembersL
       const icon = L.divIcon({ html, className: '', iconSize: [60, 82], iconAnchor: [30, 58] })
       const mk = L.marker([p.lat, p.lng], { icon }).addTo(map)
       mk.on('click', () => setViewPost(p))
-      markerStore.current.push(mk)
+      markersRef.current.push(mk)
     }
   }
 
@@ -552,7 +552,6 @@ export default function Home({ user, group, profileVersion, isActive, onMembersL
   const openMoments = todayMoments.filter(m => new Date(m.fired_at) <= _now && _now <= new Date(m.deadline))
   const openMoment = openMoments.slice().sort((a,b)=>new Date(a.fired_at)-new Date(b.fired_at))[0] || null
   const recentMoment = todayMoments.slice().sort((a,b)=>new Date(b.fired_at)-new Date(a.fired_at))[0] || null
-  const todayEnded = !!recentMoment && !openMoments.length && new Date(recentMoment.deadline) < _now
   const displayMomentIds = openMoments.length ? openMoments.map(m=>m.id) : (recentMoment ? [recentMoment.id] : [])
   const scheduleTimes = (Array.isArray(group.fixed_times) ? group.fixed_times : []).map(parseScheduleTime).filter(Boolean).sort((a,b)=>a.h*60+a.min-(b.h*60+b.min))
   let nextSchedule = null
@@ -653,34 +652,44 @@ export default function Home({ user, group, profileVersion, isActive, onMembersL
       })()}
 
 
-      {hasOpen && todayJoined ? (
+      {hasOpen ? (
         <div style={S.designHeroActive}>
           <div style={S.designHeroSky} />
           <div style={S.designHeroBranch} aria-hidden="true" />
           <div style={S.designHeroContent}>
-            <div style={S.designHeroEyebrow}><span style={S.designCheck}>✓</span> 안부를 전했어요</div>
-            <div style={S.designHeroTitle}>이제 다른 사람의 순간을<br/>기다리고 있어요.</div>
-            <div style={S.designHeroSub}>{displayPosts.length}/{members.length}명이 오늘의 순간을 남겼어요</div>
+            {allJoined ? (
+              <>
+                <div style={S.designHeroEyebrow}><span style={S.designCheck}>✓</span> 모두의 안부가 도착했어요</div>
+                <div style={S.designHeroTitle}>오늘의 순간이<br/>모두 닿았어요.</div>
+                <div style={S.designHeroSub}>{joinedCount}/{members.length}명이 오늘의 순간을 남겼어요</div>
+              </>
+            ) : iJoined ? (
+              <>
+                <div style={S.designHeroEyebrow}><span style={S.designCheck}>✓</span> 안부를 전했어요</div>
+                <div style={S.designHeroTitle}>이제 다른 사람의 순간을<br/>기다리고 있어요.</div>
+                <div style={S.designHeroSub}>{joinedCount}/{members.length}명이 오늘의 순간을 남겼어요</div>
+              </>
+            ) : (
+              <>
+                <div style={S.designHeroEyebrow}><span style={S.designMoon}>◔</span> 지금, 안부 시간이에요</div>
+                <div style={S.designHeroTitle}>지금의 순간을<br/>남겨주세요.</div>
+                <div style={S.designHeroSub}>{joinedCount}/{members.length}명이 오늘의 순간을 남겼어요</div>
+              </>
+            )}
             <div style={S.designHeroPeople}>
               {members.slice(0,6).map(m => {
                 const p = displayByUser[m.user_id]
                 const u = p ? signed[p.id] : ''
-                return <span key={m.id} style={{...S.designAvatar, background: m.color || 'var(--mp-ink)'}}>{u ? <img src={u} alt="" style={S.designAvatarImg}/> : (m.display_name || '?').slice(0,1)}</span>
+                return <span key={m.id} style={{...S.designAvatar, background:m.color || 'var(--mp-ink)'}}>{u ? <img src={u} alt="" style={S.designAvatarImg}/> : (m.display_name || '?').slice(0,1)}</span>
               })}
-              {members.length > 6 && <span style={S.designPeopleMore}>+{members.length-6}</span>}
+              <span style={S.designPeopleText}>{members.length}명이 함께해요</span>
             </div>
           </div>
-        </div>
-      ) : todayEnded ? (
-        <div style={S.designHeroEnded}>
-          <div style={S.designHeroSky} />
-          <div style={S.designHeroBranch} aria-hidden="true" />
-          <div style={S.designHeroContent}>
-            <div style={S.designHeroEyebrow}><span style={S.designMoon}>◷</span> 오늘의 안부</div>
-            <div style={S.designHeroTitle}>오늘의 안부가<br/>끝났어요.</div>
-            <div style={S.designHeroSub}>같은 시간, 다른 공간에서<br/>오늘도 서로의 순간이 닿았어요.</div>
-            <div style={S.designEndedNext}>다음 안부까지 · {nextSchedule ? nextScheduleLabel : '다음 시간을 기다려요'}</div>
-          </div>
+          <button style={S.designInviteStrip} onClick={copyInviteLink}>
+            <span style={S.designInviteHeart}>♥</span>
+            <span style={{flex:1}}><b style={S.designInviteStripText}>가족·친구를 초대해보세요</b><small style={{display:'block',marginTop:3,fontSize:11.5,color:'var(--mp-muted)'}}>함께해야 안부를 나눌 수 있어요.</small></span>
+            <span style={S.designInviteLink}>↗</span>
+          </button>
         </div>
       ) : (
         <div style={S.designHero}>
@@ -688,7 +697,7 @@ export default function Home({ user, group, profileVersion, isActive, onMembersL
           <div style={S.designHeroBranch} aria-hidden="true" />
           <div style={S.designHeroContent}>
             <div style={S.designHeroEyebrow}><span style={S.designMoon}>◔</span> 다음 안부까지</div>
-            <div style={S.designHeroTitle}>{nextSchedule ? nextScheduleLabel : '다음 안부를 기다리는 중'}</div>
+            <div style={S.designHeroTitle}>{nextSchedule ? nextScheduleLabel : '다음 안부'}</div>
             <div style={S.designHeroSub}>같은 시간, 다른 공간에서<br/>우리는 다시 만나요.</div>
             {nextSchedule ? <div style={S.designCountdown}>{nextCountdown}</div> : <div style={S.designNoSchedule}>안부 시간이 정해지면 알려드릴게요.</div>}
             <div style={S.designHeroPeople}>
@@ -697,6 +706,7 @@ export default function Home({ user, group, profileVersion, isActive, onMembersL
                 const u = p ? signed[p.id] : ''
                 return <span key={m.id} style={{...S.designAvatar, background:m.color || 'var(--mp-ink)'}}>{u ? <img src={u} alt="" style={S.designAvatarImg}/> : (m.display_name || '?').slice(0,1)}</span>
               })}
+              {members.length > 6 && <span style={S.designPeopleMore}>+{members.length-6}</span>}
               <span style={S.designPeopleText}>{members.length}명이 함께해요</span>
             </div>
           </div>
@@ -723,6 +733,7 @@ export default function Home({ user, group, profileVersion, isActive, onMembersL
                 <div style={S.mapTitle}>우리의 위치</div>
                 <div style={S.mapSub}>{members.filter(m => displayByUser[m.user_id]).length}/{members.length}명이 오늘의 순간을 남겼어요</div>
               </div>
+              <button style={S.detailBtn} onClick={() => { if (mapRef.current) { mapRef.current.invalidateSize(); mapRef.current.setZoom(Math.max(mapRef.current.getZoom(), 14)) } }}>상세보기 ›</button>
             </div>
             <div style={S.mapWrap}>
               <style>{`.leaflet-container{overflow:hidden!important;position:relative!important}.leaflet-container img,.leaflet-container img.leaflet-tile,.leaflet-container .leaflet-tile{max-width:none!important;max-height:none!important}.leaflet-container .leaflet-tile{width:256px!important;height:256px!important;display:block!important;position:absolute!important;left:0;top:0}.leaflet-container .leaflet-tile-container{width:1600px!important;height:1600px!important;-webkit-transform-origin:0 0!important;transform-origin:0 0!important}.leaflet-container .leaflet-map-pane,.leaflet-container .leaflet-tile-pane{position:absolute!important;left:0!important;top:0!important}`}</style>
@@ -861,7 +872,6 @@ export default function Home({ user, group, profileVersion, isActive, onMembersL
           )
         }) )}
       </div>
-
 
       {viewPost && (
         <div style={S.pop} onClick={() => setViewPost(null)}>
@@ -1075,8 +1085,6 @@ const S = {
   inviteSub: { display: 'block', fontSize: 11.5, color: 'var(--mp-muted)', marginTop: 3 },
   inviteArrow: { fontSize: 18, color: 'var(--mp-gold)', flex: 'none', fontWeight: 700 },
   designHero: { position:'relative', margin:'14px 14px 0', minHeight:392, borderRadius:24, overflow:'hidden', background:'linear-gradient(135deg,#eef8ff 0%,#fff3ea 48%,#ffe1cf 100%)', boxShadow:'0 12px 34px rgba(30,39,70,.10)' },
-  designHeroEnded: { position:'relative', margin:'14px 14px 0', minHeight:286, borderRadius:24, overflow:'hidden', background:'linear-gradient(135deg,#eef7ff 0%,#fff0e7 62%,#ffe2d0 100%)', boxShadow:'0 12px 34px rgba(30,39,70,.10)' },
-  designEndedNext: { display:'inline-flex', alignItems:'center', marginTop:18, padding:'9px 13px', borderRadius:13, background:'rgba(255,255,255,.66)', border:'1px solid rgba(255,255,255,.85)', color:'var(--mp-sub)', fontSize:12, fontWeight:650 },
   designHeroActive: { position:'relative', margin:'14px 14px 0', minHeight:286, borderRadius:24, overflow:'hidden', background:'linear-gradient(135deg,#eef7ff 0%,#fff0e7 62%,#ffe2d0 100%)', boxShadow:'0 12px 34px rgba(30,39,70,.10)' },
   designHeroSky: { position:'absolute', inset:0, background:'radial-gradient(circle at 82% 28%,rgba(255,255,255,.9),transparent 27%),radial-gradient(circle at 14% 12%,rgba(255,255,255,.72),transparent 23%),linear-gradient(115deg,rgba(197,229,247,.45),transparent 44%,rgba(255,216,194,.34))' },
   designHeroBranch: { position:'absolute', right:-36, top:0, width:190, height:260, opacity:.34, zIndex:0, pointerEvents:'none', background:'radial-gradient(circle at 74% 24%,#ef9fa8 0 4px,transparent 5px),radial-gradient(circle at 82% 34%,#f2b1b7 0 5px,transparent 6px),radial-gradient(circle at 66% 42%,#eda0aa 0 4px,transparent 5px),radial-gradient(circle at 88% 51%,#efb0b5 0 5px,transparent 6px),linear-gradient(112deg,transparent 47%,rgba(103,83,72,.48) 48% 50%,transparent 51%)' },
@@ -1097,6 +1105,7 @@ const S = {
   designInviteHeart: { width:38, height:38, borderRadius:11, background:'#fff', display:'flex', alignItems:'center', justifyContent:'center', color:'#ff5963', fontSize:18, boxShadow:'0 3px 9px rgba(30,39,70,.07)' },
   designInviteStripText: { display:'block', fontSize:14 },
   designInviteLink: { fontSize:22, color:'var(--mp-ink)', fontWeight:700 },
+  detailBtn: { border:'none', background:'#fff5dc', color:'#9a7430', borderRadius:14, padding:'10px 13px', fontFamily:'inherit', fontSize:11.5, fontWeight:750, cursor:'pointer' },
   sendCta: { width:'100%', display:'flex', alignItems:'center', gap:12, border:'none', borderRadius:18, padding:'15px 18px', margin:'0 0 16px', background:'var(--mp-ink)', color:'#fff', fontFamily:'inherit', textAlign:'left', cursor:'pointer', boxShadow:'0 9px 22px rgba(30,39,70,.18)' },
   sendCtaIcon: { width:42, height:42, borderRadius:'50%', background:'rgba(255,255,255,.12)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:23, flex:'none' },
   sendCtaText: { display:'block', fontSize:15, letterSpacing:'-.3px' },
