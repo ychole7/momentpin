@@ -404,6 +404,16 @@ export default function Home({ user, group, profileVersion, isActive, onMembersL
       mk.on('click', () => setViewPost(p))
       markersRef.current.push(mk)
     }
+
+    // 지도는 현재 내 위치가 아니라 '오늘의 안부 위치'가 보이도록 중심을 맞춘다.
+    // 현재 위치와 안부를 남긴 위치가 달라도 핀이 화면 밖으로 밀리지 않게 한다.
+    const pinPosts = posts.filter(p => activeIds.includes(p.moment_id) && p.lat != null && p.lng != null)
+    if (pinPosts.length === 1) {
+      map.setView([pinPosts[0].lat, pinPosts[0].lng], 15)
+    } else if (pinPosts.length > 1) {
+      const bounds = L.latLngBounds(pinPosts.map(p => [p.lat, p.lng]))
+      map.fitBounds(bounds, { padding: [36, 36], maxZoom: 15 })
+    }
   }
 
   function getLoc() {
@@ -733,7 +743,6 @@ export default function Home({ user, group, profileVersion, isActive, onMembersL
                 <div style={S.mapTitle}>우리의 위치</div>
                 <div style={S.mapSub}>{members.filter(m => displayByUser[m.user_id]).length}/{members.length}명이 오늘의 순간을 남겼어요</div>
               </div>
-              <button style={S.detailBtn} onClick={() => { if (mapRef.current) { mapRef.current.invalidateSize(); mapRef.current.setZoom(Math.max(mapRef.current.getZoom(), 14)) } }}>상세보기 ›</button>
             </div>
             <div style={S.mapWrap}>
               <style>{`.leaflet-container{overflow:hidden!important;position:relative!important}.leaflet-container img,.leaflet-container img.leaflet-tile,.leaflet-container .leaflet-tile{max-width:none!important;max-height:none!important}.leaflet-container .leaflet-tile{width:256px!important;height:256px!important;display:block!important;position:absolute!important;left:0;top:0}.leaflet-container .leaflet-tile-container{width:1600px!important;height:1600px!important;-webkit-transform-origin:0 0!important;transform-origin:0 0!important}.leaflet-container .leaflet-map-pane,.leaflet-container .leaflet-tile-pane{position:absolute!important;left:0!important;top:0!important}`}</style>
@@ -770,7 +779,7 @@ export default function Home({ user, group, profileVersion, isActive, onMembersL
                     const url = signed[p.id]
                     return <button key={p.id} style={S.todayCard} onClick={() => setViewPost(p)}>
                       <div style={S.todayPhoto}>{url ? <img src={url} alt="" style={S.todayImg}/> : <div style={S.todayNoImg}>📷</div>}</div>
-                      <div style={S.todayMeta}><b style={S.todayMetaName}>{p.user_id === user.id ? '나' : (m?.display_name || nameOf(p.user_id))}</b><span style={S.todayMetaTime}>{p.user_id === user.id ? '지금' : ago(p.created_at)}</span></div>
+                      <div style={S.todayMeta}><b style={S.todayMetaName}>{p.user_id === user.id ? '나' : (m?.display_name || nameOf(p.user_id))}</b><span style={S.todayMetaTime}>{hhmm(p.created_at)}</span></div>
                     </button>
                   })}
                 </div>
