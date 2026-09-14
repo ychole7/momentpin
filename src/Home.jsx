@@ -134,7 +134,7 @@ export default function Home({ user, group, profileVersion, isActive, onMembersL
     // 지도 탭을 떠나면 기존 지도 인스턴스를 깨끗이 제거
     if (mapRef.current) { try { mapRef.current.remove() } catch {} mapRef.current = null; markersRef.current = [] }
   }, [tab])
-  useEffect(() => { drawPins() }, [posts, members])
+  useEffect(() => { drawPins() }, [posts, members, moments, signed])
   useEffect(() => { resolveSigned() }, [posts])
 
   // 현재 푸시 구독 상태 확인
