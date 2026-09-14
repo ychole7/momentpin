@@ -148,91 +148,105 @@ export default function MyPage({ user, group, members, onClose, onOpenStats, onS
 
   if (deletedDone) {
     return (
-      <div style={S.doneWrap}>
-        <div style={S.doneCard}>
-          <div style={S.doneIcon}>✅</div>
-          <div style={S.doneTitle}>탈퇴가 완료됐어요</div>
-          <div style={S.doneBody}>그동안 닿음을 이용해 주셔서 감사했어요.<br/>계정과 모든 기록이 삭제됐어요.</div>
-          <button style={S.doneBtn} onClick={async () => { try { await supabase.auth.signOut() } catch {} window.location.href = '/' }}>확인</button>
-        </div>
-      </div>
-    )
-  }
-
-  return (
     <div style={S.app}>
       <div style={S.top}>
-        <button style={S.back} onClick={onClose}>←</button>
+        <button style={S.back} onClick={onClose} aria-label="뒤로가기">‹</button>
         <div style={S.title}>마이페이지</div>
-        <div style={{ width: 32 }} />
+        <div style={S.topSpacer} />
       </div>
 
       <div style={S.body}>
-        {/* 프로필 헤더 */}
-        <div style={S.profile}>
+        <section style={S.profileHero}>
           <div style={{ ...S.bigAvatar, background: myColor }}>{(myName || '?')[0]}</div>
-          <div>
-            <div style={{ fontSize: 19, fontWeight: 700 }}>{myName || '나'}</div>
-            <div style={{ fontSize: 12.5, color: 'var(--mp-muted)' }}>{user.email}</div>
-            {isOwner && <div style={S.ownerBadge}>👑 그룹장</div>}
+          <div style={S.profileInfo}>
+            <div style={S.profileName}>{myName || '나'}</div>
+            <div style={S.profileEmail}>{user.email}</div>
+            {isOwner && <div style={S.ownerBadge}>그룹장</div>}
           </div>
-        </div>
+        </section>
 
-        {/* 내 기록 */}
         {myStats && (
-          <div style={S.miniCards}>
-            <div style={S.miniCard}><div style={S.miniNum}>{myStats.myCount}</div><div style={S.miniLabel}>내가 남긴 안부</div></div>
-            <div style={S.miniCard}><div style={S.miniNum}>{myStats.rate}%</div><div style={S.miniLabel}>참여율</div></div>
-          </div>
+          <section style={S.statsGrid}>
+            <div style={S.statCard}>
+              <div style={S.statNum}>{myStats.myCount}</div>
+              <div style={S.statLabel}>내가 남긴 안부</div>
+            </div>
+            <div style={S.statCard}>
+              <div style={S.statNum}>{myStats.rate}%</div>
+              <div style={S.statLabel}>참여율</div>
+            </div>
+          </section>
         )}
 
-        <button style={S.statsLink} onClick={() => onOpenStats && onOpenStats(members)}>🎁 우리의 순간들 보기 →</button>
+        <button style={S.momentsCard} onClick={() => onOpenStats && onOpenStats(members)}>
+          <div style={S.momentsIcon}>✦</div>
+          <div style={S.momentsCopy}>
+            <div style={S.momentsTitle}>우리의 순간들</div>
+            <div style={S.momentsSub}>함께 남긴 시간을 다시 만나보세요.</div>
+          </div>
+          <div style={S.momentsArrow}>›</div>
+        </button>
 
-        {/* 프로필 편집 */}
-        <div style={S.secLabel}>프로필</div>
+        <div style={S.secLabel}>나의 프로필</div>
         <div style={S.card}>
           <div style={S.rowLabel}>이름</div>
-          <input style={S.input} value={myName} maxLength={12} onChange={e => setMyName(e.target.value.slice(0, 12))} placeholder="이름 또는 별명" />
-          <div style={{ fontSize: 11, color: 'var(--mp-muted)', textAlign: 'right', marginTop: 4 }}>{myName.length}/12</div>
-          <div style={{ ...S.rowLabel, marginTop: 14 }}>색상</div>
-          <div style={{ display: 'flex', gap: 10 }}>
+          <input style={S.input} value={myName} maxLength={12}
+            onChange={e => setMyName(e.target.value.slice(0, 12))}
+            placeholder="이름 또는 별명" />
+          <div style={S.counter}>{myName.length}/12</div>
+
+          <div style={{ ...S.rowLabel, marginTop: 18 }}>색상</div>
+          <div style={S.colors}>
             {COLORS.map(c => (
-              <button key={c} onClick={() => setMyColor(c)} style={{ width: 32, height: 32, borderRadius: '50%', background: c, border: myColor === c ? '3px solid var(--mp-ink)' : '3px solid var(--mp-card)', cursor: 'pointer', boxShadow: '0 2px 6px rgba(0,0,0,.15)' }} />
+              <button key={c} aria-label={`색상 ${c}`} onClick={() => setMyColor(c)}
+                style={{ ...S.colorDot, background: c,
+                  boxShadow: myColor === c
+                    ? `0 0 0 3px var(--mp-card), 0 0 0 5px ${c}`
+                    : '0 2px 6px rgba(20,20,30,.14)' }} />
             ))}
           </div>
-          <button style={{ ...S.save, opacity: busy ? .6 : 1 }} disabled={busy} onClick={saveMe}>프로필 저장</button>
+          <button style={{ ...S.save, opacity: busy ? .6 : 1 }} disabled={busy} onClick={saveMe}>
+            {busy ? '저장 중…' : '프로필 저장'}
+          </button>
         </div>
 
-        {/* 알림 */}
         <div style={S.secLabel}>알림</div>
         <div style={S.card}>
           <div style={S.toggleRow}>
             <div>
-              <div style={{ fontWeight: 600 }}>안부 알림</div>
-              <div style={{ fontSize: 12, color: 'var(--mp-muted)' }}>정해진 시간에 "지금 찍어!" 알림</div>
+              <div style={S.itemTitle}>안부 알림</div>
+              <div style={S.itemSub}>정해진 시간에 지금을 남길 수 있도록 알려드려요.</div>
             </div>
-            <button onClick={togglePush} style={{ ...S.switch, background: pushOn ? '#13bca4' : 'var(--mp-line2)' }}>
+            <button onClick={togglePush} aria-label={pushOn ? '알림 끄기' : '알림 켜기'}
+              style={{ ...S.switch, background: pushOn ? 'var(--mp-coral)' : 'var(--mp-line2)' }}>
               <span style={{ ...S.knob, transform: pushOn ? 'translateX(20px)' : 'translateX(0)' }} />
             </button>
           </div>
         </div>
 
-        {/* 보안: 비밀번호 변경 (이메일/비밀번호 계정만) */}
         {isPasswordAccount && (
           <>
             <div style={S.secLabel}>보안</div>
             <div style={S.card}>
               {!showPwForm ? (
-                <button style={{ ...S.linkRow, borderBottom: 'none' }} onClick={() => setShowPwForm(true)}>🔒 비밀번호 변경</button>
+                <button style={S.linkRow} onClick={() => setShowPwForm(true)}>
+                  <span>비밀번호 변경</span><span style={S.chevron}>›</span>
+                </button>
               ) : (
                 <>
                   <div style={S.rowLabel}>새 비밀번호</div>
-                  <input style={S.input} type="password" value={newPw} onChange={e => setNewPw(e.target.value)} placeholder="영문+숫자 조합 8자 이상" autoComplete="new-password" />
-                  <div style={{ ...S.rowLabel, marginTop: 12 }}>새 비밀번호 확인</div>
-                  <input style={S.input} type="password" value={newPw2} onChange={e => setNewPw2(e.target.value)} placeholder="다시 입력해 주세요" autoComplete="new-password" />
-                  <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
-                    <button style={{ ...S.smallBtn, flex: 1 }} onClick={() => { setShowPwForm(false); setNewPw(''); setNewPw2('') }}>취소</button>
-                    <button style={{ ...S.save, flex: 2, marginTop: 0, opacity: pwBusy ? .6 : 1 }} disabled={pwBusy} onClick={changePassword}>
+                  <input style={S.input} type="password" value={newPw}
+                    onChange={e => setNewPw(e.target.value)}
+                    placeholder="영문+숫자 조합 8자 이상" autoComplete="new-password" />
+                  <div style={{ ...S.rowLabel, marginTop: 14 }}>새 비밀번호 확인</div>
+                  <input style={S.input} type="password" value={newPw2}
+                    onChange={e => setNewPw2(e.target.value)}
+                    placeholder="다시 입력해 주세요" autoComplete="new-password" />
+                  <div style={S.formBtns}>
+                    <button style={{ ...S.smallBtn, flex: 1 }}
+                      onClick={() => { setShowPwForm(false); setNewPw(''); setNewPw2('') }}>취소</button>
+                    <button style={{ ...S.save, flex: 2, marginTop: 0, opacity: pwBusy ? .6 : 1 }}
+                      disabled={pwBusy} onClick={changePassword}>
                       {pwBusy ? '변경 중…' : '변경하기'}
                     </button>
                   </div>
@@ -242,71 +256,78 @@ export default function MyPage({ user, group, members, onClose, onOpenStats, onS
           </>
         )}
 
-        {/* 약관·정책 */}
-        <div style={S.secLabel}>약관·정책</div>
+        <div style={S.secLabel}>약관 · 정책</div>
         <div style={S.card}>
-          <button style={{ ...S.linkRow, fontSize: 13.5 }} onClick={onOpenPrivacy}>📄 개인정보처리방침</button>
-          <button style={{ ...S.linkRow, fontSize: 13.5, borderBottom: 'none' }} onClick={onOpenTerms}>📋 이용약관</button>
+          <button style={S.linkRow} onClick={onOpenPrivacy}>
+            <span>개인정보처리방침</span><span style={S.chevron}>›</span>
+          </button>
+          <button style={{ ...S.linkRow, borderBottom: 'none' }} onClick={onOpenTerms}>
+            <span>이용약관</span><span style={S.chevron}>›</span>
+          </button>
         </div>
 
-        {/* 계정: 로그아웃/회원탈퇴를 한 묶음으로 맨 아래에 */}
-        <div style={{ ...S.secLabel, marginTop: 20 }}>계정</div>
+        <div style={{ ...S.secLabel, marginTop: 22 }}>계정</div>
         <div style={S.card}>
-          <button style={{ ...S.linkRow, color: 'var(--mp-coral)' }} onClick={onSignOut}>🚪 로그아웃</button>
-          <button style={{ ...S.linkRow, color: 'var(--mp-muted)', borderBottom: 'none', fontSize: 13 }} onClick={deleteAccount}>회원 탈퇴</button>
+          <button style={{ ...S.linkRow, color: 'var(--mp-coral)' }} onClick={onSignOut}>
+            <span>로그아웃</span><span style={S.chevron}>›</span>
+          </button>
+          <button style={{ ...S.linkRow, color: 'var(--mp-muted)', borderBottom: 'none', fontSize: 13 }}
+            onClick={deleteAccount}>
+            <span>회원 탈퇴</span><span style={S.chevron}>›</span>
+          </button>
         </div>
       </div>
 
       {toast && <div style={S.toast}>{toast}</div>}
     </div>
   )
-}
+}}
 
 const S = {
-  app: { width: '100%', maxWidth: 480, margin: '0 auto', minHeight: '100dvh', background: 'var(--mp-bg)', fontFamily: "'Outfit','Gowun Dodum',sans-serif", color: 'var(--mp-ink)', paddingBottom: 40 },
-  top: { position: 'sticky', top: 0, zIndex: 100, background: 'var(--mp-topbar)', backdropFilter: 'blur(12px)', borderBottom: '1px solid var(--mp-line)', padding: '13px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
-  back: { width: 32, height: 32, border: 'none', background: 'var(--mp-card2)', borderRadius: '50%', fontSize: 18, cursor: 'pointer', color: 'var(--mp-ink)' },
-  title: { fontWeight: 700, fontSize: 17 },
-  body: { padding: 16 },
-  profile: { display: 'flex', alignItems: 'center', gap: 14, padding: '6px 4px 18px' },
-  bigAvatar: { width: 60, height: 60, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 24, flex: 'none' },
-  ownerBadge: { display: 'inline-block', marginTop: 5, fontSize: 11, fontWeight: 700, color: '#e0972e', background: '#fff8ec', padding: '3px 9px', borderRadius: 10 },
-  miniCards: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 },
-  miniCard: { background: 'var(--mp-card)', borderRadius: 14, padding: '14px 16px', boxShadow: '0 4px 24px rgba(20,20,30,.06)', textAlign: 'center' },
-  miniNum: { fontSize: 24, fontWeight: 700, color: '#ff4d5e', letterSpacing: '-.5px' },
-  miniLabel: { fontSize: 12, color: 'var(--mp-sub)', fontWeight: 600, marginTop: 2 },
-  statsLink: { width: '100%', border: '1.5px solid var(--mp-coral)', borderRadius: 14, padding: 14, fontFamily: 'inherit', fontSize: 14, fontWeight: 700, cursor: 'pointer', color: 'var(--mp-coral)', background: 'var(--mp-card2)', marginBottom: 20 },
-  tabs: { display: 'flex', gap: 6, background: 'var(--mp-card2)', borderRadius: 22, padding: 4, marginBottom: 16 },
-  tab: { flex: 1, border: 'none', background: 'none', fontFamily: 'inherit', fontSize: 13, fontWeight: 600, color: 'var(--mp-muted)', padding: 9, borderRadius: 18, cursor: 'pointer' },
-  tabOn: { background: 'var(--mp-card)', color: 'var(--mp-ink)', boxShadow: '0 2px 8px rgba(0,0,0,.08)' },
-  secLabel: { fontSize: 12, fontWeight: 600, color: 'var(--mp-muted)', textTransform: 'uppercase', letterSpacing: .4, margin: '16px 4px 8px' },
-  card: { background: 'var(--mp-card)', borderRadius: 16, padding: 16, boxShadow: '0 4px 24px rgba(20,20,30,.06)' },
-  rowLabel: { fontSize: 14, fontWeight: 600, marginBottom: 10 },
-  input: { width: '100%', border: '1.5px solid var(--mp-line)', borderRadius: 10, padding: '11px 13px', fontFamily: 'inherit', fontSize: 14, fontWeight: 600, outline: 'none', boxSizing: 'border-box' },
-  pills: { display: 'flex', gap: 8, flexWrap: 'wrap' },
-  pill: { border: '1.5px solid var(--mp-line2)', background: 'var(--mp-card2)', color: 'var(--mp-ink)', padding: '9px 15px', borderRadius: 22, fontFamily: 'inherit', fontSize: 13, fontWeight: 600, cursor: 'pointer' },
-  hint: { fontSize: 12, color: 'var(--mp-muted)', marginTop: 8 },
-  quotaBox: { marginTop: 16, background: 'var(--mp-card2)', border: '1px solid var(--mp-line)', borderRadius: 12, padding: '12px 14px' },
-  quotaRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 },
-  quotaLabel: { fontSize: 13, color: 'var(--mp-sub)', fontWeight: 500 },
-  quotaVal: { fontSize: 14, fontWeight: 700, color: 'var(--mp-ink)' },
-  quotaHint: { fontSize: 11.5, color: 'var(--mp-muted)', marginTop: 4, lineHeight: 1.5 },
-  pillOn: { background: 'linear-gradient(135deg,#ff7a45,#ff4d5e)', color: '#fff', border: '1.5px solid #ff7a45', boxShadow: '0 2px 10px rgba(255,90,70,.35)' },
-  timePill: { border: '1.5px solid var(--mp-coral)', background: 'var(--mp-card2)', color: 'var(--mp-coral)', padding: '9px 14px', borderRadius: 22, fontFamily: 'inherit', fontSize: 13, fontWeight: 700, cursor: 'pointer' },
-  addPill: { border: '1.5px dashed var(--mp-line2)', background: 'var(--mp-card)', color: 'var(--mp-muted)', padding: '9px 14px', borderRadius: 22, fontFamily: 'inherit', fontSize: 13, fontWeight: 600, cursor: 'pointer' },
-  save: { width: '100%', border: 'none', borderRadius: 12, padding: 13, marginTop: 16, fontFamily: 'inherit', fontSize: 14, fontWeight: 700, cursor: 'pointer', color: '#fff', background: 'linear-gradient(135deg,#ff7a45,#ff4d5e)', boxShadow: '0 6px 16px rgba(255,77,94,.28)' },
-  toggleRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
-  switch: { width: 46, height: 26, borderRadius: 20, border: 'none', cursor: 'pointer', position: 'relative', padding: 0, transition: 'background .2s' },
-  knob: { position: 'absolute', top: 3, left: 3, width: 20, height: 20, borderRadius: '50%', background: '#fff', boxShadow: '0 2px 4px rgba(0,0,0,.2)', transition: 'transform .2s' },
-  linkRow: { width: '100%', textAlign: 'left', border: 'none', background: 'none', fontFamily: 'inherit', fontSize: 14, fontWeight: 600, color: 'var(--mp-ink)', padding: '13px 2px', cursor: 'pointer', borderBottom: '1px solid var(--mp-line)' },
-  smallBtn: { border: '1.5px solid var(--mp-line)', background: 'var(--mp-card)', color: 'var(--mp-ink)', borderRadius: 20, padding: '8px 13px', fontFamily: 'inherit', fontSize: 12, fontWeight: 600, cursor: 'pointer' },
-  dangerNote: { fontSize: 12, color: 'var(--mp-coral)', textAlign: 'center', marginTop: 8 },
-  ownerNote: { background: 'var(--mp-card2)', borderRadius: 10, padding: '13px 15px', fontSize: 13, color: 'var(--mp-sub)', textAlign: 'center', lineHeight: 1.5 },
+  app: { width: '100%', maxWidth: 480, margin: '0 auto', minHeight: '100dvh', background: 'var(--mp-bg)', fontFamily: "'Outfit','Gowun Dodum',sans-serif", color: 'var(--mp-ink)', paddingBottom: 48 },
+  top: { position: 'sticky', top: 0, zIndex: 100, background: 'var(--mp-topbar)', backdropFilter: 'blur(14px)', borderBottom: '1px solid var(--mp-line)', padding: '13px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
+  back: { width: 34, height: 34, border: 'none', background: 'var(--mp-card2)', borderRadius: '50%', fontSize: 27, lineHeight: 1, cursor: 'pointer', color: 'var(--mp-ink)', display: 'flex', alignItems: 'center', justifyContent: 'center', paddingBottom: 3 },
+  title: { fontWeight: 700, fontSize: 17, letterSpacing: '-.2px' },
+  topSpacer: { width: 34 },
+  body: { padding: '18px 16px 32px' },
+  profileHero: { display: 'flex', alignItems: 'center', gap: 15, padding: '4px 3px 20px' },
+  bigAvatar: { width: 64, height: 64, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 25, flex: 'none', boxShadow: '0 6px 18px rgba(20,20,30,.12)' },
+  profileInfo: { minWidth: 0 },
+  profileName: { fontSize: 20, fontWeight: 750, letterSpacing: '-.5px' },
+  profileEmail: { marginTop: 3, fontSize: 12.5, color: 'var(--mp-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  ownerBadge: { display: 'inline-flex', marginTop: 7, fontSize: 10.5, fontWeight: 700, color: '#a26a12', background: '#fff7e7', padding: '4px 9px', borderRadius: 20 },
+  statsGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 },
+  statCard: { background: 'var(--mp-card)', borderRadius: 16, padding: '16px 12px', boxShadow: '0 5px 22px rgba(20,20,30,.055)', textAlign: 'center', border: '1px solid rgba(20,20,30,.035)' },
+  statNum: { fontSize: 27, lineHeight: 1.05, fontWeight: 750, color: 'var(--mp-coral)', letterSpacing: '-.8px' },
+  statLabel: { fontSize: 12, color: 'var(--mp-sub)', fontWeight: 600, marginTop: 5 },
+  momentsCard: { width: '100%', display: 'flex', alignItems: 'center', textAlign: 'left', border: '1px solid rgba(255,90,100,.25)', borderRadius: 17, padding: '15px 14px', margin: '0 0 22px', cursor: 'pointer', background: 'linear-gradient(135deg, var(--mp-card), #fff8f4)', boxShadow: '0 7px 25px rgba(255,90,100,.07)', fontFamily: 'inherit', color: 'var(--mp-ink)', boxSizing: 'border-box' },
+  momentsIcon: { width: 38, height: 38, borderRadius: 12, flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fff0eb', color: 'var(--mp-coral)', fontSize: 19, marginRight: 12 },
+  momentsCopy: { flex: 1, minWidth: 0 },
+  momentsTitle: { fontSize: 14.5, fontWeight: 750, letterSpacing: '-.2px' },
+  momentsSub: { fontSize: 11.5, color: 'var(--mp-muted)', marginTop: 3 },
+  momentsArrow: { fontSize: 24, color: 'var(--mp-muted)', marginLeft: 8, lineHeight: 1 },
+  secLabel: { fontSize: 11.5, fontWeight: 750, color: 'var(--mp-muted)', letterSpacing: '.35px', margin: '18px 4px 8px' },
+  card: { background: 'var(--mp-card)', borderRadius: 16, padding: 16, boxShadow: '0 5px 22px rgba(20,20,30,.055)', border: '1px solid rgba(20,20,30,.035)' },
+  rowLabel: { fontSize: 13, fontWeight: 700, marginBottom: 9 },
+  input: { width: '100%', border: '1px solid var(--mp-line)', borderRadius: 11, padding: '11px 13px', fontFamily: 'inherit', fontSize: 14, fontWeight: 600, outline: 'none', boxSizing: 'border-box', background: 'var(--mp-card2)', color: 'var(--mp-ink)' },
+  counter: { fontSize: 10.5, color: 'var(--mp-muted)', textAlign: 'right', marginTop: 4 },
+  colors: { display: 'flex', gap: 11, alignItems: 'center', flexWrap: 'wrap' },
+  colorDot: { width: 29, height: 29, borderRadius: '50%', border: '2px solid transparent', cursor: 'pointer', padding: 0 },
+  save: { width: '100%', border: 'none', borderRadius: 12, padding: 13, marginTop: 17, fontFamily: 'inherit', fontSize: 13.5, fontWeight: 750, cursor: 'pointer', color: '#fff', background: 'var(--mp-ink)', boxShadow: '0 6px 16px rgba(20,20,30,.15)' },
+  toggleRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 },
+  itemTitle: { fontSize: 14, fontWeight: 700 },
+  itemSub: { fontSize: 11.5, color: 'var(--mp-muted)', marginTop: 4, lineHeight: 1.45 },
+  switch: { width: 46, height: 26, borderRadius: 20, border: 'none', cursor: 'pointer', position: 'relative', padding: 0, transition: 'background .2s', flex: 'none' },
+  knob: { position: 'absolute', top: 3, left: 3, width: 20, height: 20, borderRadius: '50%', background: '#fff', boxShadow: '0 2px 4px rgba(0,0,0,.18)', transition: 'transform .2s' },
+  linkRow: { width: '100%', textAlign: 'left', border: 'none', background: 'none', fontFamily: 'inherit', fontSize: 13.5, fontWeight: 650, color: 'var(--mp-ink)', padding: '13px 2px', cursor: 'pointer', borderBottom: '1px solid var(--mp-line)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
+  chevron: { fontSize: 21, lineHeight: 1, color: 'var(--mp-muted)', fontWeight: 400 },
+  formBtns: { display: 'flex', gap: 8, marginTop: 14 },
+  smallBtn: { border: '1px solid var(--mp-line)', background: 'var(--mp-card)', color: 'var(--mp-ink)', borderRadius: 20, padding: '8px 13px', fontFamily: 'inherit', fontSize: 12, fontWeight: 650, cursor: 'pointer' },
   toast: { position: 'fixed', bottom: 28, left: '50%', transform: 'translateX(-50%)', background: 'var(--mp-ink)', color: 'var(--mp-bg)', padding: '12px 20px', borderRadius: 30, fontSize: 13, fontWeight: 600, boxShadow: '0 10px 30px rgba(0,0,0,.3)', zIndex: 4000 },
   doneWrap: { minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--mp-bg)', padding: 24, fontFamily: "'Outfit','Gowun Dodum',sans-serif" },
   doneCard: { width: '100%', maxWidth: 360, background: 'var(--mp-card)', borderRadius: 20, padding: '36px 28px', textAlign: 'center', boxShadow: '0 10px 40px rgba(0,0,0,.08)' },
   doneIcon: { fontSize: 40, marginBottom: 14 },
   doneTitle: { fontSize: 19, fontWeight: 700, color: 'var(--mp-ink)', marginBottom: 10 },
   doneBody: { fontSize: 14, color: 'var(--mp-sub)', lineHeight: 1.6, marginBottom: 26 },
-  doneBtn: { width: '100%', border: 'none', borderRadius: 14, padding: 15, fontFamily: 'inherit', fontSize: 15, fontWeight: 700, cursor: 'pointer', color: '#fff', background: 'linear-gradient(135deg,#ff7a45,#ff4d5e)', boxShadow: '0 8px 20px rgba(255,77,94,.3)' },
+  doneBtn: { width: '100%', border: 'none', borderRadius: 14, padding: 15, fontFamily: 'inherit', fontSize: 15, fontWeight: 700, cursor: 'pointer', color: '#fff', background: 'var(--mp-ink)', boxShadow: '0 8px 20px rgba(20,20,30,.16)' },
 }
