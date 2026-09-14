@@ -144,6 +144,7 @@ export default function Stats({ user, group, members, onClose }) {
                     {p.photoUrl ? <img src={p.photoUrl} alt="" style={S.thumb} /> : <div style={S.thumbEmpty}>닿음</div>}
                   </div>
                   <div style={S.momentInfo}>
+                    <div style={S.momentGroup}>{group.name}</div>
                     <div style={S.momentName}>{nameOf(p.user_id)}</div>
                     <div style={S.momentDate}>{formatDate(p.created_at)} · {formatTime(p.created_at)}</div>
                     <div style={S.momentPlace}>{p.place_label || '위치 없이 남긴 안부'}</div>
@@ -217,6 +218,7 @@ const S = {
   thumb: { width: '100%', height: '100%', objectFit: 'cover', display: 'block' },
   thumbEmpty: { width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--mp-muted)', fontSize: 11, fontWeight: 700 },
   momentInfo: { minWidth: 0, flex: 1 },
+  momentGroup: { fontSize: 10.5, fontWeight: 700, color: 'var(--mp-coral)', marginBottom: 2 },
   momentName: { fontSize: 14, fontWeight: 700, marginBottom: 3 },
   momentDate: { fontSize: 11.5, color: 'var(--mp-muted)' },
   momentPlace: { fontSize: 12, color: 'var(--mp-sub)', marginTop: 5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
