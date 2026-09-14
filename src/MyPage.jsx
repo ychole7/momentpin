@@ -148,6 +148,18 @@ export default function MyPage({ user, group, members, onClose, onOpenStats, onS
 
   if (deletedDone) {
     return (
+      <div style={S.doneWrap}>
+        <div style={S.doneCard}>
+          <div style={S.doneIcon}>✅</div>
+          <div style={S.doneTitle}>탈퇴가 완료됐어요</div>
+          <div style={S.doneBody}>그동안 닿음을 이용해 주셔서 감사했어요.<br/>계정과 모든 기록이 삭제됐어요.</div>
+          <button style={S.doneBtn} onClick={async () => { try { await supabase.auth.signOut() } catch {} window.location.href = '/' }}>확인</button>
+        </div>
+      </div>
+    )
+  }
+
+    return (
     <div style={S.app}>
       <div style={S.top}>
         <button style={S.back} onClick={onClose} aria-label="뒤로가기">‹</button>
@@ -282,6 +294,7 @@ export default function MyPage({ user, group, members, onClose, onOpenStats, onS
     </div>
   )
 }
+
 
 const S = {
   app: { width: '100%', maxWidth: 480, margin: '0 auto', minHeight: '100dvh', background: 'var(--mp-bg)', fontFamily: "'Outfit','Gowun Dodum',sans-serif", color: 'var(--mp-ink)', paddingBottom: 48 },
