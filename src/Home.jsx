@@ -420,8 +420,19 @@ export default function Home({ user, group, profileVersion, isActive, onMembersL
     return new Promise(resolve => {
       if (myPosRef.current) return resolve(myPosRef.current)
       if (!navigator.geolocation) return resolve(null)
-      navigator.geolocation.getCurrentPosition(p => { myPosRef.current = { lat: p.coords.latitude, lng: p.coords.longitude }; resolve(myPosRef.current) }, () => resolve(null), { timeout: 5000 })
+      navigator.geolocation.getCurrentPosition(p => { myPosRef.current = { lat: p.coords.latitude, lng: p.coords.longitude }; resolve(myPosRef.current) }, () => resolve(null), { timeout: 5000, enableHighAccuracy: true })
     })
+  }
+
+  async function centerOnMyLocation() {
+    const map = mapRef.current
+    if (!map) return
+    const loc = await getLoc()
+    if (!loc) {
+      flash('현재 위치를 확인할 수 없어요')
+      return
+    }
+    map.setView([loc.lat, loc.lng], Math.max(map.getZoom(), 15), { animate: true })
   }
 
   async function startMoment() {
@@ -747,6 +758,9 @@ export default function Home({ user, group, profileVersion, isActive, onMembersL
             <div style={S.mapWrap}>
               <style>{`.leaflet-container{overflow:hidden!important;position:relative!important}.leaflet-container img,.leaflet-container img.leaflet-tile,.leaflet-container .leaflet-tile{max-width:none!important;max-height:none!important}.leaflet-container .leaflet-tile{width:256px!important;height:256px!important;display:block!important;position:absolute!important;left:0;top:0}.leaflet-container .leaflet-tile-container{width:1600px!important;height:1600px!important;-webkit-transform-origin:0 0!important;transform-origin:0 0!important}.leaflet-container .leaflet-map-pane,.leaflet-container .leaflet-tile-pane{position:absolute!important;left:0!important;top:0!important}`}</style>
               <div ref={mapBoxRef} style={S.map} />
+              <button type="button" aria-label="현재 위치로 이동" title="현재 위치" style={S.myLocationBtn} onClick={centerOnMyLocation}>
+                <span style={S.myLocationDot} />
+              </button>
             </div>
             <div style={{ ...S.summary, ...(hasOpen ? S.liveSummary : {}) }}>
               <div style={S.summaryStat}><span style={S.summaryIcon}>♧</span><span style={S.summaryStatText}><small style={S.summaryStatLabel}>참여</small><b style={S.summaryStatValue}>{joinedCount}/{members.length}</b></span></div>
@@ -1130,6 +1144,8 @@ const S = {
   mapBadge: { padding: '6px 9px', borderRadius: 10, background: '#fff5dc', color: '#9a7430', fontSize: 10.5, fontWeight: 750 },
   mapWrap: { position: 'relative', borderRadius: 20, overflow: 'hidden', boxShadow: '0 7px 28px rgba(30,39,70,.10)', marginBottom: 10, zIndex: 0, isolation: 'isolate', border: '1px solid rgba(30,39,70,.08)' },
   map: { width: '100%', height: 318 },
+  myLocationBtn: { position: 'absolute', right: 12, bottom: 12, zIndex: 500, width: 42, height: 42, border: '1px solid rgba(30,39,70,.12)', borderRadius: 13, background: 'rgba(255,255,255,.96)', boxShadow: '0 4px 14px rgba(30,39,70,.16)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, cursor: 'pointer' },
+  myLocationDot: { width: 17, height: 17, borderRadius: '50%', background: '#fff', border: '4px solid var(--mp-coral)', boxShadow: '0 0 0 3px rgba(255,255,255,.9)' },
   summary: { display: 'flex', alignItems: 'center', justifyContent: 'space-around', gap: 7, background: 'var(--mp-card)', border: '1px solid var(--mp-line)', borderRadius: 16, padding: '11px 10px', boxShadow: '0 4px 20px rgba(30,39,70,.05)', marginBottom: 16, fontSize: 12.5 },
   liveSummary: { padding: '12px 8px', marginBottom: 12 },
   summaryStat: { display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 },
