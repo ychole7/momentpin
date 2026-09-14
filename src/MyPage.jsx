@@ -281,7 +281,7 @@ export default function MyPage({ user, group, members, onClose, onOpenStats, onS
       {toast && <div style={S.toast}>{toast}</div>}
     </div>
   )
-}}
+}
 
 const S = {
   app: { width: '100%', maxWidth: 480, margin: '0 auto', minHeight: '100dvh', background: 'var(--mp-bg)', fontFamily: "'Outfit','Gowun Dodum',sans-serif", color: 'var(--mp-ink)', paddingBottom: 48 },
